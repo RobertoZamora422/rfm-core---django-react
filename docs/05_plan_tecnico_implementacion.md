@@ -117,7 +117,7 @@ Alcance:
 
 ## Fase 5 - API REST del core
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo exponer CRUD y validaciones de recursos principales.
 
@@ -132,7 +132,16 @@ Alcance:
 - Costos directos.
 - Gastos fijos.
 
+Entregables:
+
+- Serializers de los recursos principales.
+- ViewSets autenticados para operaciones CRUD.
+- Rutas API por app.
+- Pruebas de API para validaciones principales.
+
 ## Fase 6 - Servicios de negocio y endpoints de acciones
+
+Estado: Pendiente.
 
 La fase tiene como objetivo implementar acciones críticas con lógica en backend.
 

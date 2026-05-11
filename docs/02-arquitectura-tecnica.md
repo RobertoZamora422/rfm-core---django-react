@@ -49,6 +49,8 @@ rfm-core/
 
 Al cierre de la Fase 2, el repositorio contiene `backend/` y `frontend/`, Django REST Framework, CORS, apps base del backend y el endpoint `/api/health/`.
 
+Al cierre de la Fase 5, el backend expone endpoints CRUD autenticados para clientes, tipos de evento, paquetes, configuración del negocio, cotizaciones, contratos, costos directos y gastos fijos.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:
@@ -136,6 +138,8 @@ Endpoints esperados por fases:
 ```
 
 No todos los endpoints se implementan en una sola fase. Cada fase debe cerrar únicamente su alcance.
+
+En la Fase 5 se implementan los endpoints CRUD principales. Las acciones especiales de pre-cotización, cambio de estado y conversión a contrato corresponden a la Fase 6.
 
 ## Organización frontend propuesta
 

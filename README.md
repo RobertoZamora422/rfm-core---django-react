@@ -10,14 +10,15 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 
 ## Estado actual
 
-El proyecto se encuentra en etapa de inicialización técnica.
+El proyecto se encuentra en etapa de consolidación del backend base.
 
 - Fase 0: Documentación base completada.
 - Fase 1: Inicialización técnica completada.
 - Fase 2: Configuración base del backend completada.
 - Fase 3: Modelado del dominio completado.
 - Fase 4: Administración del sistema y datos semilla completada.
-- Siguiente etapa: Fase 5 - API REST del core.
+- Fase 5: API REST del core completada.
+- Siguiente etapa: Fase 6 - Servicios de negocio y endpoints de acciones.
 
 ## Alcance del sistema
 
@@ -99,6 +100,25 @@ Orden de prioridad cuando exista conflicto entre documentos:
 5. `docs/05_plan_tecnico_implementacion.md`
 6. `docs/00-estado-del-proyecto.md`
 
+## API REST actual
+
+La Fase 5 establece endpoints CRUD autenticados para los recursos principales:
+
+```text
+/api/clientes/
+/api/tipos-evento/
+/api/paquetes/
+/api/configuracion-negocio/
+/api/cotizaciones/
+/api/contratos/
+/api/costos-directos/
+/api/gastos-fijos/
+```
+
+El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
+
+Las acciones especiales de pre-cotización, cambio de estado y conversión de cotización a contrato corresponden a la Fase 6.
+
 ## Ejecución local
 
 Backend:
@@ -162,4 +182,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 5 - API REST del core. Se deberán implementar serializers, vistas y rutas API para los recursos principales.
+La siguiente etapa corresponde a la Fase 6 - Servicios de negocio y endpoints de acciones. Se deberán implementar las acciones críticas de pre-cotización, cambio de estado comercial y conversión de cotizaciones confirmadas a contratos.

@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de administración inicial del sistema. La documentación base, la estructura backend/frontend, la configuración base del backend, los modelos principales y la administración con datos semilla ya fueron completados.
+El proyecto se encuentra en etapa de consolidación del backend base. La documentación inicial, la estructura técnica, los modelos principales, la administración del sistema, los datos semilla y la API REST del core se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -17,15 +17,16 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 - Fase 2 — Configuración base del backend: Completada.
 - Fase 3 — Modelado del dominio: Completada.
 - Fase 4 — Administración del sistema y datos semilla: Completada.
+- Fase 5 — API REST del core: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de la administración inicial del sistema y datos semilla.
+La fase actual corresponde al cierre de la API REST del core.
 
-Se registraron los modelos principales en Django Admin y se establecieron comandos idempotentes para datos base, datos demo y limpieza segura de datos demo.
+Se establecen endpoints CRUD autenticados para los recursos principales del sistema y validaciones backend coherentes con el modelo aprobado.
 
 ## Próximos pasos
 
-La siguiente etapa corresponde a la Fase 5 — API REST del core.
+La siguiente etapa corresponde a la Fase 6 — Servicios de negocio y endpoints de acciones.
 
-Se deberán implementar serializers, vistas y rutas API para los recursos principales del sistema.
+Se deberán implementar las acciones críticas de pre-cotización, cambio de estado comercial y conversión de cotizaciones confirmadas a contratos.
