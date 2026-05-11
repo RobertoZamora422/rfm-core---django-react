@@ -4,6 +4,8 @@ import { ClientesPage } from '../pages/admin/ClientesPage'
 import { ConfiguracionPage } from '../pages/admin/ConfiguracionPage'
 import { PaquetesPage } from '../pages/admin/PaquetesPage'
 import { TiposEventoPage } from '../pages/admin/TiposEventoPage'
+import { CotizacionesPage } from '../pages/cotizaciones/CotizacionesPage'
+import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
 import { ModulePlaceholder } from '../pages/ModulePlaceholder'
@@ -11,16 +13,6 @@ import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const moduleRoutes = [
-  {
-    path: 'cotizaciones',
-    title: 'Cotizaciones',
-    description: 'Gestion comercial de oportunidades por estado.',
-  },
-  {
-    path: 'cotizaciones/:id',
-    title: 'Detalle de cotizacion',
-    description: 'Consulta y acciones sobre una cotizacion especifica.',
-  },
   {
     path: 'contratos',
     title: 'Contratos',
@@ -66,6 +58,8 @@ export function AppRouter() {
           <Route element={<TiposEventoPage />} path="tipos-evento" />
           <Route element={<PaquetesPage />} path="paquetes" />
           <Route element={<ConfiguracionPage />} path="configuracion" />
+          <Route element={<CotizacionesPage />} path="cotizaciones" />
+          <Route element={<DetalleCotizacionPage />} path="cotizaciones/:id" />
           {moduleRoutes.map((route) => (
             <Route
               element={<ModulePlaceholder description={route.description} title={route.title} />}

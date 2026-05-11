@@ -74,8 +74,8 @@ class SeedCommandTests(TestCase):
         self.call_command("seed_demo")
         self.call_command("seed_demo")
 
-        self.assertEqual(Cliente.objects.filter(es_demo=True).count(), 3)
-        self.assertEqual(Cotizacion.objects.filter(es_demo=True).count(), 3)
+        self.assertEqual(Cliente.objects.filter(es_demo=True).count(), 6)
+        self.assertEqual(Cotizacion.objects.filter(es_demo=True).count(), 6)
         self.assertEqual(Contrato.objects.filter(es_demo=True).count(), 2)
         self.assertEqual(CostoDirecto.objects.filter(es_demo=True).count(), 3)
         self.assertEqual(GastoFijoMensual.objects.filter(es_demo=True).count(), 2)

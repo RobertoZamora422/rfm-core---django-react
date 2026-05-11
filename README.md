@@ -22,7 +22,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 7: Frontend base y layout administrativo completada.
 - Fase 8: Módulos base de administración en frontend completada.
 - Fase 9: Pre-cotización completada.
-- Siguiente etapa: Fase 10 - Gestión comercial de cotizaciones.
+- Fase 10: Gestión comercial de cotizaciones completada.
+- Siguiente etapa: Fase 11 - Contratos y pagos.
 
 ## Alcance del sistema
 
@@ -152,6 +153,8 @@ Al cierre de la Fase 8, las pantallas de clientes, tipos de evento, paquetes y c
 
 Al cierre de la Fase 9, la pantalla de pre-cotización consume catálogos reales, registra solicitudes iniciales en `/api/pre-cotizacion/` y muestra el resultado referencial devuelto por backend.
 
+Al cierre de la Fase 10, la pantalla de cotizaciones consume `/api/cotizaciones/` con filtros reales por estado, tipo de evento, fecha y búsqueda por cliente o teléfono. También permite ver detalle, cambiar estado comercial y convertir cotizaciones confirmadas a contrato usando las acciones del backend.
+
 ## Ejecución local
 
 Backend:
@@ -215,4 +218,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 10 - Gestión comercial de cotizaciones. Se deberá implementar el listado, filtros, detalle y acciones comerciales sobre cotizaciones.
+La siguiente etapa corresponde a la Fase 11 - Contratos y pagos. Se deberá implementar el listado y detalle de contratos, gestión de estado contractual, monto abonado, saldo pendiente y cancelación controlada.

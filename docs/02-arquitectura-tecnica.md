@@ -60,6 +60,8 @@ Al cierre de la Fase 8, el frontend consume la API real para administrar cliente
 
 Al cierre de la Fase 9, el frontend consume `/api/pre-cotizacion/` para registrar solicitudes iniciales y crear cotizaciones reales con resultado referencial generado por backend.
 
+Al cierre de la Fase 10, el backend expone filtros comerciales para `/api/cotizaciones/` por estado, tipo de evento, rango de fecha y búsqueda por cliente o teléfono. El frontend reemplaza el placeholder de cotizaciones por listado, resumen por estado, detalle, cambio de estado y conversión controlada a contrato.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:

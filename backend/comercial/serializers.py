@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
 from negocio.models import Cliente, Paquete, TipoEvento
@@ -10,12 +11,14 @@ from .models import Cotizacion
 
 class CotizacionSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
+    cliente_telefono = serializers.CharField(source="cliente.telefono", read_only=True)
     tipo_evento_nombre = serializers.CharField(
         source="tipo_evento.nombre",
         read_only=True,
     )
     paquete_nombre = serializers.CharField(source="paquete.nombre", read_only=True)
     esta_convertida = serializers.BooleanField(read_only=True)
+    contrato_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Cotizacion
@@ -23,6 +26,7 @@ class CotizacionSerializer(serializers.ModelSerializer):
             "id",
             "cliente",
             "cliente_nombre",
+            "cliente_telefono",
             "tipo_evento",
             "tipo_evento_nombre",
             "paquete",
@@ -35,6 +39,7 @@ class CotizacionSerializer(serializers.ModelSerializer):
             "observaciones",
             "es_demo",
             "esta_convertida",
+            "contrato_id",
             "creado_en",
             "actualizado_en",
         ]
@@ -42,9 +47,16 @@ class CotizacionSerializer(serializers.ModelSerializer):
             "id",
             "es_demo",
             "esta_convertida",
+            "contrato_id",
             "creado_en",
             "actualizado_en",
         ]
+
+    def get_contrato_id(self, obj):
+        try:
+            return obj.contrato.id
+        except ObjectDoesNotExist:
+            return None
 
     def validate(self, attrs):
         paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))

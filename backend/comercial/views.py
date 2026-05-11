@@ -1,6 +1,8 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
+from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as ApiValidationError
@@ -37,6 +39,16 @@ def _serializar_calculo(calculo):
         else:
             resultado[clave] = valor
     return resultado
+
+
+def _parse_query_date(value, field_name):
+    if not value:
+        return None
+
+    parsed = parse_date(value)
+    if parsed is None:
+        raise ApiValidationError({field_name: "Use el formato YYYY-MM-DD."})
+    return parsed
 
 
 class PreCotizacionAPIView(APIView):
@@ -85,11 +97,37 @@ class CotizacionViewSet(viewsets.ModelViewSet):
         queryset = cotizaciones_con_relaciones()
         estado = self.request.query_params.get("estado")
         cliente = self.request.query_params.get("cliente")
+        tipo_evento = self.request.query_params.get("tipo_evento")
+        fecha_desde = _parse_query_date(
+            self.request.query_params.get("desde"),
+            "desde",
+        )
+        fecha_hasta = _parse_query_date(
+            self.request.query_params.get("hasta"),
+            "hasta",
+        )
+        buscar = (
+            self.request.query_params.get("buscar")
+            or self.request.query_params.get("search")
+            or ""
+        ).strip()
         es_demo = self.request.query_params.get("es_demo")
         if estado:
             queryset = queryset.filter(estado=estado)
         if cliente:
             queryset = queryset.filter(cliente_id=cliente)
+        if tipo_evento:
+            queryset = queryset.filter(tipo_evento_id=tipo_evento)
+        if fecha_desde:
+            queryset = queryset.filter(fecha_tentativa__gte=fecha_desde)
+        if fecha_hasta:
+            queryset = queryset.filter(fecha_tentativa__lte=fecha_hasta)
+        if buscar:
+            queryset = queryset.filter(
+                Q(cliente__nombre__icontains=buscar)
+                | Q(cliente__telefono__icontains=buscar)
+                | Q(observaciones__icontains=buscar)
+            )
         if es_demo is not None:
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset

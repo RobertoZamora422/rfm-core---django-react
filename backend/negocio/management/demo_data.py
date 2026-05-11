@@ -7,11 +7,11 @@ from negocio.models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
 
 
 BASE_TIPOS_EVENTO = [
-    ("Boda", "Celebración matrimonial."),
-    ("Quinceañera", "Evento social de quince años."),
-    ("Cumpleaños", "Celebración familiar o social."),
+    ("Boda", "Celebracion matrimonial."),
+    ("Quincea\u00f1era", "Evento social de quince a\u00f1os."),
+    ("Cumplea\u00f1os", "Celebracion familiar o social."),
     ("Evento corporativo", "Evento empresarial o institucional."),
-    ("Bautizo", "Celebración religiosa y familiar."),
+    ("Bautizo", "Celebracion religiosa y familiar."),
 ]
 
 BASE_PAQUETES = [
@@ -19,10 +19,10 @@ BASE_PAQUETES = [
         "nombre": "Alquiler del local",
         "tipo_servicio": Paquete.TipoServicio.ALQUILER,
         "precio_por_persona": Decimal("0.00"),
-        "descripcion": "Uso del salón de eventos sin servicio integral por persona.",
+        "descripcion": "Uso del salon de eventos sin servicio integral por persona.",
     },
     {
-        "nombre": "Servicio completo estándar",
+        "nombre": "Servicio completo est\u00e1ndar",
         "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
         "precio_por_persona": Decimal("28.00"),
         "descripcion": "Servicio completo referencial para eventos sociales.",
@@ -64,7 +64,7 @@ def seed_base_data():
 
     configuracion = ConfiguracionNegocio.objects.filter(activo=True).first()
     defaults = {
-        "nombre_negocio": "Rancho Flor María",
+        "nombre_negocio": "Rancho Flor Mar\u00eda",
         "tarifa_base_alquiler": Decimal("1200.00"),
         "invitados_incluidos_alquiler": 80,
         "costo_invitado_adicional": Decimal("12.00"),
@@ -106,31 +106,52 @@ def seed_demo_data():
 
     today = date.today()
     boda = TipoEvento.objects.get(nombre="Boda")
-    cumpleanos = TipoEvento.objects.get(nombre="Cumpleaños")
+    cumpleanos = TipoEvento.objects.get(nombre="Cumplea\u00f1os")
     corporativo = TipoEvento.objects.get(nombre="Evento corporativo")
     alquiler = Paquete.objects.get(nombre="Alquiler del local")
-    estandar = Paquete.objects.get(nombre="Servicio completo estándar")
+    estandar = Paquete.objects.get(nombre="Servicio completo est\u00e1ndar")
     premium = Paquete.objects.get(nombre="Servicio completo premium")
 
     cliente_1 = Cliente.objects.create(
         nombre="Cliente Demo Boda",
         telefono="+593 987654321",
         correo="boda.demo@example.com",
-        observaciones="Registro demo para flujo comercial.",
+        observaciones="Registro demo para contrato con abono parcial.",
         es_demo=True,
     )
     cliente_2 = Cliente.objects.create(
         nombre="Cliente Demo Corporativo",
         telefono="+593 987654322",
         correo="corporativo.demo@example.com",
-        observaciones="Registro demo para contrato confirmado.",
+        observaciones="Registro demo para contrato pagado.",
         es_demo=True,
     )
     cliente_3 = Cliente.objects.create(
-        nombre="Cliente Demo Cumpleaños",
+        nombre="Cliente Demo Cumpleanos",
         telefono="+593 987654323",
         correo="cumple.demo@example.com",
-        observaciones="Registro demo para cotización descartada.",
+        observaciones="Registro demo para cotizacion descartada.",
+        es_demo=True,
+    )
+    cliente_4 = Cliente.objects.create(
+        nombre="Cliente Demo Confirmada",
+        telefono="+593 987654324",
+        correo="confirmada.demo@example.com",
+        observaciones="Registro demo listo para conversion a contrato.",
+        es_demo=True,
+    )
+    cliente_5 = Cliente.objects.create(
+        nombre="Cliente Demo Nueva",
+        telefono="+593 987654325",
+        correo="nueva.demo@example.com",
+        observaciones="Registro demo pendiente de primer contacto.",
+        es_demo=True,
+    )
+    cliente_6 = Cliente.objects.create(
+        nombre="Cliente Demo Contactada",
+        telefono="+593 987654326",
+        correo="contactada.demo@example.com",
+        observaciones="Registro demo con seguimiento comercial activo.",
         es_demo=True,
     )
 
@@ -141,9 +162,9 @@ def seed_demo_data():
         fecha_tentativa=today + timedelta(days=45),
         numero_invitados=120,
         tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
-        estado=Cotizacion.Estado.CONFIRMADA,
+        estado=Cotizacion.Estado.CONVERTIDA,
         total_estimado=Decimal("4560.00"),
-        observaciones="Cotización demo confirmada.",
+        observaciones="Cotizacion demo convertida con abono parcial.",
         es_demo=True,
     )
     cotizacion_2 = Cotizacion.objects.create(
@@ -155,7 +176,7 @@ def seed_demo_data():
         tipo_servicio=Paquete.TipoServicio.ALQUILER,
         estado=Cotizacion.Estado.CONVERTIDA,
         total_estimado=Decimal("1320.00"),
-        observaciones="Cotización demo convertida.",
+        observaciones="Cotizacion demo convertida y pagada.",
         es_demo=True,
     )
     Cotizacion.objects.create(
@@ -167,7 +188,43 @@ def seed_demo_data():
         tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
         estado=Cotizacion.Estado.DESCARTADA,
         total_estimado=Decimal("1680.00"),
-        observaciones="Cotización demo descartada.",
+        observaciones="Cotizacion demo descartada.",
+        es_demo=True,
+    )
+    Cotizacion.objects.create(
+        cliente=cliente_4,
+        tipo_evento=boda,
+        paquete=premium,
+        fecha_tentativa=today + timedelta(days=95),
+        numero_invitados=140,
+        tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+        estado=Cotizacion.Estado.CONFIRMADA,
+        total_estimado=Decimal("5320.00"),
+        observaciones="Cotizacion demo confirmada y lista para convertir.",
+        es_demo=True,
+    )
+    Cotizacion.objects.create(
+        cliente=cliente_5,
+        tipo_evento=cumpleanos,
+        paquete=estandar,
+        fecha_tentativa=today + timedelta(days=35),
+        numero_invitados=50,
+        tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+        estado=Cotizacion.Estado.NUEVA,
+        total_estimado=Decimal("1400.00"),
+        observaciones="Cotizacion demo nueva.",
+        es_demo=True,
+    )
+    Cotizacion.objects.create(
+        cliente=cliente_6,
+        tipo_evento=corporativo,
+        paquete=alquiler,
+        fecha_tentativa=today + timedelta(days=55),
+        numero_invitados=100,
+        tipo_servicio=Paquete.TipoServicio.ALQUILER,
+        estado=Cotizacion.Estado.CONTACTADA,
+        total_estimado=Decimal("1440.00"),
+        observaciones="Cotizacion demo contactada.",
         es_demo=True,
     )
 
@@ -210,7 +267,7 @@ def seed_demo_data():
             ),
             CostoDirecto(
                 contrato=contrato_1,
-                concepto="Decoración demo",
+                concepto="Decoracion demo",
                 valor=Decimal("600.00"),
                 fecha=contrato_1.fecha_evento,
                 observaciones="Costo directo demo.",
@@ -230,7 +287,7 @@ def seed_demo_data():
     GastoFijoMensual.objects.bulk_create(
         [
             GastoFijoMensual(
-                concepto="Servicios básicos demo",
+                concepto="Servicios basicos demo",
                 valor=Decimal("320.00"),
                 mes=today.month,
                 anio=today.year,
@@ -249,8 +306,8 @@ def seed_demo_data():
     )
 
     return {
-        "clientes": 3,
-        "cotizaciones": 3,
+        "clientes": 6,
+        "cotizaciones": 6,
         "contratos": 2,
         "costos_directos": 3,
         "gastos_fijos": 2,

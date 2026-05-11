@@ -149,6 +149,8 @@ Cotizaciones:
 - Listado por estado.
 - Filtros.
 - Acciones para ver detalle, cambiar estado y convertir cuando corresponda.
+- Al cierre de Fase 10, la pantalla incluye filtros por busqueda, estado, tipo de evento y rango de fecha, KPIs de pipeline sobre la vista filtrada, tabla de escritorio y fallback movil.
+- El detalle de cotizacion muestra resumen comercial, estado editable y enlace al contrato cuando la cotizacion ya fue convertida.
 
 Detalle de cotización:
 

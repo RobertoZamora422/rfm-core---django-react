@@ -233,7 +233,7 @@ Entregables:
 
 ## Fase 10 - Gestión comercial de cotizaciones
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo implementar el pipeline comercial.
 
@@ -244,6 +244,16 @@ Alcance:
 - Detalle de cotización.
 - Cambio de estado.
 - Acción de conversión cuando aplique.
+
+Entregables:
+
+- Pantalla `/cotizaciones` conectada a `/api/cotizaciones/`.
+- Filtros backend por estado, tipo de evento, rango de fecha y búsqueda por cliente o teléfono.
+- Resumen de pipeline por estado para la vista filtrada.
+- Pantalla `/cotizaciones/:id` con detalle comercial completo.
+- Cambio de estado desde listado y detalle usando `/api/cotizaciones/{id}/cambiar-estado/`.
+- Conversión de cotización confirmada a contrato usando `/api/cotizaciones/{id}/convertir-contrato/`.
+- Protección backend contra conversión doble y exposición de `contrato_id` para cotizaciones convertidas.
 
 ## Fase 11 - Contratos y pagos
 

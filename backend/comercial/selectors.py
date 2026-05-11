@@ -8,6 +8,7 @@ def cotizaciones_con_relaciones():
         "cliente",
         "tipo_evento",
         "paquete",
+        "contrato",
     )
 
 

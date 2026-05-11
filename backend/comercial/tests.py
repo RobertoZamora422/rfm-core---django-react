@@ -182,6 +182,56 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["estado"], Cotizacion.Estado.CONFIRMADA)
 
+    def test_filtra_cotizaciones_por_pipeline_comercial(self):
+        otro_cliente = Cliente.objects.create(
+            nombre="Otro Cliente",
+            telefono="+593 999999333",
+        )
+        otro_tipo_evento = TipoEvento.objects.create(nombre="Corporativo")
+        cotizacion_objetivo = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 15),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONTACTADA,
+            total_estimado=Decimal("2400.00"),
+            observaciones="Seguimiento por WhatsApp",
+        )
+        Cotizacion.objects.create(
+            cliente=otro_cliente,
+            tipo_evento=otro_tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 9, 1),
+            numero_invitados=60,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.NUEVA,
+            total_estimado=Decimal("1800.00"),
+            observaciones="Solicitud distinta",
+        )
+
+        response = self.client.get(
+            "/api/cotizaciones/",
+            {
+                "estado": Cotizacion.Estado.CONTACTADA,
+                "tipo_evento": self.tipo_evento.id,
+                "desde": "2026-08-01",
+                "hasta": "2026-08-31",
+                "buscar": "WhatsApp",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], cotizacion_objetivo.id)
+
+    def test_filtro_fecha_invalida_devuelve_error_claro(self):
+        response = self.client.get("/api/cotizaciones/", {"desde": "2026/08/01"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("desde", response.data)
+
     def test_crud_no_marca_cotizacion_como_convertida(self):
         cotizacion = Cotizacion.objects.create(
             cliente=self.cliente,
@@ -227,6 +277,10 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(cotizacion.estado, Cotizacion.Estado.CONVERTIDA)
         self.assertEqual(response.data["contrato"]["estado_pago"], Contrato.EstadoPago.ABONADO)
         self.assertEqual(response.data["contrato"]["valor_final"], "2400.00")
+        self.assertEqual(
+            response.data["cotizacion"]["contrato_id"],
+            response.data["contrato"]["id"],
+        )
         self.assertEqual(Contrato.objects.filter(cotizacion=cotizacion).count(), 1)
 
     def test_convertir_rechaza_cotizacion_no_confirmada(self):
