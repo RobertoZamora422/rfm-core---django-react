@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidación de la base administrativa. La documentación inicial, el backend core, los servicios de negocio iniciales, el layout frontend administrativo y los módulos base de administración se encuentran completados.
+El proyecto se encuentra en etapa de consolidación del flujo comercial inicial. La documentación inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los módulos base de administración y la pre-cotización se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -21,15 +21,16 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 - Fase 6 — Servicios de negocio y endpoints de acciones: Completada.
 - Fase 7 — Frontend base y layout administrativo: Completada.
 - Fase 8 — Módulos base de administración en frontend: Completada.
+- Fase 9 — Pre-cotización: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de los módulos base de administración en frontend.
+La fase actual corresponde al cierre de la pre-cotización.
 
-Se establecen interfaces conectadas a la API real para clientes, tipos de evento, paquetes y configuración del negocio.
+Se establece un formulario conectado al backend para registrar solicitudes iniciales y crear cotizaciones reales en estado inicial.
 
 ## Próximos pasos
 
-La siguiente etapa corresponde a la Fase 9 — Pre-cotización.
+La siguiente etapa corresponde a la Fase 10 — Gestión comercial de cotizaciones.
 
-Se deberá implementar el formulario de pre-cotización conectado al backend y la creación de cotizaciones reales.
+Se deberá implementar el listado, filtros, detalle y acciones comerciales sobre cotizaciones.

@@ -142,6 +142,8 @@ Pre-cotización:
 - Resultado referencial generado desde backend.
 - Creación de cotización real.
 
+Al cierre de la Fase 9, la pantalla de pre-cotización permite seleccionar cliente existente o registrar cliente nuevo, elegir tipo de evento, tipo de servicio, paquete cuando corresponde y mostrar el resultado devuelto por backend.
+
 Cotizaciones:
 
 - Listado por estado.

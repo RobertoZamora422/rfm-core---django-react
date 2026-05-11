@@ -212,7 +212,7 @@ Entregables:
 
 ## Fase 9 - Pre-cotización
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo registrar solicitudes y crear cotizaciones reales.
 
@@ -223,7 +223,17 @@ Alcance:
 - Resultado referencial desde backend.
 - Creación de cotización en estado inicial.
 
+Entregables:
+
+- Pantalla `/pre-cotizacion` conectada a `/api/pre-cotizacion/`.
+- Carga de clientes, tipos de evento y paquetes desde API real.
+- Registro de cliente nuevo o selección de cliente existente.
+- Resultado referencial devuelto por backend.
+- Creación de cotización real en estado `nueva`.
+
 ## Fase 10 - Gestión comercial de cotizaciones
+
+Estado: Pendiente.
 
 La fase tiene como objetivo implementar el pipeline comercial.
 

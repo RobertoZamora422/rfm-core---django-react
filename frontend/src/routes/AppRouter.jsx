@@ -7,14 +7,10 @@ import { TiposEventoPage } from '../pages/admin/TiposEventoPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
 import { ModulePlaceholder } from '../pages/ModulePlaceholder'
+import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const moduleRoutes = [
-  {
-    path: 'pre-cotizacion',
-    title: 'Pre-cotizacion',
-    description: 'Registro inicial de solicitudes comerciales.',
-  },
   {
     path: 'cotizaciones',
     title: 'Cotizaciones',
@@ -65,6 +61,7 @@ export function AppRouter() {
         <Route element={<AdminLayout />}>
           <Route element={<Navigate replace to="/inicio" />} index />
           <Route element={<InicioPage />} path="/inicio" />
+          <Route element={<PreCotizacionPage />} path="pre-cotizacion" />
           <Route element={<ClientesPage />} path="clientes" />
           <Route element={<TiposEventoPage />} path="tipos-evento" />
           <Route element={<PaquetesPage />} path="paquetes" />

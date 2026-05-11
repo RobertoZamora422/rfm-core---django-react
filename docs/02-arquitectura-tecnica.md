@@ -58,6 +58,8 @@ Al cierre de la Fase 7, el frontend cuenta con React Router, layout administrati
 
 Al cierre de la Fase 8, el frontend consume la API real para administrar clientes, tipos de evento, paquetes y configuración del negocio.
 
+Al cierre de la Fase 9, el frontend consume `/api/pre-cotizacion/` para registrar solicitudes iniciales y crear cotizaciones reales con resultado referencial generado por backend.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:
