@@ -25,7 +25,9 @@ Para cada fase:
 
 ## Fase 0 - Documentación base del sistema
 
-Objetivo: definir la base conceptual, técnica y visual antes de implementar código.
+Estado: Completada.
+
+La fase tuvo como objetivo definir la base conceptual, técnica y visual antes de implementar código.
 
 Entregables:
 
@@ -51,7 +53,9 @@ Criterios de cierre:
 
 ## Fase 1 - Inicialización del proyecto y repositorio
 
-Objetivo: preparar backend y frontend mínimos.
+Estado: Completada.
+
+La fase tiene como objetivo preparar backend y frontend mínimos.
 
 Alcance:
 
@@ -62,11 +66,13 @@ Alcance:
 - Crear archivos de entorno ejemplo.
 - Validar ejecución local mínima.
 
-No incluye todavía modelos del dominio ni API completa.
+La fase no contempla modelos del dominio ni API completa.
 
 ## Fase 2 - Configuración base del backend
 
-Objetivo: configurar Django, DRF, CORS, autenticación inicial y endpoint de salud.
+Estado: Pendiente.
+
+La fase tiene como objetivo configurar Django, DRF, CORS, autenticación inicial y endpoint de salud.
 
 Alcance:
 
@@ -78,7 +84,7 @@ Alcance:
 
 ## Fase 3 - Modelado del dominio
 
-Objetivo: crear modelos principales y migraciones.
+La fase tiene como objetivo crear modelos principales y migraciones.
 
 Alcance:
 
@@ -94,7 +100,7 @@ Alcance:
 
 ## Fase 4 - Administración del sistema y datos semilla
 
-Objetivo: permitir gestión desde Django Admin y crear datos base/demo.
+La fase tiene como objetivo permitir gestión desde Django Admin y crear datos base/demo.
 
 Alcance:
 
@@ -107,7 +113,7 @@ Alcance:
 
 ## Fase 5 - API REST del core
 
-Objetivo: exponer CRUD y validaciones de recursos principales.
+La fase tiene como objetivo exponer CRUD y validaciones de recursos principales.
 
 Alcance:
 
@@ -122,7 +128,7 @@ Alcance:
 
 ## Fase 6 - Servicios de negocio y endpoints de acciones
 
-Objetivo: implementar acciones críticas con lógica en backend.
+La fase tiene como objetivo implementar acciones críticas con lógica en backend.
 
 Alcance:
 
@@ -134,7 +140,7 @@ Alcance:
 
 ## Fase 7 - Frontend base y layout administrativo
 
-Objetivo: crear base visual y navegación administrativa.
+La fase tiene como objetivo crear la base visual y la navegación administrativa.
 
 Alcance:
 
@@ -148,7 +154,7 @@ Alcance:
 
 ## Fase 8 - Módulos base de administración en frontend
 
-Objetivo: gestionar catálogos y datos base desde la UI.
+La fase tiene como objetivo gestionar catálogos y datos base desde la UI.
 
 Alcance:
 
@@ -161,7 +167,7 @@ Alcance:
 
 ## Fase 9 - Pre-cotización
 
-Objetivo: registrar solicitudes y crear cotizaciones reales.
+La fase tiene como objetivo registrar solicitudes y crear cotizaciones reales.
 
 Alcance:
 
@@ -172,7 +178,7 @@ Alcance:
 
 ## Fase 10 - Gestión comercial de cotizaciones
 
-Objetivo: implementar pipeline comercial.
+La fase tiene como objetivo implementar el pipeline comercial.
 
 Alcance:
 
@@ -184,7 +190,7 @@ Alcance:
 
 ## Fase 11 - Contratos y pagos
 
-Objetivo: gestionar contratos como ventas reales.
+La fase tiene como objetivo gestionar contratos como ventas reales.
 
 Alcance:
 
@@ -197,7 +203,7 @@ Alcance:
 
 ## Fase 12 - Costos directos y gastos fijos
 
-Objetivo: registrar costos y gastos que alimentan rentabilidad.
+La fase tiene como objetivo registrar costos y gastos que alimentan la rentabilidad.
 
 Alcance:
 
@@ -208,7 +214,7 @@ Alcance:
 
 ## Fase 13 - Inicio administrativo backend-first
 
-Objetivo: mostrar resumen operativo desde un endpoint agregado.
+La fase tiene como objetivo mostrar un resumen operativo desde un endpoint agregado.
 
 Alcance:
 
@@ -220,7 +226,7 @@ Alcance:
 
 ## Fase 14 - Dashboard financiero backend-first
 
-Objetivo: mostrar análisis financiero con cálculos en backend.
+La fase tiene como objetivo mostrar análisis financiero con cálculos en backend.
 
 Alcance:
 
@@ -234,7 +240,7 @@ Alcance:
 
 ## Fase 15 - Reportes
 
-Objetivo: implementar reportes básicos.
+La fase tiene como objetivo implementar reportes básicos.
 
 Alcance:
 
@@ -246,7 +252,7 @@ Alcance:
 
 ## Fase 16 - Responsive, limpieza visual y experiencia de usuario
 
-Objetivo: pulir la experiencia administrativa.
+La fase tiene como objetivo consolidar la experiencia administrativa y el comportamiento responsive.
 
 Alcance:
 
@@ -258,7 +264,7 @@ Alcance:
 
 ## Fase 17 - Pruebas y validación integral
 
-Objetivo: validar el flujo completo.
+La fase tiene como objetivo validar el flujo completo.
 
 Pruebas prioritarias:
 
@@ -272,7 +278,7 @@ Pruebas prioritarias:
 
 ## Fase 18 - README final y documentación de uso
 
-Objetivo: dejar el proyecto listo para instalación, ejecución y evaluación.
+La fase tiene como objetivo dejar el proyecto listo para instalación, ejecución y evaluación.
 
 Alcance:
 
@@ -286,7 +292,7 @@ Alcance:
 
 ## Fase 19 - Deploy en Render
 
-Objetivo: desplegar backend, frontend y base de datos.
+La fase tiene como objetivo desplegar backend, frontend y base de datos.
 
 Alcance:
 

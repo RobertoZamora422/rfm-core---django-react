@@ -1,0 +1,80 @@
+.app-shell {
+  align-items: center;
+  background: #f7f7f4;
+  display: flex;
+  min-height: 100svh;
+  padding: 32px;
+}
+
+.status-panel {
+  display: grid;
+  gap: 40px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  margin: 0 auto;
+  max-width: 1040px;
+  width: 100%;
+}
+
+.status-copy {
+  align-self: center;
+}
+
+.eyebrow {
+  color: #2f6f55;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+}
+
+h1 {
+  color: #1e2320;
+  font-size: clamp(2.5rem, 6vw, 5.5rem);
+  line-height: 0.95;
+  margin: 0;
+}
+
+.lead {
+  color: #4f5a54;
+  font-size: 1.12rem;
+  line-height: 1.7;
+  margin: 24px 0 0;
+  max-width: 680px;
+}
+
+.status-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.status-grid article {
+  background: #ffffff;
+  border: 1px solid #d8ded8;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.status-grid span {
+  color: #69736d;
+  display: block;
+  font-size: 0.86rem;
+  margin-bottom: 8px;
+}
+
+.status-grid strong {
+  color: #1f2d26;
+  display: block;
+  font-size: 1rem;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 24px;
+  }
+
+  .status-panel {
+    gap: 28px;
+    grid-template-columns: 1fr;
+  }
+}

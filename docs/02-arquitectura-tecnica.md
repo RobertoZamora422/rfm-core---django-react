@@ -45,7 +45,7 @@ rfm-core/
 └── .gitignore
 ```
 
-En Fase 0 no se crean todavía `backend/` ni `frontend/`.
+Al cierre de la Fase 1, el repositorio ya contiene `backend/` y `frontend/` como bases técnicas iniciales. La configuración avanzada de API, CORS y apps del dominio corresponde a la Fase 2.
 
 ## Organización backend propuesta
 

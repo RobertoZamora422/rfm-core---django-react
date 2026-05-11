@@ -1,8 +1,8 @@
 # RFM Core
 
-Sistema web para la pre-cotización, gestión comercial y análisis de rentabilidad de un salón de eventos.
+RFM Core es un sistema web para la pre-cotización, gestión comercial y análisis de rentabilidad de un salón de eventos.
 
-RFM Core conecta el flujo principal del negocio:
+El sistema contempla el siguiente flujo principal:
 
 ```text
 Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilidad
@@ -10,13 +10,15 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 
 ## Estado actual
 
-Fase actual: **Fase 0 - Documentación base del sistema**.
+El proyecto se encuentra en etapa de inicialización técnica.
 
-En esta fase el repositorio contiene documentación inicial, README y `.gitignore`. Todavía no se ha inicializado el backend Django ni el frontend React/Vite.
+- Fase 0: Documentación base completada.
+- Fase 1: Inicialización técnica completada.
+- Siguiente etapa: Fase 2 - Configuración base del backend.
 
 ## Alcance del sistema
 
-RFM Core se centra en el core aprobado:
+Se define como alcance central del sistema:
 
 - Clientes.
 - Tipos de evento.
@@ -32,26 +34,25 @@ RFM Core se centra en el core aprobado:
 - Reportes básicos.
 - API REST y frontend administrativo.
 
-Quedan fuera de esta versión las reservas online automáticas, pasarela de pagos, facturación electrónica, firma electrónica, gestión contable completa, nómina, inventario avanzado, app móvil nativa, chatbot completo, automatización completa de WhatsApp Business API e inteligencia artificial para recomendar paquetes.
+Quedan fuera de esta versión las reservas online automáticas, pasarela de pagos, facturación electrónica, firma electrónica, gestión contable completa, nómina, inventario avanzado, aplicación móvil nativa, chatbot completo, automatización completa con WhatsApp Business API e inteligencia artificial para recomendar paquetes.
 
-## Stack previsto
+## Stack técnico
 
 Backend:
 
-- Python.
-- Django.
-- Django REST Framework.
+- Python 3.13.7 en entorno local.
+- Django 5.2.14.
+- Django REST Framework previsto para la Fase 2.
 - Django Admin.
 - SQLite para desarrollo.
-- PostgreSQL para producción.
+- PostgreSQL previsto para producción.
 
 Frontend:
 
 - React.
 - Vite.
-- React Router.
-- Axios o cliente HTTP equivalente.
-- CSS modular, CSS tradicional, SASS o la estrategia definida en el proyecto.
+- React Router previsto para fases de frontend administrativo.
+- Axios o cliente HTTP equivalente previsto para integración con API.
 
 Deploy previsto:
 
@@ -59,31 +60,29 @@ Deploy previsto:
 - Render Static Site para frontend React/Vite.
 - Render PostgreSQL para base de datos.
 
-## Estructura esperada
+## Estructura del repositorio
 
 ```text
 rfm-core/
-├── backend/
-├── frontend/
-├── docs/
-├── README.md
-└── .gitignore
+|-- backend/
+|-- frontend/
+|-- docs/
+|-- README.md
+`-- .gitignore
 ```
-
-En Fase 0 solo existen `docs/`, `README.md` y `.gitignore`. La estructura `backend/` y `frontend/` corresponde a fases posteriores.
 
 ## Documentación
 
-La documentación viva del proyecto está en:
+La documentación viva del proyecto se encuentra en:
 
 ```text
 docs/
-├── 00-estado-del-proyecto.md
-├── 01-documento-maestro.md
-├── 02-arquitectura-tecnica.md
-├── 03-modelo-datos.md
-├── 04-diseno-ui-ux.md
-└── 05_plan_tecnico_implementacion.md
+|-- 00-estado-del-proyecto.md
+|-- 01-documento-maestro.md
+|-- 02-arquitectura-tecnica.md
+|-- 03-modelo-datos.md
+|-- 04-diseno-ui-ux.md
+`-- 05_plan_tecnico_implementacion.md
 ```
 
 Orden de prioridad cuando exista conflicto entre documentos:
@@ -94,6 +93,45 @@ Orden de prioridad cuando exista conflicto entre documentos:
 4. `docs/04-diseno-ui-ux.md`
 5. `docs/05_plan_tecnico_implementacion.md`
 6. `docs/00-estado-del-proyecto.md`
+
+## Ejecución local
+
+Backend:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+npm run build
+npm run lint
+```
+
+## Configuración de entorno
+
+Backend:
+
+```text
+backend/.env.example
+```
+
+Frontend:
+
+```text
+frontend/.env.example
+```
+
+Los archivos `.env` reales no deben versionarse.
 
 ## Reglas críticas
 
@@ -106,6 +144,6 @@ Orden de prioridad cuando exista conflicto entre documentos:
 - La lógica financiera principal se calcula en backend, no en React.
 - No se deben usar datos quemados permanentes en frontend.
 
-## Siguiente fase
+## Siguiente etapa
 
-La siguiente fase es **Fase 1 - Inicialización del proyecto y repositorio**, enfocada en crear la estructura mínima `backend/`, `frontend/`, configuración inicial y validación de ejecución local.
+La siguiente etapa corresponde a la Fase 2 - Configuración base del backend. Se deberá configurar Django REST Framework, CORS, apps base y un endpoint de salud antes de avanzar al modelado del dominio.

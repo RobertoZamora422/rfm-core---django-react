@@ -30,6 +30,7 @@ Campos mínimos:
 ```text
 nombre
 telefono
+correo
 observaciones
 creado_en
 actualizado_en

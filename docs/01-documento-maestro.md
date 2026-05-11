@@ -114,3 +114,7 @@ Las funcionalidades útiles fuera de alcance pueden documentarse como mejoras fu
 - El margen bruto evita división por cero.
 - La utilidad neta mensual es `ingresos_mes - costos_directos_mes - gastos_fijos_mes`.
 - El margen neto mensual evita división por cero.
+
+## Criterios generales de aceptación
+
+Se establecen como criterios generales de aceptación que backend y frontend ejecuten localmente, que los modelos principales existan, que las migraciones funcionen, que la API exponga los recursos principales, que las validaciones críticas permanezcan en backend, que el frontend consuma datos reales y que el flujo completo avance desde pre-cotización hasta rentabilidad.
