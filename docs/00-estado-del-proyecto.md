@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de configuración técnica inicial. La documentación base, la estructura backend/frontend y la configuración base del backend ya fueron completadas.
+El proyecto se encuentra en etapa de modelado inicial del dominio. La documentación base, la estructura backend/frontend, la configuración base del backend y los modelos principales ya fueron completados.
 
 El sistema contempla como flujo principal:
 
@@ -15,15 +15,16 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 - Fase 0 — Documentación base: Completada.
 - Fase 1 — Inicialización técnica: Completada.
 - Fase 2 — Configuración base del backend: Completada.
+- Fase 3 — Modelado del dominio: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de la configuración base del backend.
+La fase actual corresponde al cierre del modelado inicial del dominio.
 
-Se estableció la base para API REST con Django REST Framework, configuración CORS, apps iniciales del backend y endpoint de salud en `/api/health/`.
+Se establecieron las entidades principales, sus relaciones, choices, validaciones iniciales y migraciones.
 
 ## Próximos pasos
 
-La siguiente etapa corresponde a la Fase 3 — Modelado del dominio.
+La siguiente etapa corresponde a la Fase 4 — Administración del sistema y datos semilla.
 
-Se deberán implementar los modelos principales del sistema, sus relaciones, validaciones iniciales y migraciones, manteniendo las reglas de negocio definidas en la documentación.
+Se deberán registrar los modelos en Django Admin y preparar comandos idempotentes para datos base y datos demo.

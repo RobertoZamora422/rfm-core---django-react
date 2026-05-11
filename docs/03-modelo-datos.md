@@ -23,6 +23,16 @@ CostoDirecto
 GastoFijoMensual
 ```
 
+## Estado de implementación
+
+Al cierre de la Fase 3, el modelo inicial del dominio se encuentra implementado en backend:
+
+- `negocio`: `Cliente`, `TipoEvento`, `Paquete`, `ConfiguracionNegocio`.
+- `comercial`: `Cotizacion`.
+- `financiero`: `Contrato`, `CostoDirecto`, `GastoFijoMensual`.
+
+Las entidades cuentan con migraciones iniciales, relaciones principales, choices y validaciones backend de primer nivel.
+
 ## Cliente
 
 Campos mínimos:

@@ -84,7 +84,7 @@ Alcance:
 
 ## Fase 3 - Modelado del dominio
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo crear modelos principales y migraciones.
 
@@ -101,6 +101,8 @@ Alcance:
 - Choices, relaciones y validaciones críticas.
 
 ## Fase 4 - Administración del sistema y datos semilla
+
+Estado: Pendiente.
 
 La fase tiene como objetivo permitir gestión desde Django Admin y crear datos base/demo.
 

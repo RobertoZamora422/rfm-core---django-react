@@ -15,7 +15,8 @@ El proyecto se encuentra en etapa de inicialización técnica.
 - Fase 0: Documentación base completada.
 - Fase 1: Inicialización técnica completada.
 - Fase 2: Configuración base del backend completada.
-- Siguiente etapa: Fase 3 - Modelado del dominio.
+- Fase 3: Modelado del dominio completado.
+- Siguiente etapa: Fase 4 - Administración del sistema y datos semilla.
 
 ## Alcance del sistema
 
@@ -106,7 +107,8 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py test config
+.\.venv\Scripts\python.exe manage.py test
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py runserver
 ```
@@ -150,4 +152,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 3 - Modelado del dominio. Se deberán crear los modelos principales, sus relaciones, validaciones iniciales y migraciones.
+La siguiente etapa corresponde a la Fase 4 - Administración del sistema y datos semilla. Se deberán registrar los modelos en Django Admin y crear comandos idempotentes para datos base, datos demo y limpieza de datos demo.
