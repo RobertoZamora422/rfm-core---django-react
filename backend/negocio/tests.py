@@ -1,8 +1,12 @@
 from decimal import Decimal
+from io import StringIO
 
 from django.core.exceptions import ValidationError
+from django.core.management import call_command
 from django.test import TestCase
 
+from comercial.models import Cotizacion
+from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
 from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
 
 
@@ -48,3 +52,43 @@ class NegocioModelTests(TestCase):
                 capacidad_maxima=220,
                 activo=True,
             )
+
+
+class SeedCommandTests(TestCase):
+    def call_command(self, name):
+        output = StringIO()
+        call_command(name, stdout=output)
+        return output.getvalue()
+
+    def test_seed_base_es_idempotente(self):
+        self.call_command("seed_base")
+        self.call_command("seed_base")
+
+        self.assertEqual(TipoEvento.objects.count(), 5)
+        self.assertEqual(Paquete.objects.count(), 3)
+        self.assertEqual(ConfiguracionNegocio.objects.filter(activo=True).count(), 1)
+
+    def test_seed_demo_es_idempotente(self):
+        self.call_command("seed_demo")
+        self.call_command("seed_demo")
+
+        self.assertEqual(Cliente.objects.filter(es_demo=True).count(), 3)
+        self.assertEqual(Cotizacion.objects.filter(es_demo=True).count(), 3)
+        self.assertEqual(Contrato.objects.filter(es_demo=True).count(), 2)
+        self.assertEqual(CostoDirecto.objects.filter(es_demo=True).count(), 3)
+        self.assertEqual(GastoFijoMensual.objects.filter(es_demo=True).count(), 2)
+
+    def test_clear_demo_no_elimina_datos_reales(self):
+        self.call_command("seed_demo")
+        Cliente.objects.create(
+            nombre="Cliente Real",
+            telefono="+593 988888888",
+            correo="real@example.com",
+        )
+
+        self.call_command("clear_demo")
+
+        self.assertEqual(Cliente.objects.filter(es_demo=True).count(), 0)
+        self.assertTrue(Cliente.objects.filter(nombre="Cliente Real").exists())
+        self.assertEqual(TipoEvento.objects.count(), 5)
+        self.assertEqual(Paquete.objects.count(), 3)

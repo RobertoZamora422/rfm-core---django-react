@@ -70,6 +70,7 @@ class Contrato(TimeStampedModel):
         default=EstadoPago.PENDIENTE,
     )
     observaciones = models.TextField(blank=True)
+    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-fecha_evento", "-creado_en"]
@@ -146,6 +147,7 @@ class CostoDirecto(TimeStampedModel):
     )
     fecha = models.DateField()
     observaciones = models.TextField(blank=True)
+    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-fecha", "-creado_en"]
@@ -170,6 +172,7 @@ class GastoFijoMensual(TimeStampedModel):
     mes = models.PositiveSmallIntegerField(validators=[validate_month])
     anio = models.PositiveIntegerField(validators=[validate_year])
     observaciones = models.TextField(blank=True)
+    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-anio", "-mes", "concepto"]

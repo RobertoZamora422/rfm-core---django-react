@@ -16,7 +16,8 @@ El proyecto se encuentra en etapa de inicialización técnica.
 - Fase 1: Inicialización técnica completada.
 - Fase 2: Configuración base del backend completada.
 - Fase 3: Modelado del dominio completado.
-- Siguiente etapa: Fase 4 - Administración del sistema y datos semilla.
+- Fase 4: Administración del sistema y datos semilla completada.
+- Siguiente etapa: Fase 5 - API REST del core.
 
 ## Alcance del sistema
 
@@ -113,6 +114,15 @@ python -m venv .venv
 .\.venv\Scripts\python.exe manage.py runserver
 ```
 
+Datos base y demo:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe manage.py seed_base
+.\.venv\Scripts\python.exe manage.py seed_demo
+.\.venv\Scripts\python.exe manage.py clear_demo
+```
+
 Frontend:
 
 ```powershell
@@ -152,4 +162,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 4 - Administración del sistema y datos semilla. Se deberán registrar los modelos en Django Admin y crear comandos idempotentes para datos base, datos demo y limpieza de datos demo.
+La siguiente etapa corresponde a la Fase 5 - API REST del core. Se deberán implementar serializers, vistas y rutas API para los recursos principales.

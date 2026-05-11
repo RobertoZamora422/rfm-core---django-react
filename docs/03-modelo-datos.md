@@ -33,6 +33,16 @@ Al cierre de la Fase 3, el modelo inicial del dominio se encuentra implementado 
 
 Las entidades cuentan con migraciones iniciales, relaciones principales, choices y validaciones backend de primer nivel.
 
+La Fase 4 agregó el campo `es_demo` en las entidades operativas que pueden formar parte de datos de demostración:
+
+- `Cliente`.
+- `Cotizacion`.
+- `Contrato`.
+- `CostoDirecto`.
+- `GastoFijoMensual`.
+
+Este marcador permite que `clear_demo` elimine únicamente datos demo sin afectar tipos de evento, paquetes, configuración del negocio ni registros reales.
+
 ## Cliente
 
 Campos mínimos:

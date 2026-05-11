@@ -49,6 +49,7 @@ class Cotizacion(TimeStampedModel):
         validators=[validate_non_negative],
     )
     observaciones = models.TextField(blank=True)
+    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-creado_en"]

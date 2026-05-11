@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de modelado inicial del dominio. La documentación base, la estructura backend/frontend, la configuración base del backend y los modelos principales ya fueron completados.
+El proyecto se encuentra en etapa de administración inicial del sistema. La documentación base, la estructura backend/frontend, la configuración base del backend, los modelos principales y la administración con datos semilla ya fueron completados.
 
 El sistema contempla como flujo principal:
 
@@ -16,15 +16,16 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 - Fase 1 — Inicialización técnica: Completada.
 - Fase 2 — Configuración base del backend: Completada.
 - Fase 3 — Modelado del dominio: Completada.
+- Fase 4 — Administración del sistema y datos semilla: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre del modelado inicial del dominio.
+La fase actual corresponde al cierre de la administración inicial del sistema y datos semilla.
 
-Se establecieron las entidades principales, sus relaciones, choices, validaciones iniciales y migraciones.
+Se registraron los modelos principales en Django Admin y se establecieron comandos idempotentes para datos base, datos demo y limpieza segura de datos demo.
 
 ## Próximos pasos
 
-La siguiente etapa corresponde a la Fase 4 — Administración del sistema y datos semilla.
+La siguiente etapa corresponde a la Fase 5 — API REST del core.
 
-Se deberán registrar los modelos en Django Admin y preparar comandos idempotentes para datos base y datos demo.
+Se deberán implementar serializers, vistas y rutas API para los recursos principales del sistema.

@@ -31,6 +31,7 @@ class Cliente(TimeStampedModel):
     telefono = models.CharField(max_length=30, validators=[validate_phone])
     correo = models.EmailField(blank=True)
     observaciones = models.TextField(blank=True)
+    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["nombre"]

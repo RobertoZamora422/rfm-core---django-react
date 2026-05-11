@@ -102,7 +102,7 @@ Alcance:
 
 ## Fase 4 - Administración del sistema y datos semilla
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo permitir gestión desde Django Admin y crear datos base/demo.
 
@@ -116,6 +116,8 @@ Alcance:
 - No eliminar datos reales con `clear_demo`.
 
 ## Fase 5 - API REST del core
+
+Estado: Pendiente.
 
 La fase tiene como objetivo exponer CRUD y validaciones de recursos principales.
 
