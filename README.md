@@ -14,7 +14,8 @@ El proyecto se encuentra en etapa de inicialización técnica.
 
 - Fase 0: Documentación base completada.
 - Fase 1: Inicialización técnica completada.
-- Siguiente etapa: Fase 2 - Configuración base del backend.
+- Fase 2: Configuración base del backend completada.
+- Siguiente etapa: Fase 3 - Modelado del dominio.
 
 ## Alcance del sistema
 
@@ -42,7 +43,9 @@ Backend:
 
 - Python 3.13.7 en entorno local.
 - Django 5.2.14.
-- Django REST Framework previsto para la Fase 2.
+- Django REST Framework.
+- django-cors-headers.
+- python-dotenv.
 - Django Admin.
 - SQLite para desarrollo.
 - PostgreSQL previsto para producción.
@@ -103,6 +106,7 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py test config
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py runserver
 ```
@@ -146,4 +150,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 2 - Configuración base del backend. Se deberá configurar Django REST Framework, CORS, apps base y un endpoint de salud antes de avanzar al modelado del dominio.
+La siguiente etapa corresponde a la Fase 3 - Modelado del dominio. Se deberán crear los modelos principales, sus relaciones, validaciones iniciales y migraciones.

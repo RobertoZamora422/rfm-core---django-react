@@ -16,6 +16,8 @@ Backend:
 - Python.
 - Django.
 - Django REST Framework.
+- django-cors-headers.
+- python-dotenv.
 - Django Admin.
 - SQLite para desarrollo.
 - PostgreSQL para producción.
@@ -45,7 +47,7 @@ rfm-core/
 └── .gitignore
 ```
 
-Al cierre de la Fase 1, el repositorio ya contiene `backend/` y `frontend/` como bases técnicas iniciales. La configuración avanzada de API, CORS y apps del dominio corresponde a la Fase 2.
+Al cierre de la Fase 2, el repositorio contiene `backend/` y `frontend/`, Django REST Framework, CORS, apps base del backend y el endpoint `/api/health/`.
 
 ## Organización backend propuesta
 
@@ -62,6 +64,16 @@ Apps recomendadas:
 - `comercial`: pre-cotizaciones, cotizaciones y conversión a contratos.
 - `financiero`: contratos, costos directos, gastos fijos y métricas financieras.
 - `reportes`: reportes comerciales, financieros, eventos y paquetes.
+
+Apps iniciales configuradas:
+
+```text
+accounts
+negocio
+comercial
+financiero
+reportes
+```
 
 Estructura interna recomendada por app:
 
@@ -94,6 +106,8 @@ migrations/
 Endpoints esperados por fases:
 
 ```text
+/api/health/
+
 /api/auth/login/
 /api/auth/logout/
 /api/auth/me/

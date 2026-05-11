@@ -70,7 +70,7 @@ La fase no contempla modelos del dominio ni API completa.
 
 ## Fase 2 - Configuración base del backend
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo configurar Django, DRF, CORS, autenticación inicial y endpoint de salud.
 
@@ -83,6 +83,8 @@ Alcance:
 - Validar `python manage.py check`.
 
 ## Fase 3 - Modelado del dominio
+
+Estado: Pendiente.
 
 La fase tiene como objetivo crear modelos principales y migraciones.
 
