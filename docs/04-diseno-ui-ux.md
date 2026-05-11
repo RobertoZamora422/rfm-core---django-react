@@ -19,6 +19,8 @@ Estructura esperada:
 - Área principal de contenido.
 - Páginas con encabezado claro, acciones primarias y estado de carga/error/vacío.
 
+Al cierre de la Fase 7, el frontend establece el layout administrativo base con `Sidebar`, `Topbar`, rutas protegidas, página de login y componentes reutilizables iniciales.
+
 El inicio administrativo y el dashboard financiero deben diferenciarse:
 
 - Inicio administrativo: resumen operativo y pendientes.

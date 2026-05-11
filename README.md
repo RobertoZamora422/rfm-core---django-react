@@ -19,7 +19,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 4: Administración del sistema y datos semilla completada.
 - Fase 5: API REST del core completada.
 - Fase 6: Servicios de negocio y endpoints de acciones completada.
-- Siguiente etapa: Fase 7 - Frontend base y layout administrativo.
+- Fase 7: Frontend base y layout administrativo completada.
+- Siguiente etapa: Fase 8 - Módulos base de administración en frontend.
 
 ## Alcance del sistema
 
@@ -58,8 +59,9 @@ Frontend:
 
 - React.
 - Vite.
-- React Router previsto para fases de frontend administrativo.
-- Axios o cliente HTTP equivalente previsto para integración con API.
+- React Router.
+- Axios.
+- lucide-react.
 
 Deploy previsto:
 
@@ -106,6 +108,9 @@ Orden de prioridad cuando exista conflicto entre documentos:
 Al cierre de la Fase 6, el backend establece endpoints autenticados para recursos principales y acciones comerciales:
 
 ```text
+/api/auth/login/
+/api/auth/logout/
+/api/auth/me/
 /api/pre-cotizacion/
 /api/clientes/
 /api/tipos-evento/
@@ -122,6 +127,24 @@ Al cierre de la Fase 6, el backend establece endpoints autenticados para recurso
 El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
 
 La Fase 6 establece servicios backend para pre-cotización, cambio de estado comercial y conversión controlada de cotizaciones confirmadas a contratos.
+
+## Frontend actual
+
+La Fase 7 establece la base administrativa del frontend:
+
+```text
+frontend/src/
+|-- routes/
+|-- layouts/
+|-- components/
+|-- pages/
+|-- services/
+|-- hooks/
+|-- utils/
+`-- styles/
+```
+
+El frontend cuenta con rutas protegidas, página de login, layout administrativo responsive, Sidebar, Topbar, cliente HTTP con Axios y componentes base reutilizables.
 
 ## Ejecución local
 
@@ -186,4 +209,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 7 - Frontend base y layout administrativo. Se deberá implementar la estructura visual base, navegación, layout administrativo y componentes reutilizables iniciales.
+La siguiente etapa corresponde a la Fase 8 - Módulos base de administración en frontend. Se deberán implementar las interfaces de gestión para clientes, tipos de evento, paquetes y configuración del negocio.

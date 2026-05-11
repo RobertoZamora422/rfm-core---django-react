@@ -163,7 +163,7 @@ Entregables:
 
 ## Fase 7 - Frontend base y layout administrativo
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo crear la base visual y la navegación administrativa.
 
@@ -177,7 +177,18 @@ Alcance:
 - Cliente HTTP.
 - Manejo inicial de autenticación.
 
+Entregables:
+
+- React Router configurado.
+- Layout administrativo responsive.
+- Sidebar y Topbar.
+- Componentes base reutilizables.
+- Cliente HTTP con Axios.
+- Manejo inicial de autenticación contra `/api/auth/`.
+
 ## Fase 8 - Módulos base de administración en frontend
+
+Estado: Pendiente.
 
 La fase tiene como objetivo gestionar catálogos y datos base desde la UI.
 

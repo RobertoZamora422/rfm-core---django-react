@@ -27,7 +27,8 @@ Frontend:
 - React.
 - Vite.
 - React Router.
-- Axios o cliente HTTP equivalente.
+- Axios.
+- lucide-react para iconografía de interfaz.
 - CSS modular, CSS tradicional, SASS o estrategia definida en el proyecto.
 
 Deploy:
@@ -52,6 +53,8 @@ Al cierre de la Fase 2, el repositorio contiene `backend/` y `frontend/`, Django
 Al cierre de la Fase 5, el backend expone endpoints CRUD autenticados para clientes, tipos de evento, paquetes, configuración del negocio, cotizaciones, contratos, costos directos y gastos fijos.
 
 Al cierre de la Fase 6, el backend expone servicios de negocio para pre-cotización, cambio de estado comercial y conversión controlada de cotizaciones confirmadas a contratos.
+
+Al cierre de la Fase 7, el frontend cuenta con React Router, layout administrativo responsive, cliente HTTP, autenticación inicial y componentes base reutilizables.
 
 ## Organización backend propuesta
 
