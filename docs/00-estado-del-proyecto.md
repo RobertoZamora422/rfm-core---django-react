@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidación de la base administrativa. La documentación inicial, la estructura técnica, el backend core, los servicios de negocio iniciales y el layout frontend administrativo se encuentran completados.
+El proyecto se encuentra en etapa de consolidación de la base administrativa. La documentación inicial, el backend core, los servicios de negocio iniciales, el layout frontend administrativo y los módulos base de administración se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -20,15 +20,16 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 - Fase 5 — API REST del core: Completada.
 - Fase 6 — Servicios de negocio y endpoints de acciones: Completada.
 - Fase 7 — Frontend base y layout administrativo: Completada.
+- Fase 8 — Módulos base de administración en frontend: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre del frontend base y layout administrativo.
+La fase actual corresponde al cierre de los módulos base de administración en frontend.
 
-Se establece navegación con React Router, autenticación inicial, layout administrativo responsive, Sidebar, Topbar, cliente HTTP y componentes base reutilizables.
+Se establecen interfaces conectadas a la API real para clientes, tipos de evento, paquetes y configuración del negocio.
 
 ## Próximos pasos
 
-La siguiente etapa corresponde a la Fase 8 — Módulos base de administración en frontend.
+La siguiente etapa corresponde a la Fase 9 — Pre-cotización.
 
-Se deberán implementar las interfaces de gestión para clientes, tipos de evento, paquetes y configuración del negocio.
+Se deberá implementar el formulario de pre-cotización conectado al backend y la creación de cotizaciones reales.

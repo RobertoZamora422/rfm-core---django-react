@@ -56,6 +56,8 @@ Al cierre de la Fase 6, el backend expone servicios de negocio para pre-cotizaci
 
 Al cierre de la Fase 7, el frontend cuenta con React Router, layout administrativo responsive, cliente HTTP, autenticación inicial y componentes base reutilizables.
 
+Al cierre de la Fase 8, el frontend consume la API real para administrar clientes, tipos de evento, paquetes y configuración del negocio.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:

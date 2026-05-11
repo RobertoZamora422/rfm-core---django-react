@@ -20,7 +20,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 5: API REST del core completada.
 - Fase 6: Servicios de negocio y endpoints de acciones completada.
 - Fase 7: Frontend base y layout administrativo completada.
-- Siguiente etapa: Fase 8 - Módulos base de administración en frontend.
+- Fase 8: Módulos base de administración en frontend completada.
+- Siguiente etapa: Fase 9 - Pre-cotización.
 
 ## Alcance del sistema
 
@@ -146,6 +147,8 @@ frontend/src/
 
 El frontend cuenta con rutas protegidas, página de login, layout administrativo responsive, Sidebar, Topbar, cliente HTTP con Axios y componentes base reutilizables.
 
+Al cierre de la Fase 8, las pantallas de clientes, tipos de evento, paquetes y configuración consumen datos reales desde la API y permiten creación y edición con validaciones visibles.
+
 ## Ejecución local
 
 Backend:
@@ -209,4 +212,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 8 - Módulos base de administración en frontend. Se deberán implementar las interfaces de gestión para clientes, tipos de evento, paquetes y configuración del negocio.
+La siguiente etapa corresponde a la Fase 9 - Pre-cotización. Se deberá implementar el formulario de pre-cotización conectado al backend y la creación de cotizaciones reales.

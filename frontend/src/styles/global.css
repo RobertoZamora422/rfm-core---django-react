@@ -95,6 +95,33 @@ a {
   gap: 7px;
 }
 
+.resource-form {
+  display: grid;
+  gap: 16px;
+}
+
+.form-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.checkbox-field {
+  align-items: center;
+  color: #26342d;
+  display: flex;
+  font-weight: 700;
+  gap: 10px;
+}
+
+.checkbox-field input {
+  accent-color: #256d4f;
+  height: 18px;
+  width: 18px;
+}
+
 .field__label {
   color: #26342d;
   font-size: 0.92rem;
@@ -541,6 +568,13 @@ a {
   overflow-x: auto;
 }
 
+.table-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .data-table {
   border-collapse: collapse;
   min-width: 720px;
@@ -558,6 +592,57 @@ a {
   color: #54615b;
   font-size: 0.78rem;
   text-transform: uppercase;
+}
+
+.mobile-list {
+  display: none;
+}
+
+.mobile-record {
+  background: #ffffff;
+  border: 1px solid #dfe5e1;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.mobile-record h2 {
+  color: #223029;
+  font-size: 1rem;
+  margin: 0 0 12px;
+}
+
+.mobile-record dl {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.mobile-record div {
+  display: grid;
+  gap: 5px;
+}
+
+.mobile-record dt {
+  color: #6b7771;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobile-record dd {
+  color: #25312b;
+  margin: 0;
+}
+
+.confirm-dialog {
+  display: grid;
+  gap: 18px;
+}
+
+.confirm-dialog p {
+  color: #4d5d55;
+  line-height: 1.6;
+  margin: 0;
 }
 
 .modal-backdrop {
@@ -668,5 +753,19 @@ a {
 
   .quick-actions {
     grid-template-columns: 1fr;
+  }
+
+  .table-wrap {
+    display: none;
+  }
+
+  .mobile-list {
+    display: grid;
+    gap: 12px;
+  }
+
+  .form-actions {
+    align-items: stretch;
+    display: grid;
   }
 }

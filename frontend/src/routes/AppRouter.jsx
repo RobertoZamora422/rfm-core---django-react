@@ -1,5 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout } from '../layouts/AdminLayout'
+import { ClientesPage } from '../pages/admin/ClientesPage'
+import { ConfiguracionPage } from '../pages/admin/ConfiguracionPage'
+import { PaquetesPage } from '../pages/admin/PaquetesPage'
+import { TiposEventoPage } from '../pages/admin/TiposEventoPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
 import { ModulePlaceholder } from '../pages/ModulePlaceholder'
@@ -32,21 +36,6 @@ const moduleRoutes = [
     description: 'Consulta de contrato, pagos y costos asociados.',
   },
   {
-    path: 'clientes',
-    title: 'Clientes',
-    description: 'Administracion de clientes e interesados.',
-  },
-  {
-    path: 'tipos-evento',
-    title: 'Tipos de evento',
-    description: 'Catalogo de eventos gestionados por el negocio.',
-  },
-  {
-    path: 'paquetes',
-    title: 'Paquetes',
-    description: 'Catalogo de paquetes y tipos de servicio.',
-  },
-  {
     path: 'costos-directos',
     title: 'Costos directos',
     description: 'Registro de costos asociados a contratos y eventos.',
@@ -66,11 +55,6 @@ const moduleRoutes = [
     title: 'Reportes',
     description: 'Reportes comerciales, financieros, de eventos y paquetes.',
   },
-  {
-    path: 'configuracion',
-    title: 'Configuracion',
-    description: 'Parametros generales del negocio.',
-  },
 ]
 
 export function AppRouter() {
@@ -81,6 +65,10 @@ export function AppRouter() {
         <Route element={<AdminLayout />}>
           <Route element={<Navigate replace to="/inicio" />} index />
           <Route element={<InicioPage />} path="/inicio" />
+          <Route element={<ClientesPage />} path="clientes" />
+          <Route element={<TiposEventoPage />} path="tipos-evento" />
+          <Route element={<PaquetesPage />} path="paquetes" />
+          <Route element={<ConfiguracionPage />} path="configuracion" />
           {moduleRoutes.map((route) => (
             <Route
               element={<ModulePlaceholder description={route.description} title={route.title} />}

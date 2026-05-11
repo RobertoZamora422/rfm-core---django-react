@@ -188,7 +188,7 @@ Entregables:
 
 ## Fase 8 - Módulos base de administración en frontend
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo gestionar catálogos y datos base desde la UI.
 
@@ -201,7 +201,18 @@ Alcance:
 - Formularios con validación visible.
 - Estados loading/error/empty.
 
+Entregables:
+
+- Pantalla de clientes conectada a `/api/clientes/`.
+- Pantalla de tipos de evento conectada a `/api/tipos-evento/`.
+- Pantalla de paquetes conectada a `/api/paquetes/`.
+- Pantalla de configuración conectada a `/api/configuracion-negocio/`.
+- Hook y servicio reutilizable para CRUD frontend.
+- Fallback móvil para listados administrativos.
+
 ## Fase 9 - Pre-cotización
+
+Estado: Pendiente.
 
 La fase tiene como objetivo registrar solicitudes y crear cotizaciones reales.
 

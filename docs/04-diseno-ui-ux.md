@@ -21,6 +21,8 @@ Estructura esperada:
 
 Al cierre de la Fase 7, el frontend establece el layout administrativo base con `Sidebar`, `Topbar`, rutas protegidas, página de login y componentes reutilizables iniciales.
 
+Al cierre de la Fase 8, las pantallas de clientes, tipos de evento, paquetes y configuración cuentan con listado, formulario de creación/edición, estados de carga/error/vacío y fallback móvil.
+
 El inicio administrativo y el dashboard financiero deben diferenciarse:
 
 - Inicio administrativo: resumen operativo y pendientes.
