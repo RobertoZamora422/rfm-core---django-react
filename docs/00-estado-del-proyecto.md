@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidación del backend base. La documentación inicial, la estructura técnica, los modelos principales, la administración del sistema, los datos semilla y la API REST del core se encuentran completados.
+El proyecto se encuentra en etapa de consolidación del backend base. La documentación inicial, la estructura técnica, los modelos principales, la administración del sistema, los datos semilla, la API REST del core y los servicios de negocio iniciales se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -18,15 +18,16 @@ Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilid
 - Fase 3 — Modelado del dominio: Completada.
 - Fase 4 — Administración del sistema y datos semilla: Completada.
 - Fase 5 — API REST del core: Completada.
+- Fase 6 — Servicios de negocio y endpoints de acciones: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de la API REST del core.
+La fase actual corresponde al cierre de los servicios de negocio y endpoints de acciones.
 
-Se establecen endpoints CRUD autenticados para los recursos principales del sistema y validaciones backend coherentes con el modelo aprobado.
+Se establecen acciones backend para pre-cotización, cambio de estado comercial y conversión de cotizaciones confirmadas a contratos.
 
 ## Próximos pasos
 
-La siguiente etapa corresponde a la Fase 6 — Servicios de negocio y endpoints de acciones.
+La siguiente etapa corresponde a la Fase 7 — Frontend base y layout administrativo.
 
-Se deberán implementar las acciones críticas de pre-cotización, cambio de estado comercial y conversión de cotizaciones confirmadas a contratos.
+Se deberá implementar la base visual del frontend administrativo, navegación principal, layout y componentes reutilizables.

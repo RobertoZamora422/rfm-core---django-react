@@ -6,7 +6,8 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from rest_framework.test import APITestCase
 
-from negocio.models import Cliente, Paquete, TipoEvento
+from financiero.models import Contrato
+from negocio.models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
 
 from .models import Cotizacion
 
@@ -55,6 +56,14 @@ class CotizacionApiTests(APITestCase):
             nombre="Servicio completo",
             tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("30.00"),
+        )
+        self.configuracion = ConfiguracionNegocio.objects.create(
+            nombre_negocio="Rancho Flor Maria",
+            tarifa_base_alquiler=Decimal("1000.00"),
+            invitados_incluidos_alquiler=50,
+            costo_invitado_adicional=Decimal("10.00"),
+            capacidad_maxima=200,
+            activo=True,
         )
 
     def test_crea_cotizacion(self):
@@ -114,3 +123,156 @@ class CotizacionApiTests(APITestCase):
 
         with self.assertRaises(ValidationError):
             cotizacion.save()
+
+    def test_pre_cotizacion_calcula_y_crea_cotizacion(self):
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre_cliente": "Cliente Nuevo",
+                "telefono_cliente": "+593 999999222",
+                "correo_cliente": "nuevo@example.com",
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-09-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Paquete.TipoServicio.ALQUILER,
+                "observaciones": "Solicitud inicial",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["calculo"]["total_estimado"], "1300.00")
+        self.assertEqual(response.data["cotizacion"]["estado"], Cotizacion.Estado.NUEVA)
+        self.assertTrue(Cliente.objects.filter(nombre="Cliente Nuevo").exists())
+
+    def test_pre_cotizacion_respeta_capacidad_maxima(self):
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "cliente": self.cliente.id,
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-09-01",
+                "numero_invitados": 201,
+                "tipo_servicio": Paquete.TipoServicio.ALQUILER,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("numero_invitados", response.data)
+
+    def test_cambiar_estado_cotizacion(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.NUEVA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        response = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/cambiar-estado/",
+            {"estado": Cotizacion.Estado.CONFIRMADA},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["estado"], Cotizacion.Estado.CONFIRMADA)
+
+    def test_crud_no_marca_cotizacion_como_convertida(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        response = self.client.patch(
+            f"/api/cotizaciones/{cotizacion.id}/",
+            {"estado": Cotizacion.Estado.CONVERTIDA},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("estado", response.data)
+
+    def test_convertir_cotizacion_confirmada_a_contrato(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        response = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {"monto_abonado": "400.00", "observaciones": "Contrato inicial"},
+            format="json",
+        )
+
+        cotizacion.refresh_from_db()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(cotizacion.estado, Cotizacion.Estado.CONVERTIDA)
+        self.assertEqual(response.data["contrato"]["estado_pago"], Contrato.EstadoPago.ABONADO)
+        self.assertEqual(response.data["contrato"]["valor_final"], "2400.00")
+        self.assertEqual(Contrato.objects.filter(cotizacion=cotizacion).count(), 1)
+
+    def test_convertir_rechaza_cotizacion_no_confirmada(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.NUEVA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        response = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("estado", response.data)
+
+    def test_convertir_rechaza_conversion_doble(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        first = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {},
+            format="json",
+        )
+        second = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(Contrato.objects.filter(cotizacion=cotizacion).count(), 1)

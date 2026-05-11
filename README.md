@@ -18,7 +18,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 3: Modelado del dominio completado.
 - Fase 4: Administración del sistema y datos semilla completada.
 - Fase 5: API REST del core completada.
-- Siguiente etapa: Fase 6 - Servicios de negocio y endpoints de acciones.
+- Fase 6: Servicios de negocio y endpoints de acciones completada.
+- Siguiente etapa: Fase 7 - Frontend base y layout administrativo.
 
 ## Alcance del sistema
 
@@ -102,14 +103,17 @@ Orden de prioridad cuando exista conflicto entre documentos:
 
 ## API REST actual
 
-La Fase 5 establece endpoints CRUD autenticados para los recursos principales:
+Al cierre de la Fase 6, el backend establece endpoints autenticados para recursos principales y acciones comerciales:
 
 ```text
+/api/pre-cotizacion/
 /api/clientes/
 /api/tipos-evento/
 /api/paquetes/
 /api/configuracion-negocio/
 /api/cotizaciones/
+/api/cotizaciones/{id}/cambiar-estado/
+/api/cotizaciones/{id}/convertir-contrato/
 /api/contratos/
 /api/costos-directos/
 /api/gastos-fijos/
@@ -117,7 +121,7 @@ La Fase 5 establece endpoints CRUD autenticados para los recursos principales:
 
 El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
 
-Las acciones especiales de pre-cotización, cambio de estado y conversión de cotización a contrato corresponden a la Fase 6.
+La Fase 6 establece servicios backend para pre-cotización, cambio de estado comercial y conversión controlada de cotizaciones confirmadas a contratos.
 
 ## Ejecución local
 
@@ -182,4 +186,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 6 - Servicios de negocio y endpoints de acciones. Se deberán implementar las acciones críticas de pre-cotización, cambio de estado comercial y conversión de cotizaciones confirmadas a contratos.
+La siguiente etapa corresponde a la Fase 7 - Frontend base y layout administrativo. Se deberá implementar la estructura visual base, navegación, layout administrativo y componentes reutilizables iniciales.

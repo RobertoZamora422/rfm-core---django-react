@@ -51,6 +51,8 @@ Al cierre de la Fase 2, el repositorio contiene `backend/` y `frontend/`, Django
 
 Al cierre de la Fase 5, el backend expone endpoints CRUD autenticados para clientes, tipos de evento, paquetes, configuración del negocio, cotizaciones, contratos, costos directos y gastos fijos.
 
+Al cierre de la Fase 6, el backend expone servicios de negocio para pre-cotización, cambio de estado comercial y conversión controlada de cotizaciones confirmadas a contratos.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:
@@ -139,7 +141,7 @@ Endpoints esperados por fases:
 
 No todos los endpoints se implementan en una sola fase. Cada fase debe cerrar únicamente su alcance.
 
-En la Fase 5 se implementan los endpoints CRUD principales. Las acciones especiales de pre-cotización, cambio de estado y conversión a contrato corresponden a la Fase 6.
+En la Fase 5 se implementan los endpoints CRUD principales. En la Fase 6 se implementan las acciones especiales de pre-cotización, cambio de estado y conversión a contrato.
 
 ## Organización frontend propuesta
 

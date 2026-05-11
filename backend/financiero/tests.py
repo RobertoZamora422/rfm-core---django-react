@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from rest_framework.test import APITestCase
 
+from comercial.models import Cotizacion
 from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
 from negocio.models import Cliente, Paquete, TipoEvento
 
@@ -134,6 +135,37 @@ class FinancieroApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("monto_abonado", response.data)
+
+    def test_rechaza_contrato_con_cotizacion_no_convertida(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("2000.00"),
+        )
+
+        response = self.client.post(
+            "/api/contratos/",
+            {
+                "cotizacion": cotizacion.id,
+                "cliente": self.cliente.id,
+                "tipo_evento": self.tipo_evento.id,
+                "paquete": self.paquete.id,
+                "fecha_evento": "2026-08-01",
+                "numero_invitados": 80,
+                "valor_final": "2000.00",
+                "monto_abonado": "0.00",
+                "estado_contrato": Contrato.EstadoContrato.CONFIRMADO,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("cotizacion", response.data)
 
     def test_crea_costo_directo_y_gasto_fijo(self):
         contrato = Contrato.objects.create(

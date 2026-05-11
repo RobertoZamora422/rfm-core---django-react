@@ -141,7 +141,7 @@ Entregables:
 
 ## Fase 6 - Servicios de negocio y endpoints de acciones
 
-Estado: Pendiente.
+Estado: Completada.
 
 La fase tiene como objetivo implementar acciones críticas con lógica en backend.
 
@@ -153,7 +153,17 @@ Alcance:
 - Validación de no conversión doble.
 - Cálculo o validación de estado de pago.
 
+Entregables:
+
+- Servicio de cálculo de pre-cotización.
+- Endpoint `/api/pre-cotizacion/`.
+- Acción `/api/cotizaciones/{id}/cambiar-estado/`.
+- Acción `/api/cotizaciones/{id}/convertir-contrato/`.
+- Pruebas de validación para estados y conversión.
+
 ## Fase 7 - Frontend base y layout administrativo
+
+Estado: Pendiente.
 
 La fase tiene como objetivo crear la base visual y la navegación administrativa.
 

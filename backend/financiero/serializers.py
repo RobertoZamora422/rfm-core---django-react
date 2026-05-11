@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from comercial.models import Cotizacion
+
 from .models import Contrato, CostoDirecto, GastoFijoMensual
 
 
@@ -75,6 +77,7 @@ class ContratoSerializer(serializers.ModelSerializer):
             "monto_abonado",
             getattr(self.instance, "monto_abonado", 0),
         )
+        cotizacion = attrs.get("cotizacion")
 
         if (
             valor_final is not None
@@ -83,6 +86,13 @@ class ContratoSerializer(serializers.ModelSerializer):
         ):
             raise serializers.ValidationError(
                 {"monto_abonado": "El monto abonado no puede superar el valor final."}
+            )
+
+        if cotizacion and cotizacion.estado != Cotizacion.Estado.CONVERTIDA:
+            raise serializers.ValidationError(
+                {
+                    "cotizacion": "La cotizacion asociada debe convertirse desde la accion comercial correspondiente."
+                }
             )
 
         return attrs

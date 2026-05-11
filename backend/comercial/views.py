@@ -1,7 +1,80 @@
-from rest_framework import viewsets
+from decimal import Decimal
 
-from .models import Cotizacion
-from .serializers import CotizacionSerializer
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as ApiValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from financiero.serializers import ContratoSerializer
+
+from .selectors import cotizaciones_con_relaciones
+from .serializers import (
+    CambiarEstadoCotizacionSerializer,
+    ConvertirContratoSerializer,
+    CotizacionSerializer,
+    PreCotizacionSerializer,
+)
+from .services import (
+    cambiar_estado_cotizacion,
+    convertir_cotizacion_a_contrato,
+    crear_pre_cotizacion,
+)
+
+
+def _raise_api_validation_error(exc):
+    if hasattr(exc, "message_dict"):
+        raise ApiValidationError(exc.message_dict)
+    raise ApiValidationError(exc.messages)
+
+
+def _serializar_calculo(calculo):
+    resultado = {}
+    for clave, valor in calculo.items():
+        if isinstance(valor, Decimal):
+            resultado[clave] = str(valor.quantize(Decimal("0.01")))
+        else:
+            resultado[clave] = valor
+    return resultado
+
+
+class PreCotizacionAPIView(APIView):
+    def post(self, request):
+        serializer = PreCotizacionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        datos_cliente = None
+        if data.get("cliente") is None:
+            datos_cliente = {
+                "nombre": data.get("nombre_cliente", "").strip(),
+                "telefono": data.get("telefono_cliente", "").strip(),
+                "correo": data.get("correo_cliente", ""),
+                "observaciones": data.get("observaciones_cliente", ""),
+            }
+
+        try:
+            cotizacion, calculo = crear_pre_cotizacion(
+                cliente=data.get("cliente"),
+                datos_cliente=datos_cliente,
+                tipo_evento=data["tipo_evento"],
+                paquete=data.get("paquete"),
+                fecha_tentativa=data["fecha_tentativa"],
+                numero_invitados=data["numero_invitados"],
+                tipo_servicio=data["tipo_servicio"],
+                observaciones=data.get("observaciones", ""),
+            )
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
+
+        return Response(
+            {
+                "cotizacion": CotizacionSerializer(cotizacion).data,
+                "calculo": _serializar_calculo(calculo),
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class CotizacionViewSet(viewsets.ModelViewSet):
@@ -9,11 +82,7 @@ class CotizacionViewSet(viewsets.ModelViewSet):
     search_fields = ["cliente__nombre", "cliente__telefono", "observaciones"]
 
     def get_queryset(self):
-        queryset = Cotizacion.objects.select_related(
-            "cliente",
-            "tipo_evento",
-            "paquete",
-        )
+        queryset = cotizaciones_con_relaciones()
         estado = self.request.query_params.get("estado")
         cliente = self.request.query_params.get("cliente")
         es_demo = self.request.query_params.get("es_demo")
@@ -24,3 +93,45 @@ class CotizacionViewSet(viewsets.ModelViewSet):
         if es_demo is not None:
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
+
+    @action(detail=True, methods=["post"], url_path="cambiar-estado")
+    def cambiar_estado(self, request, pk=None):
+        cotizacion = self.get_object()
+        serializer = CambiarEstadoCotizacionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            cotizacion = cambiar_estado_cotizacion(
+                cotizacion,
+                serializer.validated_data["estado"],
+            )
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
+
+        return Response(CotizacionSerializer(cotizacion).data)
+
+    @action(detail=True, methods=["post"], url_path="convertir-contrato")
+    def convertir_contrato(self, request, pk=None):
+        cotizacion = self.get_object()
+        serializer = ConvertirContratoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            contrato = convertir_cotizacion_a_contrato(
+                cotizacion,
+                fecha_evento=serializer.validated_data.get("fecha_evento"),
+                valor_final=serializer.validated_data.get("valor_final"),
+                monto_abonado=serializer.validated_data.get("monto_abonado"),
+                observaciones=serializer.validated_data.get("observaciones", ""),
+            )
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
+
+        cotizacion.refresh_from_db()
+        return Response(
+            {
+                "cotizacion": CotizacionSerializer(cotizacion).data,
+                "contrato": ContratoSerializer(contrato).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
