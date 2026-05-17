@@ -1,12 +1,14 @@
 from rest_framework import serializers
 
 from comercial.models import Cotizacion
+from negocio.validators import validate_non_negative, validate_positive_integer
 
 from .models import Contrato, CostoDirecto, GastoFijoMensual
 
 
 class ContratoSerializer(serializers.ModelSerializer):
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
+    cliente_telefono = serializers.CharField(source="cliente.telefono", read_only=True)
     tipo_evento_nombre = serializers.CharField(
         source="tipo_evento.nombre",
         read_only=True,
@@ -40,6 +42,7 @@ class ContratoSerializer(serializers.ModelSerializer):
             "cotizacion",
             "cliente",
             "cliente_nombre",
+            "cliente_telefono",
             "tipo_evento",
             "tipo_evento_nombre",
             "paquete",
@@ -96,6 +99,23 @@ class ContratoSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+    def validate_valor_final(self, value):
+        validate_non_negative(value)
+        return value
+
+    def validate_monto_abonado(self, value):
+        validate_non_negative(value)
+        return value
+
+    def validate_numero_invitados(self, value):
+        validate_positive_integer(value)
+        return value
+
+    def validate_fecha_evento(self, value):
+        if value is None:
+            raise serializers.ValidationError("La fecha del evento es obligatoria.")
+        return value
 
 
 class CostoDirectoSerializer(serializers.ModelSerializer):

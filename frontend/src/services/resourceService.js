@@ -48,3 +48,12 @@ export const cotizacionesService = {
     return data
   },
 }
+
+export const contratosService = {
+  ...createResourceService('/contratos/'),
+
+  async cancelar(id) {
+    const { data } = await apiClient.post(`/contratos/${id}/cancelar/`)
+    return data
+  },
+}

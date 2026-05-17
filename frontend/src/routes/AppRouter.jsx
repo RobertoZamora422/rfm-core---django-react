@@ -4,6 +4,8 @@ import { ClientesPage } from '../pages/admin/ClientesPage'
 import { ConfiguracionPage } from '../pages/admin/ConfiguracionPage'
 import { PaquetesPage } from '../pages/admin/PaquetesPage'
 import { TiposEventoPage } from '../pages/admin/TiposEventoPage'
+import { ContratosPage } from '../pages/contratos/ContratosPage'
+import { DetalleContratoPage } from '../pages/contratos/DetalleContratoPage'
 import { CotizacionesPage } from '../pages/cotizaciones/CotizacionesPage'
 import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPage'
 import { InicioPage } from '../pages/InicioPage'
@@ -13,16 +15,6 @@ import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const moduleRoutes = [
-  {
-    path: 'contratos',
-    title: 'Contratos',
-    description: 'Administracion de contratos reales del negocio.',
-  },
-  {
-    path: 'contratos/:id',
-    title: 'Detalle de contrato',
-    description: 'Consulta de contrato, pagos y costos asociados.',
-  },
   {
     path: 'costos-directos',
     title: 'Costos directos',
@@ -60,6 +52,8 @@ export function AppRouter() {
           <Route element={<ConfiguracionPage />} path="configuracion" />
           <Route element={<CotizacionesPage />} path="cotizaciones" />
           <Route element={<DetalleCotizacionPage />} path="cotizaciones/:id" />
+          <Route element={<ContratosPage />} path="contratos" />
+          <Route element={<DetalleContratoPage />} path="contratos/:id" />
           {moduleRoutes.map((route) => (
             <Route
               element={<ModulePlaceholder description={route.description} title={route.title} />}
