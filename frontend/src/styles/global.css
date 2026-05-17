@@ -648,6 +648,20 @@ a {
   grid-template-columns: minmax(220px, 1.35fr) repeat(5, minmax(135px, 1fr)) auto;
 }
 
+.filters-grid--costs {
+  grid-template-columns: minmax(220px, 1.2fr) minmax(260px, 1.4fr) repeat(2, minmax(140px, 1fr)) auto;
+}
+
+.filters-grid--expenses {
+  grid-template-columns: minmax(150px, 0.75fr) minmax(130px, 0.65fr) minmax(240px, 1.4fr) auto;
+}
+
+.summary-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(220px, 360px);
+}
+
 .contract-summary,
 .status-group {
   align-items: center;
@@ -799,6 +813,16 @@ a {
 .stacked-cell span {
   color: #66736d;
   font-size: 0.86rem;
+}
+
+.text-link {
+  color: #256d4f;
+  font-weight: 800;
+}
+
+.text-link:hover {
+  color: #1f5d43;
+  text-decoration: underline;
 }
 
 .data-table {
@@ -1037,7 +1061,8 @@ a {
   .kpi-grid,
   .filters-grid,
   .quote-detail-grid,
-  .contract-detail-grid {
+  .contract-detail-grid,
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 

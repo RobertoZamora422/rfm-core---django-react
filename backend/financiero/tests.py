@@ -316,3 +316,144 @@ class FinancieroApiTests(APITestCase):
 
         self.assertEqual(costo.status_code, 201)
         self.assertEqual(gasto.status_code, 201)
+
+    def test_lista_costos_directos_con_datos_de_contrato_y_filtros(self):
+        contrato_objetivo = self.crear_contrato()
+        otro_cliente = Cliente.objects.create(
+            nombre="Cliente Otro",
+            telefono="+593 999999222",
+        )
+        otro_contrato = self.crear_contrato(
+            cliente=otro_cliente,
+            fecha_evento=date(2026, 9, 1),
+        )
+        costo_objetivo = CostoDirecto.objects.create(
+            contrato=contrato_objetivo,
+            concepto="Catering premium",
+            valor=Decimal("700.00"),
+            fecha=date(2026, 8, 1),
+        )
+        CostoDirecto.objects.create(
+            contrato=otro_contrato,
+            concepto="Decoracion",
+            valor=Decimal("350.00"),
+            fecha=date(2026, 9, 1),
+        )
+
+        response = self.client.get(
+            "/api/costos-directos/",
+            {
+                "contrato": contrato_objetivo.id,
+                "buscar": "premium",
+                "desde": "2026-08-01",
+                "hasta": "2026-08-31",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.data], [costo_objetivo.id])
+        self.assertEqual(response.data[0]["cliente_nombre"], "Cliente API")
+        self.assertEqual(response.data[0]["cliente_telefono"], "+593 999999111")
+        self.assertEqual(response.data[0]["tipo_evento_nombre"], "Boda")
+        self.assertIn("Contrato #", response.data[0]["contrato_descripcion"])
+
+    def test_filtra_costos_directos_por_telefono_y_rechaza_rango_invertido(self):
+        contrato = self.crear_contrato()
+        CostoDirecto.objects.create(
+            contrato=contrato,
+            concepto="Musica",
+            valor=Decimal("300.00"),
+            fecha=date(2026, 8, 2),
+        )
+
+        response = self.client.get("/api/costos-directos/", {"buscar": "999111"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+
+        invalid_response = self.client.get(
+            "/api/costos-directos/",
+            {
+                "desde": "2026-09-01",
+                "hasta": "2026-08-01",
+            },
+        )
+        self.assertEqual(invalid_response.status_code, 400)
+        self.assertIn("hasta", invalid_response.data)
+
+    def test_rechaza_costo_directo_sin_contrato_concepto_o_valor_valido(self):
+        contrato = self.crear_contrato()
+        cases = [
+            ("contrato", {"concepto": "Catering", "valor": "100.00", "fecha": "2026-08-01"}),
+            (
+                "concepto",
+                {
+                    "contrato": contrato.id,
+                    "concepto": " ",
+                    "valor": "100.00",
+                    "fecha": "2026-08-01",
+                },
+            ),
+            (
+                "valor",
+                {
+                    "contrato": contrato.id,
+                    "concepto": "Catering",
+                    "valor": "-1.00",
+                    "fecha": "2026-08-01",
+                },
+            ),
+        ]
+
+        for field, payload in cases:
+            with self.subTest(field=field):
+                response = self.client.post("/api/costos-directos/", payload, format="json")
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(field, response.data)
+
+    def test_filtra_gastos_fijos_y_devuelve_resumen_del_periodo(self):
+        GastoFijoMensual.objects.create(
+            concepto="Servicios basicos",
+            valor=Decimal("300.00"),
+            mes=8,
+            anio=2026,
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Internet",
+            valor=Decimal("90.00"),
+            mes=8,
+            anio=2026,
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Mantenimiento",
+            valor=Decimal("250.00"),
+            mes=9,
+            anio=2026,
+        )
+
+        response = self.client.get(
+            "/api/gastos-fijos/",
+            {"mes": 8, "anio": 2026, "concepto": "servicios"},
+        )
+        resumen = self.client.get(
+            "/api/gastos-fijos/resumen/",
+            {"mes": 8, "anio": 2026},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["concepto"] for item in response.data], ["Servicios basicos"])
+        self.assertEqual(resumen.status_code, 200)
+        self.assertEqual(resumen.data["total_periodo"], "390.00")
+
+    def test_rechaza_gasto_fijo_con_valores_invalidos(self):
+        cases = [
+            ("concepto", {"concepto": " ", "valor": "100.00", "mes": 8, "anio": 2026}),
+            ("valor", {"concepto": "Internet", "valor": "-1.00", "mes": 8, "anio": 2026}),
+            ("mes", {"concepto": "Internet", "valor": "100.00", "mes": 13, "anio": 2026}),
+            ("anio", {"concepto": "Internet", "valor": "100.00", "mes": 8, "anio": 1999}),
+        ]
+
+        for field, payload in cases:
+            with self.subTest(field=field):
+                response = self.client.post("/api/gastos-fijos/", payload, format="json")
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(field, response.data)

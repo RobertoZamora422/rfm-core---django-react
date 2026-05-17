@@ -62,6 +62,10 @@ Al cierre de la Fase 9, el frontend consume `/api/pre-cotizacion/` para registra
 
 Al cierre de la Fase 10, el backend expone filtros comerciales para `/api/cotizaciones/` por estado, tipo de evento, rango de fecha y búsqueda por cliente o teléfono. El frontend reemplaza el placeholder de cotizaciones por listado, resumen por estado, detalle, cambio de estado y conversión controlada a contrato.
 
+Al cierre de la Fase 11, el backend y frontend gestionan contratos como ventas reales mediante `/api/contratos/`, filtros backend, detalle administrativo, estado contractual, estado de pago calculado, saldo pendiente y cancelación controlada sin eliminación física.
+
+Al cierre de la Fase 12, `/api/costos-directos/` permite filtrar por contrato, búsqueda por cliente/teléfono/concepto y rango de fecha. `/api/gastos-fijos/` permite filtrar por mes, año y concepto, y `/api/gastos-fijos/resumen/` devuelve el total del periodo filtrado. El frontend reemplaza placeholders por pantallas administrativas reales en `/costos-directos` y `/gastos-fijos`.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:
@@ -138,6 +142,7 @@ Endpoints esperados por fases:
 /api/contratos/
 /api/costos-directos/
 /api/gastos-fijos/
+/api/gastos-fijos/resumen/
 
 /api/inicio-resumen/
 /api/dashboard-financiero/

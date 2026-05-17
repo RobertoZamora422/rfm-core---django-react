@@ -1,3 +1,6 @@
+from datetime import date
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from comercial.models import Cotizacion
@@ -119,9 +122,24 @@ class ContratoSerializer(serializers.ModelSerializer):
 
 
 class CostoDirectoSerializer(serializers.ModelSerializer):
-    contrato_cliente = serializers.CharField(
+    contrato_label = serializers.SerializerMethodField()
+    contrato_descripcion = serializers.SerializerMethodField()
+    cliente_nombre = serializers.CharField(
         source="contrato.cliente.nombre",
         read_only=True,
+    )
+    cliente_telefono = serializers.CharField(
+        source="contrato.cliente.telefono",
+        read_only=True,
+    )
+    tipo_evento_nombre = serializers.CharField(
+        source="contrato.tipo_evento.nombre",
+        read_only=True,
+    )
+    valor = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
     )
 
     class Meta:
@@ -129,7 +147,11 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "contrato",
-            "contrato_cliente",
+            "contrato_label",
+            "contrato_descripcion",
+            "cliente_nombre",
+            "cliente_telefono",
+            "tipo_evento_nombre",
             "concepto",
             "valor",
             "fecha",
@@ -140,8 +162,41 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "es_demo", "creado_en", "actualizado_en"]
 
+    def get_contrato_label(self, obj):
+        return f"Contrato #{obj.contrato_id}"
+
+    def get_contrato_descripcion(self, obj):
+        contrato = obj.contrato
+        return (
+            f"Contrato #{contrato.id} - {contrato.cliente.nombre} - "
+            f"{contrato.tipo_evento.nombre} ({contrato.fecha_evento:%d/%m/%Y})"
+        )
+
+    def validate_contrato(self, value):
+        if value is None:
+            raise serializers.ValidationError("El contrato es obligatorio.")
+        return value
+
+    def validate_concepto(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("El concepto es obligatorio.")
+        return value
+
+    def validate_fecha(self, value):
+        if value is None:
+            raise serializers.ValidationError("La fecha es obligatoria.")
+        return value
+
 
 class GastoFijoMensualSerializer(serializers.ModelSerializer):
+    valor = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+    )
+    mes = serializers.IntegerField(min_value=1, max_value=12)
+
     class Meta:
         model = GastoFijoMensual
         fields = [
@@ -156,3 +211,15 @@ class GastoFijoMensualSerializer(serializers.ModelSerializer):
             "actualizado_en",
         ]
         read_only_fields = ["id", "es_demo", "creado_en", "actualizado_en"]
+
+    def validate_concepto(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("El concepto es obligatorio.")
+        return value
+
+    def validate_anio(self, value):
+        current_year = date.today().year
+        if value < 2000 or value > current_year + 10:
+            raise serializers.ValidationError("El anio no es valido para el registro del sistema.")
+        return value

@@ -8,6 +8,8 @@ import { ContratosPage } from '../pages/contratos/ContratosPage'
 import { DetalleContratoPage } from '../pages/contratos/DetalleContratoPage'
 import { CotizacionesPage } from '../pages/cotizaciones/CotizacionesPage'
 import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPage'
+import { CostosDirectosPage } from '../pages/finanzas/CostosDirectosPage'
+import { GastosFijosPage } from '../pages/finanzas/GastosFijosPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
 import { ModulePlaceholder } from '../pages/ModulePlaceholder'
@@ -15,16 +17,6 @@ import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const moduleRoutes = [
-  {
-    path: 'costos-directos',
-    title: 'Costos directos',
-    description: 'Registro de costos asociados a contratos y eventos.',
-  },
-  {
-    path: 'gastos-fijos',
-    title: 'Gastos fijos',
-    description: 'Administracion de gastos mensuales del negocio.',
-  },
   {
     path: 'dashboard-financiero',
     title: 'Dashboard financiero',
@@ -54,6 +46,8 @@ export function AppRouter() {
           <Route element={<DetalleCotizacionPage />} path="cotizaciones/:id" />
           <Route element={<ContratosPage />} path="contratos" />
           <Route element={<DetalleContratoPage />} path="contratos/:id" />
+          <Route element={<CostosDirectosPage />} path="costos-directos" />
+          <Route element={<GastosFijosPage />} path="gastos-fijos" />
           {moduleRoutes.map((route) => (
             <Route
               element={<ModulePlaceholder description={route.description} title={route.title} />}

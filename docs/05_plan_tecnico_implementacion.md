@@ -257,6 +257,8 @@ Entregables:
 
 ## Fase 11 - Contratos y pagos
 
+Estado: Completada.
+
 La fase tiene como objetivo gestionar contratos como ventas reales.
 
 Alcance:
@@ -270,6 +272,8 @@ Alcance:
 
 ## Fase 12 - Costos directos y gastos fijos
 
+Estado: Completada.
+
 La fase tiene como objetivo registrar costos y gastos que alimentan la rentabilidad.
 
 Alcance:
@@ -278,6 +282,15 @@ Alcance:
 - Gastos fijos por mes/año.
 - Validaciones backend.
 - Consumo real desde frontend.
+
+Entregables:
+
+- `/api/costos-directos/` con filtros por contrato, búsqueda por cliente/teléfono/concepto y rango de fecha.
+- `/api/gastos-fijos/` con filtros por mes, año y concepto.
+- `/api/gastos-fijos/resumen/` para total de gastos del periodo filtrado.
+- Pantalla `/costos-directos` con listado, filtros, formulario con select real de contrato y acciones de edición/eliminación.
+- Pantalla `/gastos-fijos` con listado, filtros, resumen del periodo y acciones de edición/eliminación.
+- Datos demo con costos directos asociados a contratos confirmados y cancelados, y gastos fijos en periodo actual y otro periodo.
 
 ## Fase 13 - Inicio administrativo backend-first
 

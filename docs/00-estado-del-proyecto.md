@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion y la gestion comercial de cotizaciones se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos y la Fase 12 de costos directos/gastos fijos se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -23,15 +23,17 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 - Fase 8 - Modulos base de administracion en frontend: Completada.
 - Fase 9 - Pre-cotizacion: Completada.
 - Fase 10 - Gestion comercial de cotizaciones: Completada.
+- Fase 11 - Contratos y pagos: Completada.
+- Fase 12 - Costos directos y gastos fijos: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de la gestion comercial de cotizaciones.
+La fase actual corresponde al cierre de costos directos y gastos fijos.
 
-Se establece un pipeline comercial conectado al backend para listar cotizaciones reales, filtrar por estado, tipo de evento, fecha y busqueda por cliente o telefono, consultar detalle, cambiar estado y convertir cotizaciones confirmadas a contrato sin permitir conversion doble.
+Se establecen pantallas administrativas conectadas al backend para registrar, listar, editar, eliminar y filtrar costos directos asociados a contratos reales, y gastos fijos mensuales independientes de contratos. El backend valida montos, fechas, mes/anio y relaciones obligatorias; ademas expone un resumen de total de gastos del periodo filtrado.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 11 - Contratos y pagos.
+La siguiente etapa corresponde a la Fase 13 - Inicio administrativo backend-first.
 
-Se debera implementar la gestion operativa de contratos como ventas reales: listado, detalle, estado contractual, estado de pago, monto abonado, saldo pendiente y cancelacion controlada.
+Se debera implementar un endpoint agregado para el inicio administrativo y mover los KPIs operativos al backend sin duplicar reglas de negocio en React.

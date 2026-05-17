@@ -174,12 +174,17 @@ Detalle de contrato:
 Costos directos:
 
 - Registro de costos asociados a contratos.
-- Filtro por contrato o periodo.
+- Filtro por búsqueda de cliente/teléfono/concepto, contrato y rango de fecha.
+- Formulario con select de contrato; no se ingresan IDs manuales.
+- Tabla con contrato, cliente, evento, concepto, valor, fecha y acciones.
 
 Gastos fijos:
 
 - Registro mensual de gastos operativos.
-- Validación de mes y año.
+- Filtros por mes, año y concepto.
+- Resumen con total de gastos del periodo filtrado.
+- Tabla con concepto, valor, mes, año, observaciones y acciones.
+- Validación de mes y año desde backend.
 
 Dashboard financiero:
 

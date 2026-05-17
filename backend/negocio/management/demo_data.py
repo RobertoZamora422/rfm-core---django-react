@@ -105,6 +105,7 @@ def seed_demo_data():
     clear_demo_data()
 
     today = date.today()
+    previous_period = today.replace(day=1) - timedelta(days=1)
     boda = TipoEvento.objects.get(nombre="Boda")
     cumpleanos = TipoEvento.objects.get(nombre="Cumplea\u00f1os")
     corporativo = TipoEvento.objects.get(nombre="Evento corporativo")
@@ -152,6 +153,13 @@ def seed_demo_data():
         telefono="+593 987654326",
         correo="contactada.demo@example.com",
         observaciones="Registro demo con seguimiento comercial activo.",
+        es_demo=True,
+    )
+    cliente_7 = Cliente.objects.create(
+        nombre="Cliente Demo Cancelado",
+        telefono="+593 987654327",
+        correo="cancelado.demo@example.com",
+        observaciones="Registro demo para contrato cancelado con costo directo.",
         es_demo=True,
     )
 
@@ -254,6 +262,18 @@ def seed_demo_data():
         observaciones="Contrato demo pagado.",
         es_demo=True,
     )
+    contrato_3 = Contrato.objects.create(
+        cliente=cliente_7,
+        tipo_evento=cumpleanos,
+        paquete=estandar,
+        fecha_evento=today - timedelta(days=25),
+        numero_invitados=70,
+        valor_final=Decimal("1960.00"),
+        monto_abonado=Decimal("0.00"),
+        estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        observaciones="Contrato demo cancelado para verificar que sus costos no alimenten metricas principales.",
+        es_demo=True,
+    )
 
     CostoDirecto.objects.bulk_create(
         [
@@ -281,6 +301,14 @@ def seed_demo_data():
                 observaciones="Costo directo demo.",
                 es_demo=True,
             ),
+            CostoDirecto(
+                contrato=contrato_3,
+                concepto="Reserva proveedores demo cancelada",
+                valor=Decimal("120.00"),
+                fecha=contrato_3.fecha_evento,
+                observaciones="Costo directo demo asociado a contrato cancelado.",
+                es_demo=True,
+            ),
         ]
     )
 
@@ -302,13 +330,21 @@ def seed_demo_data():
                 observaciones="Gasto fijo demo.",
                 es_demo=True,
             ),
+            GastoFijoMensual(
+                concepto="Publicidad demo periodo anterior",
+                valor=Decimal("280.00"),
+                mes=previous_period.month,
+                anio=previous_period.year,
+                observaciones="Gasto fijo demo de otro periodo para probar filtros.",
+                es_demo=True,
+            ),
         ]
     )
 
     return {
-        "clientes": 6,
+        "clientes": 7,
         "cotizaciones": 6,
-        "contratos": 2,
-        "costos_directos": 3,
-        "gastos_fijos": 2,
+        "contratos": 3,
+        "costos_directos": 4,
+        "gastos_fijos": 3,
     }
