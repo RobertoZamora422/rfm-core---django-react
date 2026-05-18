@@ -341,6 +341,8 @@ Entregables:
 
 ## Fase 15 - Reportes
 
+Estado: Completada.
+
 La fase tiene como objetivo implementar reportes básicos.
 
 Alcance:
@@ -350,6 +352,15 @@ Alcance:
 - Reporte de eventos.
 - Reporte de paquetes.
 - Filtros por periodo cuando aplique.
+
+Entregables:
+
+- Servicio backend de reportes con `reporte_comercial`, `reporte_financiero`, `reporte_eventos` y `reporte_paquetes`.
+- Endpoints autenticados `GET /api/reportes/comercial/`, `GET /api/reportes/financiero/`, `GET /api/reportes/eventos/` y `GET /api/reportes/paquetes/`.
+- Validaciones backend para rangos de fecha y filtros de mes/anio.
+- Reporte financiero reutilizando `dashboard_financiero` para evitar duplicar calculos.
+- Pruebas backend de los cuatro reportes, validacion de periodos y exclusion financiera de contratos cancelados.
+- Pantalla `/reportes` conectada a los endpoints reales con selector de reporte, filtros, KPIs, desgloses y tablas responsive.
 
 ## Fase 16 - Responsive, limpieza visual y experiencia de usuario
 

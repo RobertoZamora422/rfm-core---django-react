@@ -11,19 +11,11 @@ import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPa
 import { CostosDirectosPage } from '../pages/finanzas/CostosDirectosPage'
 import { DashboardFinancieroPage } from '../pages/finanzas/DashboardFinancieroPage'
 import { GastosFijosPage } from '../pages/finanzas/GastosFijosPage'
+import { ReportesPage } from '../pages/finanzas/ReportesPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
-import { ModulePlaceholder } from '../pages/ModulePlaceholder'
 import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
-
-const moduleRoutes = [
-  {
-    path: 'reportes',
-    title: 'Reportes',
-    description: 'Reportes comerciales, financieros, de eventos y paquetes.',
-  },
-]
 
 export function AppRouter() {
   return (
@@ -45,13 +37,7 @@ export function AppRouter() {
           <Route element={<CostosDirectosPage />} path="costos-directos" />
           <Route element={<GastosFijosPage />} path="gastos-fijos" />
           <Route element={<DashboardFinancieroPage />} path="dashboard-financiero" />
-          {moduleRoutes.map((route) => (
-            <Route
-              element={<ModulePlaceholder description={route.description} title={route.title} />}
-              key={route.path}
-              path={route.path}
-            />
-          ))}
+          <Route element={<ReportesPage />} path="reportes" />
         </Route>
       </Route>
       <Route element={<Navigate replace to="/inicio" />} path="*" />

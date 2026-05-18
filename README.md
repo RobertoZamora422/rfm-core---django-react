@@ -27,7 +27,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 12: Costos directos y gastos fijos completada.
 - Fase 13: Inicio administrativo backend-first completada.
 - Fase 14: Dashboard financiero backend-first completada.
-- Siguiente etapa: Fase 15 - Reportes.
+- Fase 15: Reportes completada.
+- Siguiente etapa: Fase 16 - Responsive, limpieza visual y experiencia de usuario.
 
 ## Alcance del sistema
 
@@ -132,6 +133,10 @@ Al cierre de la Fase 6, el backend establece endpoints autenticados para recurso
 /api/gastos-fijos/resumen/
 /api/inicio-resumen/
 /api/dashboard-financiero/
+/api/reportes/comercial/
+/api/reportes/financiero/
+/api/reportes/eventos/
+/api/reportes/paquetes/
 ```
 
 El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
@@ -169,6 +174,8 @@ Al cierre de la Fase 12, las pantallas `/costos-directos` y `/gastos-fijos` cons
 Al cierre de la Fase 13, la pantalla `/inicio` consume `/api/inicio-resumen/` para mostrar KPIs operativos, eventos proximos enlazados al detalle de contrato, pendientes importantes generados por backend y acciones rapidas administrativas.
 
 Al cierre de la Fase 14, la pantalla `/dashboard-financiero` consume `/api/dashboard-financiero/` con filtros de mes y anio, KPIs financieros, comparacion contra el mes anterior, rentabilidad por evento, estado de pagos e interpretacion del periodo calculados desde backend.
+
+Al cierre de la Fase 15, la pantalla `/reportes` consume endpoints reales para reportes comercial, financiero, eventos y paquetes. Los reportes se consultan por rango de fechas o mes/anio segun corresponda, y el reporte financiero reutiliza la logica backend del dashboard financiero.
 
 ## Ejecución local
 
@@ -233,4 +240,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 15 - Reportes. Se deberan implementar reportes comerciales y financieros reutilizando la logica backend existente sin duplicar calculos del dashboard en React.
+La siguiente etapa corresponde a la Fase 16 - Responsive, limpieza visual y experiencia de usuario. Se debera pulir la experiencia visual, navegacion y comportamiento responsive del sistema.

@@ -82,3 +82,25 @@ export const dashboardFinancieroService = {
     return data
   },
 }
+
+export const reportesService = {
+  async comercial(params) {
+    const { data } = await apiClient.get('/reportes/comercial/', { params })
+    return data
+  },
+
+  async financiero(params) {
+    const { data } = await apiClient.get('/reportes/financiero/', { params })
+    return data
+  },
+
+  async eventos(params) {
+    const { data } = await apiClient.get('/reportes/eventos/', { params })
+    return data
+  },
+
+  async paquetes(params) {
+    const { data } = await apiClient.get('/reportes/paquetes/', { params })
+    return data
+  },
+}

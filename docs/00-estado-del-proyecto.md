@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first y el dashboard financiero backend-first se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first y los reportes basicos se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -27,15 +27,16 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 - Fase 12 - Costos directos y gastos fijos: Completada.
 - Fase 13 - Inicio administrativo backend-first: Completada.
 - Fase 14 - Dashboard financiero backend-first: Completada.
+- Fase 15 - Reportes: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre del dashboard financiero backend-first.
+La fase actual corresponde al cierre de reportes.
 
-Se establece el endpoint `/api/dashboard-financiero/` como fuente de verdad para KPIs financieros, comparacion mensual, rentabilidad por evento, estado de pagos e interpretacion del periodo. La pantalla `/dashboard-financiero` consume ese endpoint y permite filtrar por mes y anio sin recalcular metricas principales en React.
+Se establecen los endpoints `/api/reportes/comercial/`, `/api/reportes/financiero/`, `/api/reportes/eventos/` y `/api/reportes/paquetes/`. La pantalla `/reportes` consume datos reales desde backend y permite consultar reportes por rango de fechas o mes/anio segun corresponda.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 15 - Reportes.
+La siguiente etapa corresponde a la Fase 16 - Responsive, limpieza visual y experiencia de usuario.
 
-Se deberan implementar reportes comerciales y financieros basicos reutilizando la logica backend existente y evitando duplicar calculos del dashboard en frontend.
+Se debera pulir la experiencia visual, navegacion, tablas responsive, estados visuales y consistencia general del sistema.
