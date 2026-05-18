@@ -317,6 +317,8 @@ Entregables:
 
 ## Fase 14 - Dashboard financiero backend-first
 
+Estado: Completada.
+
 La fase tiene como objetivo mostrar análisis financiero con cálculos en backend.
 
 Alcance:
@@ -328,6 +330,14 @@ Alcance:
 - Gastos fijos.
 - Utilidad y márgenes.
 - Estado de pagos.
+
+Entregables:
+
+- Servicio backend `dashboard_financiero` con calculo de ingresos, costos, gastos, utilidad, margen, comparacion mensual, rentabilidad por evento y estado de pagos.
+- Endpoint autenticado `GET /api/dashboard-financiero/?mes=MM&anio=YYYY`.
+- Pruebas backend para contratos confirmados, exclusion de cancelados, comparacion contra mes anterior y periodos sin ingresos.
+- Pantalla `/dashboard-financiero` conectada al endpoint real con filtros de mes y anio.
+- KPI cards, comparacion mensual, tabla responsive de rentabilidad por evento, estado de pagos e interpretacion del periodo renderizados desde payload backend.
 
 ## Fase 15 - Reportes
 

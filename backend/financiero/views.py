@@ -7,6 +7,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Contrato, CostoDirecto, GastoFijoMensual
 from .serializers import (
@@ -14,6 +15,7 @@ from .serializers import (
     CostoDirectoSerializer,
     GastoFijoMensualSerializer,
 )
+from .services import dashboard_financiero
 
 
 def _raise_api_validation_error(exc):
@@ -223,3 +225,19 @@ class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     def resumen(self, request):
         total = self.get_queryset().aggregate(total=Sum("valor"))["total"]
         return Response({"total_periodo": _serialize_decimal(total)})
+
+
+class DashboardFinancieroAPIView(APIView):
+    def get(self, request):
+        mes = _parse_int_query(
+            request.query_params.get("mes"),
+            "mes",
+            min_value=1,
+            max_value=12,
+        )
+        anio = _parse_int_query(
+            request.query_params.get("anio"),
+            "anio",
+            min_value=2000,
+        )
+        return Response(dashboard_financiero(mes=mes, anio=anio))

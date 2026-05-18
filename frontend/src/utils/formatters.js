@@ -21,3 +21,12 @@ export function formatDate(value) {
     year: 'numeric',
   }).format(date)
 }
+
+export function formatPercent(value) {
+  if (value === null || value === undefined || value === '') return '-'
+
+  return `${new Intl.NumberFormat('es-EC', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value))}%`
+}

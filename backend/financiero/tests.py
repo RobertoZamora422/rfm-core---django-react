@@ -457,3 +457,131 @@ class FinancieroApiTests(APITestCase):
                 response = self.client.post("/api/gastos-fijos/", payload, format="json")
                 self.assertEqual(response.status_code, 400)
                 self.assertIn(field, response.data)
+
+    def test_dashboard_financiero_calcula_metricas_desde_backend(self):
+        contrato_1 = self.crear_contrato(
+            fecha_evento=date(2026, 8, 10),
+            valor_final=Decimal("2000.00"),
+            monto_abonado=Decimal("500.00"),
+        )
+        contrato_2 = self.crear_contrato(
+            fecha_evento=date(2026, 8, 18),
+            valor_final=Decimal("1000.00"),
+            monto_abonado=Decimal("1000.00"),
+        )
+        contrato_cancelado = self.crear_contrato(
+            fecha_evento=date(2026, 8, 20),
+            valor_final=Decimal("3000.00"),
+            monto_abonado=Decimal("3000.00"),
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+        contrato_anterior = self.crear_contrato(
+            fecha_evento=date(2026, 7, 15),
+            valor_final=Decimal("1500.00"),
+            monto_abonado=Decimal("1500.00"),
+        )
+
+        CostoDirecto.objects.create(
+            contrato=contrato_1,
+            concepto="Catering",
+            valor=Decimal("700.00"),
+            fecha=date(2026, 8, 10),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_2,
+            concepto="Decoracion",
+            valor=Decimal("200.00"),
+            fecha=date(2026, 8, 18),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_cancelado,
+            concepto="Costo cancelado",
+            valor=Decimal("999.00"),
+            fecha=date(2026, 8, 20),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_anterior,
+            concepto="Catering julio",
+            valor=Decimal("500.00"),
+            fecha=date(2026, 7, 15),
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Arriendo",
+            valor=Decimal("300.00"),
+            mes=8,
+            anio=2026,
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Internet",
+            valor=Decimal("100.00"),
+            mes=8,
+            anio=2026,
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Arriendo julio",
+            valor=Decimal("100.00"),
+            mes=7,
+            anio=2026,
+        )
+
+        response = self.client.get(
+            "/api/dashboard-financiero/",
+            {"mes": 8, "anio": 2026},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["periodo"]["mes"], 8)
+        self.assertEqual(response.data["metricas"]["ingresos_mes"], "3000.00")
+        self.assertEqual(response.data["metricas"]["costos_directos_mes"], "900.00")
+        self.assertEqual(response.data["metricas"]["gastos_fijos_mes"], "400.00")
+        self.assertEqual(response.data["metricas"]["utilidad_neta"], "1700.00")
+        self.assertEqual(response.data["metricas"]["margen_neto"], "56.67")
+        self.assertEqual(response.data["metricas"]["contratos_confirmados"], 2)
+        self.assertEqual(response.data["estado_pagos"]["monto_abonado"], "1500.00")
+        self.assertEqual(response.data["estado_pagos"]["saldo_pendiente"], "1500.00")
+        self.assertEqual(
+            {item["contrato_id"] for item in response.data["rentabilidad_eventos"]},
+            {contrato_1.id, contrato_2.id},
+        )
+        self.assertNotIn(
+            contrato_cancelado.id,
+            {item["contrato_id"] for item in response.data["rentabilidad_eventos"]},
+        )
+        self.assertEqual(
+            response.data["comparacion_mes_anterior"]["variaciones"]["ingresos_mes"]["delta"],
+            "1500.00",
+        )
+        self.assertEqual(
+            response.data["comparacion_mes_anterior"]["variaciones"]["ingresos_mes"]["porcentaje"],
+            "100.00",
+        )
+
+    def test_dashboard_financiero_maneja_periodo_sin_ingresos(self):
+        GastoFijoMensual.objects.create(
+            concepto="Arriendo",
+            valor=Decimal("250.00"),
+            mes=10,
+            anio=2026,
+        )
+
+        response = self.client.get(
+            "/api/dashboard-financiero/",
+            {"mes": 10, "anio": 2026},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["metricas"]["ingresos_mes"], "0.00")
+        self.assertEqual(response.data["metricas"]["utilidad_neta"], "-250.00")
+        self.assertEqual(response.data["metricas"]["margen_neto"], "0.00")
+        self.assertEqual(response.data["rentabilidad_eventos"], [])
+        self.assertEqual(response.data["estado_pagos"]["total_contratos"], 0)
+        self.assertEqual(response.data["interpretacion"]["nivel"], "neutral")
+
+    def test_dashboard_financiero_rechaza_mes_invalido(self):
+        response = self.client.get(
+            "/api/dashboard-financiero/",
+            {"mes": 13, "anio": 2026},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("mes", response.data)

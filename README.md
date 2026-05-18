@@ -26,7 +26,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 11: Contratos y pagos completada.
 - Fase 12: Costos directos y gastos fijos completada.
 - Fase 13: Inicio administrativo backend-first completada.
-- Siguiente etapa: Fase 14 - Dashboard financiero backend-first.
+- Fase 14: Dashboard financiero backend-first completada.
+- Siguiente etapa: Fase 15 - Reportes.
 
 ## Alcance del sistema
 
@@ -130,6 +131,7 @@ Al cierre de la Fase 6, el backend establece endpoints autenticados para recurso
 /api/gastos-fijos/
 /api/gastos-fijos/resumen/
 /api/inicio-resumen/
+/api/dashboard-financiero/
 ```
 
 El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
@@ -165,6 +167,8 @@ Al cierre de la Fase 11, la pantalla de contratos consume `/api/contratos/` con 
 Al cierre de la Fase 12, las pantallas `/costos-directos` y `/gastos-fijos` consumen datos reales del backend. Costos directos permite crear, editar, eliminar, listar y filtrar costos asociados a contratos mediante select real. Gastos fijos permite crear, editar, eliminar, listar y filtrar gastos por mes, año y concepto, con total del periodo desde `/api/gastos-fijos/resumen/`.
 
 Al cierre de la Fase 13, la pantalla `/inicio` consume `/api/inicio-resumen/` para mostrar KPIs operativos, eventos proximos enlazados al detalle de contrato, pendientes importantes generados por backend y acciones rapidas administrativas.
+
+Al cierre de la Fase 14, la pantalla `/dashboard-financiero` consume `/api/dashboard-financiero/` con filtros de mes y anio, KPIs financieros, comparacion contra el mes anterior, rentabilidad por evento, estado de pagos e interpretacion del periodo calculados desde backend.
 
 ## Ejecución local
 
@@ -229,4 +233,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 14 - Dashboard financiero backend-first. Se debera implementar el analisis financiero desde backend sin calcular metricas principales en React.
+La siguiente etapa corresponde a la Fase 15 - Reportes. Se deberan implementar reportes comerciales y financieros reutilizando la logica backend existente sin duplicar calculos del dashboard en React.

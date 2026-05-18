@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos y el inicio administrativo backend-first se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first y el dashboard financiero backend-first se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -26,15 +26,16 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 - Fase 11 - Contratos y pagos: Completada.
 - Fase 12 - Costos directos y gastos fijos: Completada.
 - Fase 13 - Inicio administrativo backend-first: Completada.
+- Fase 14 - Dashboard financiero backend-first: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre del inicio administrativo backend-first.
+La fase actual corresponde al cierre del dashboard financiero backend-first.
 
-Se establece el endpoint `/api/inicio-resumen/` como fuente de verdad para KPIs operativos, eventos proximos y pendientes importantes. La pantalla `/inicio` consume ese endpoint, mantiene acciones rapidas administrativas y enlaza eventos proximos al detalle del contrato.
+Se establece el endpoint `/api/dashboard-financiero/` como fuente de verdad para KPIs financieros, comparacion mensual, rentabilidad por evento, estado de pagos e interpretacion del periodo. La pantalla `/dashboard-financiero` consume ese endpoint y permite filtrar por mes y anio sin recalcular metricas principales en React.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 14 - Dashboard financiero backend-first.
+La siguiente etapa corresponde a la Fase 15 - Reportes.
 
-Se debera implementar el analisis financiero desde backend, excluyendo contratos cancelados de metricas principales y evitando calculos financieros duplicados en React.
+Se deberan implementar reportes comerciales y financieros basicos reutilizando la logica backend existente y evitando duplicar calculos del dashboard en frontend.

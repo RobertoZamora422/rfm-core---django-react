@@ -75,3 +75,10 @@ export const gastosFijosService = {
     return data
   },
 }
+
+export const dashboardFinancieroService = {
+  async resumen(params) {
+    const { data } = await apiClient.get('/dashboard-financiero/', { params })
+    return data
+  },
+}

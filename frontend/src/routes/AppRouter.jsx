@@ -9,6 +9,7 @@ import { DetalleContratoPage } from '../pages/contratos/DetalleContratoPage'
 import { CotizacionesPage } from '../pages/cotizaciones/CotizacionesPage'
 import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPage'
 import { CostosDirectosPage } from '../pages/finanzas/CostosDirectosPage'
+import { DashboardFinancieroPage } from '../pages/finanzas/DashboardFinancieroPage'
 import { GastosFijosPage } from '../pages/finanzas/GastosFijosPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
@@ -17,11 +18,6 @@ import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 const moduleRoutes = [
-  {
-    path: 'dashboard-financiero',
-    title: 'Dashboard financiero',
-    description: 'Analisis de rentabilidad calculado desde backend.',
-  },
   {
     path: 'reportes',
     title: 'Reportes',
@@ -48,6 +44,7 @@ export function AppRouter() {
           <Route element={<DetalleContratoPage />} path="contratos/:id" />
           <Route element={<CostosDirectosPage />} path="costos-directos" />
           <Route element={<GastosFijosPage />} path="gastos-fijos" />
+          <Route element={<DashboardFinancieroPage />} path="dashboard-financiero" />
           {moduleRoutes.map((route) => (
             <Route
               element={<ModulePlaceholder description={route.description} title={route.title} />}

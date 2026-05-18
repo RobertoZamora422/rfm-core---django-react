@@ -656,6 +656,10 @@ a {
   grid-template-columns: minmax(150px, 0.75fr) minmax(130px, 0.65fr) minmax(240px, 1.4fr) auto;
 }
 
+.filters-grid--dashboard {
+  grid-template-columns: minmax(150px, 0.75fr) minmax(140px, 0.65fr) auto;
+}
+
 .summary-grid {
   display: grid;
   gap: 14px;
@@ -692,6 +696,106 @@ a {
   display: grid;
   gap: 20px;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+}
+
+.dashboard-grid {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
+}
+
+.comparison-list,
+.payment-status-list {
+  display: grid;
+  gap: 12px;
+}
+
+.comparison-item,
+.payment-status-item,
+.payment-summary div {
+  background: #f6f8f6;
+  border: 1px solid #dde5e0;
+  border-radius: 8px;
+}
+
+.comparison-item {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+}
+
+.comparison-item span,
+.comparison-item small,
+.payment-summary span,
+.payment-status-item span {
+  color: #64716a;
+  font-size: 0.84rem;
+}
+
+.comparison-item strong {
+  color: #223029;
+  font-size: 1.15rem;
+}
+
+.payment-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.payment-summary div,
+.payment-status-item {
+  display: grid;
+  gap: 6px;
+  padding: 13px;
+}
+
+.payment-summary strong,
+.payment-status-item strong {
+  color: #223029;
+}
+
+.payment-status-item {
+  align-items: center;
+  grid-template-columns: minmax(110px, 0.8fr) minmax(44px, 0.3fr) minmax(0, 1fr);
+}
+
+.insight-panel {
+  border-left: 4px solid #9aa89f;
+  display: grid;
+  gap: 8px;
+  padding-left: 14px;
+}
+
+.insight-panel span {
+  color: #64716a;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.insight-panel strong {
+  color: #223029;
+  font-size: 1.12rem;
+}
+
+.insight-panel p {
+  color: #4b5a52;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.insight-panel--success {
+  border-color: #2f7a58;
+}
+
+.insight-panel--notice {
+  border-color: #b98222;
+}
+
+.insight-panel--warning {
+  border-color: #b4473d;
 }
 
 .home-list {
@@ -1151,6 +1255,8 @@ a {
   .quote-detail-grid,
   .contract-detail-grid,
   .home-grid,
+  .dashboard-grid,
+  .payment-summary,
   .summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1184,6 +1290,11 @@ a {
   }
 
   .detail-list div {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-status-item {
+    align-items: start;
     grid-template-columns: 1fr;
   }
 }
