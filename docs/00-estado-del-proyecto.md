@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos y la revision responsive/UX se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos, la revision responsive/UX y la validacion integral se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -29,15 +29,16 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 - Fase 14 - Dashboard financiero backend-first: Completada.
 - Fase 15 - Reportes: Completada.
 - Fase 16 - Responsive, limpieza visual y experiencia de usuario: Completada.
+- Fase 17 - Pruebas y validacion integral: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de responsive, limpieza visual y experiencia de usuario.
+La fase actual corresponde al cierre de pruebas y validacion integral.
 
-Se consolida el layout administrativo responsive con menu movil accesible, cierre por teclado, bloqueo de scroll para paneles superpuestos, filtros adaptables, modales con scroll interno, tablas/cards mas robustas y estados visuales consistentes.
+Se consolida una prueba automatizada transversal del flujo comercial-financiero, junto con la matriz de validacion para backend, migraciones, frontend y recorrido manual principal.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 17 - Pruebas y validacion integral.
+La siguiente etapa corresponde a la Fase 18 - README final y documentacion de uso.
 
-Se debera validar el flujo completo del sistema con pruebas integrales y recorrido manual de los modulos principales.
+Se debera preparar la guia final de instalacion, ejecucion local, datos base, variables de entorno, deploy y solucion de problemas comunes.

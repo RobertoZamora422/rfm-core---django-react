@@ -29,7 +29,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 14: Dashboard financiero backend-first completada.
 - Fase 15: Reportes completada.
 - Fase 16: Responsive, limpieza visual y experiencia de usuario completada.
-- Siguiente etapa: Fase 17 - Pruebas y validacion integral.
+- Fase 17: Pruebas y validacion integral completada.
+- Siguiente etapa: Fase 18 - README final y documentacion de uso.
 
 ## Alcance del sistema
 
@@ -100,7 +101,8 @@ docs/
 |-- 02-arquitectura-tecnica.md
 |-- 03-modelo-datos.md
 |-- 04-diseno-ui-ux.md
-`-- 05_plan_tecnico_implementacion.md
+|-- 05_plan_tecnico_implementacion.md
+`-- 06_validacion_fase_17.md
 ```
 
 Orden de prioridad cuando exista conflicto entre documentos:
@@ -180,6 +182,8 @@ Al cierre de la Fase 15, la pantalla `/reportes` consume endpoints reales para r
 
 Al cierre de la Fase 16, el layout administrativo refuerza el comportamiento responsive con menu movil accesible, bloqueo de scroll al abrir paneles, cierre por teclado, enlace para saltar al contenido, filtros adaptables, modales con scroll interno y tablas/cards con mejor control de overflow.
 
+Al cierre de la Fase 17, el proyecto incorpora una prueba integral automatizada del flujo comercial-financiero, valida la conversion controlada de cotizaciones, confirma que los contratos cancelados no alimentan metricas financieras principales y deja documentada la matriz de checks de backend, migraciones, frontend y recorrido manual.
+
 ## Ejecución local
 
 Backend:
@@ -243,4 +247,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 17 - Pruebas y validacion integral. Se debera validar el flujo completo del sistema antes del cierre final.
+La siguiente etapa corresponde a la Fase 18 - README final y documentacion de uso. Se debera consolidar la guia final de instalacion, ejecucion, datos base, variables de entorno, deploy y solucion de problemas comunes.

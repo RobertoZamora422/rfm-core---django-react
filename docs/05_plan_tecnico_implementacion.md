@@ -398,6 +398,13 @@ Pruebas prioritarias:
 - Build frontend.
 - Flujo manual principal.
 
+Entregables completados:
+
+- Prueba integral automatizada del flujo pre-cotizacion -> cotizacion confirmada -> contrato -> costos/gastos -> dashboard/reportes/inicio.
+- Validacion de rechazo de conversion para cotizacion descartada y de no conversion doble.
+- Validacion de exclusion de contratos cancelados en metricas financieras principales.
+- Matriz de validacion documentada en `docs/06_validacion_fase_17.md`.
+
 ## Fase 18 - README final y documentación de uso
 
 La fase tiene como objetivo dejar el proyecto listo para instalación, ejecución y evaluación.

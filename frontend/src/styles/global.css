@@ -547,6 +547,7 @@ a {
 .page-stack {
   display: grid;
   gap: 22px;
+  min-width: 0;
 }
 
 .page-header {
@@ -598,6 +599,7 @@ a {
   background: #ffffff;
   border: 1px solid #d9e0dc;
   border-radius: 8px;
+  min-width: 0;
 }
 
 .card {
@@ -1103,6 +1105,7 @@ a {
 }
 
 .table-wrap {
+  min-width: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   width: 100%;
@@ -1307,7 +1310,7 @@ a {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1400px) {
   .filters-grid,
   .filters-grid--contracts,
   .filters-grid--costs,
