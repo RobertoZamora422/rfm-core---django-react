@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos y la Fase 12 de costos directos/gastos fijos se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos y el inicio administrativo backend-first se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -25,15 +25,16 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 - Fase 10 - Gestion comercial de cotizaciones: Completada.
 - Fase 11 - Contratos y pagos: Completada.
 - Fase 12 - Costos directos y gastos fijos: Completada.
+- Fase 13 - Inicio administrativo backend-first: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de costos directos y gastos fijos.
+La fase actual corresponde al cierre del inicio administrativo backend-first.
 
-Se establecen pantallas administrativas conectadas al backend para registrar, listar, editar, eliminar y filtrar costos directos asociados a contratos reales, y gastos fijos mensuales independientes de contratos. El backend valida montos, fechas, mes/anio y relaciones obligatorias; ademas expone un resumen de total de gastos del periodo filtrado.
+Se establece el endpoint `/api/inicio-resumen/` como fuente de verdad para KPIs operativos, eventos proximos y pendientes importantes. La pantalla `/inicio` consume ese endpoint, mantiene acciones rapidas administrativas y enlaza eventos proximos al detalle del contrato.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 13 - Inicio administrativo backend-first.
+La siguiente etapa corresponde a la Fase 14 - Dashboard financiero backend-first.
 
-Se debera implementar un endpoint agregado para el inicio administrativo y mover los KPIs operativos al backend sin duplicar reglas de negocio en React.
+Se debera implementar el analisis financiero desde backend, excluyendo contratos cancelados de metricas principales y evitando calculos financieros duplicados en React.

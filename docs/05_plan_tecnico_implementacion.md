@@ -294,6 +294,8 @@ Entregables:
 
 ## Fase 13 - Inicio administrativo backend-first
 
+Estado: Completada.
+
 La fase tiene como objetivo mostrar un resumen operativo desde un endpoint agregado.
 
 Alcance:
@@ -303,6 +305,15 @@ Alcance:
 - Eventos próximos.
 - Pendientes importantes.
 - Acciones rápidas.
+
+Entregables:
+
+- Servicio backend `inicio_resumen` con KPIs operativos y pendientes importantes.
+- Endpoint autenticado `GET /api/inicio-resumen/`.
+- Prueba backend del resumen con cotizaciones, contratos confirmados/cancelados y pendientes.
+- Pantalla `/inicio` conectada a datos reales del backend.
+- Eventos proximos enlazados al detalle de contrato.
+- Acciones rapidas administrativas sin datos quemados permanentes.
 
 ## Fase 14 - Dashboard financiero backend-first
 

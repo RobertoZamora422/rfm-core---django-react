@@ -1,3 +1,4 @@
+from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
 
@@ -5,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
@@ -164,3 +166,90 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(second.status_code, 400)
         self.assertIn("activo", second.data)
         self.assertEqual(ConfiguracionNegocio.objects.filter(activo=True).count(), 1)
+
+    def test_inicio_resumen_usa_datos_reales_del_backend(self):
+        hoy = timezone.localdate()
+        cliente = Cliente.objects.create(
+            nombre="Cliente Inicio",
+            telefono="+593 999111222",
+            correo="inicio@example.com",
+        )
+        tipo_evento = TipoEvento.objects.create(nombre="Boda inicio")
+        paquete = Paquete.objects.create(
+            nombre="Completo inicio",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("25.00"),
+        )
+
+        Cotizacion.objects.create(
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_tentativa=hoy + timedelta(days=15),
+            numero_invitados=100,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.NUEVA,
+            total_estimado=Decimal("2500.00"),
+        )
+        Cotizacion.objects.create(
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_tentativa=hoy + timedelta(days=30),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("2000.00"),
+        )
+
+        contrato_proximo = Contrato.objects.create(
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_evento=hoy,
+            numero_invitados=100,
+            valor_final=Decimal("2500.00"),
+            monto_abonado=Decimal("500.00"),
+            estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        )
+        Contrato.objects.create(
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_evento=hoy + timedelta(days=8),
+            numero_invitados=60,
+            valor_final=Decimal("1500.00"),
+            monto_abonado=Decimal("0.00"),
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+        Contrato.objects.create(
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_evento=hoy - timedelta(days=40),
+            numero_invitados=90,
+            valor_final=Decimal("2200.00"),
+            monto_abonado=Decimal("2200.00"),
+            estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        )
+
+        response = self.client.get("/api/inicio-resumen/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["fecha_referencia"], hoy.isoformat())
+        kpis = {item["key"]: item["value"] for item in response.data["kpis"]}
+        self.assertEqual(kpis["cotizaciones_nuevas"], 1)
+        self.assertEqual(kpis["cotizaciones_mes"], 2)
+        self.assertEqual(kpis["contratos_mes"], 1)
+        self.assertEqual(kpis["eventos_proximos"], 1)
+        self.assertEqual(
+            response.data["eventos_proximos"][0]["contrato_id"],
+            contrato_proximo.id,
+        )
+        pending_types = {
+            item["tipo"] for item in response.data["pendientes_importantes"]
+        }
+        self.assertIn("cotizaciones_nuevas", pending_types)
+        self.assertIn("cotizaciones_sin_contrato", pending_types)
+        self.assertIn("eventos_con_saldo", pending_types)
+        self.assertIn("eventos_sin_costos", pending_types)

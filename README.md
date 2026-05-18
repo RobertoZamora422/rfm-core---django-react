@@ -25,7 +25,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 10: Gestión comercial de cotizaciones completada.
 - Fase 11: Contratos y pagos completada.
 - Fase 12: Costos directos y gastos fijos completada.
-- Siguiente etapa: Fase 13 - Inicio administrativo backend-first.
+- Fase 13: Inicio administrativo backend-first completada.
+- Siguiente etapa: Fase 14 - Dashboard financiero backend-first.
 
 ## Alcance del sistema
 
@@ -128,6 +129,7 @@ Al cierre de la Fase 6, el backend establece endpoints autenticados para recurso
 /api/costos-directos/
 /api/gastos-fijos/
 /api/gastos-fijos/resumen/
+/api/inicio-resumen/
 ```
 
 El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
@@ -161,6 +163,8 @@ Al cierre de la Fase 10, la pantalla de cotizaciones consume `/api/cotizaciones/
 Al cierre de la Fase 11, la pantalla de contratos consume `/api/contratos/` con filtros reales, detalle por contrato, estados separados de contrato y pago, saldo pendiente y cancelación controlada sin eliminar registros.
 
 Al cierre de la Fase 12, las pantallas `/costos-directos` y `/gastos-fijos` consumen datos reales del backend. Costos directos permite crear, editar, eliminar, listar y filtrar costos asociados a contratos mediante select real. Gastos fijos permite crear, editar, eliminar, listar y filtrar gastos por mes, año y concepto, con total del periodo desde `/api/gastos-fijos/resumen/`.
+
+Al cierre de la Fase 13, la pantalla `/inicio` consume `/api/inicio-resumen/` para mostrar KPIs operativos, eventos proximos enlazados al detalle de contrato, pendientes importantes generados por backend y acciones rapidas administrativas.
 
 ## Ejecución local
 
@@ -225,4 +229,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 13 - Inicio administrativo backend-first. Se deberá implementar un resumen operativo desde backend sin calcular KPIs principales en React.
+La siguiente etapa corresponde a la Fase 14 - Dashboard financiero backend-first. Se debera implementar el analisis financiero desde backend sin calcular metricas principales en React.

@@ -33,6 +33,13 @@ export const tiposEventoService = createResourceService('/tipos-evento/')
 export const paquetesService = createResourceService('/paquetes/')
 export const configuracionNegocioService = createResourceService('/configuracion-negocio/')
 
+export const inicioService = {
+  async resumen() {
+    const { data } = await apiClient.get('/inicio-resumen/')
+    return data
+  },
+}
+
 export const cotizacionesService = {
   ...createResourceService('/cotizaciones/'),
 

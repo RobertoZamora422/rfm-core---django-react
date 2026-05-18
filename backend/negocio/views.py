@@ -1,4 +1,6 @@
 from rest_framework import viewsets
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
 from .serializers import (
@@ -7,6 +9,7 @@ from .serializers import (
     PaqueteSerializer,
     TipoEventoSerializer,
 )
+from .services import inicio_resumen
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
@@ -62,3 +65,8 @@ class ConfiguracionNegocioViewSet(viewsets.ModelViewSet):
         if activo is not None:
             queryset = queryset.filter(activo=activo.lower() == "true")
         return queryset
+
+
+class InicioResumenAPIView(APIView):
+    def get(self, request):
+        return Response(inicio_resumen())

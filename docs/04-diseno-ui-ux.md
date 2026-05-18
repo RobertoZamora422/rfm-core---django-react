@@ -135,6 +135,8 @@ Inicio administrativo:
 - Eventos próximos.
 - Pendientes importantes.
 
+Al cierre de la Fase 13, `/inicio` presenta KPIs operativos, acciones rapidas, eventos proximos y pendientes importantes consumidos desde `/api/inicio-resumen/`. Los eventos proximos enlazan al detalle de contrato y el resumen no se calcula cargando listas completas en React.
+
 Pre-cotización:
 
 - Formulario para datos del cliente y evento.

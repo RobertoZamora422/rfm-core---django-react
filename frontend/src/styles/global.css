@@ -509,7 +509,7 @@ a {
 .quick-actions {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
 .quick-action {
@@ -532,7 +532,7 @@ a {
 .kpi-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .card,
@@ -685,6 +685,94 @@ a {
   display: grid;
   gap: 20px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.home-grid {
+  align-items: start;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+}
+
+.home-list {
+  display: grid;
+  gap: 10px;
+}
+
+.home-list__item {
+  align-items: center;
+  border: 1px solid #dfe5e1;
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 72px;
+  padding: 14px;
+}
+
+.home-list__item--link:hover {
+  border-color: #88a595;
+  background: #fbfcfb;
+}
+
+.home-list__icon {
+  align-items: center;
+  background: #eef3ef;
+  border-radius: 8px;
+  color: #256d4f;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.home-list__content {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.home-list__content strong {
+  color: #223029;
+}
+
+.home-list__content span {
+  color: #66736d;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.home-list__title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.priority-badge {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.74rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 6px 9px;
+  text-transform: uppercase;
+}
+
+.priority-badge--alta {
+  background: #fff1ef;
+  color: #8f2f27;
+}
+
+.priority-badge--media {
+  background: #fff4d9;
+  color: #79520c;
+}
+
+.priority-badge--baja {
+  background: #eef3ef;
+  color: #395447;
 }
 
 .warning-message {
@@ -1062,6 +1150,7 @@ a {
   .filters-grid,
   .quote-detail-grid,
   .contract-detail-grid,
+  .home-grid,
   .summary-grid {
     grid-template-columns: 1fr;
   }

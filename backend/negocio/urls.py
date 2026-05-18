@@ -1,8 +1,10 @@
+from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from .views import (
     ClienteViewSet,
     ConfiguracionNegocioViewSet,
+    InicioResumenAPIView,
     PaqueteViewSet,
     TipoEventoViewSet,
 )
@@ -17,4 +19,7 @@ router.register(
     basename="configuracion-negocio",
 )
 
-urlpatterns = router.urls
+urlpatterns = [
+    path("inicio-resumen/", InicioResumenAPIView.as_view(), name="inicio-resumen"),
+]
+urlpatterns += router.urls

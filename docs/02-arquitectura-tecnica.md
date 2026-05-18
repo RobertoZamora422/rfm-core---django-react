@@ -66,6 +66,8 @@ Al cierre de la Fase 11, el backend y frontend gestionan contratos como ventas r
 
 Al cierre de la Fase 12, `/api/costos-directos/` permite filtrar por contrato, búsqueda por cliente/teléfono/concepto y rango de fecha. `/api/gastos-fijos/` permite filtrar por mes, año y concepto, y `/api/gastos-fijos/resumen/` devuelve el total del periodo filtrado. El frontend reemplaza placeholders por pantallas administrativas reales en `/costos-directos` y `/gastos-fijos`.
 
+Al cierre de la Fase 13, `/api/inicio-resumen/` concentra el resumen operativo del inicio administrativo. El frontend `/inicio` no carga listas completas para calcular KPIs; consume datos agregados del backend, muestra eventos proximos confirmados y enlaza al detalle de contrato.
+
 ## Organización backend propuesta
 
 Proyecto Django principal:
