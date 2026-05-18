@@ -1,13 +1,15 @@
 import { LogOut, Menu, UserRound } from 'lucide-react'
 import { Button } from '../ui/Button'
 
-export function Topbar({ onLogout, onMenuClick, user }) {
+export function Topbar({ isMenuOpen = false, onLogout, onMenuClick, user }) {
   const displayName = user?.nombre_completo || user?.username || 'Usuario'
 
   return (
     <header className="topbar">
       <Button
         aria-label="Abrir navegacion"
+        aria-controls="sidebar-principal"
+        aria-expanded={isMenuOpen}
         className="topbar__menu"
         icon={Menu}
         onClick={onMenuClick}

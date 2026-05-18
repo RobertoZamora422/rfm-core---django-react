@@ -28,7 +28,8 @@ El proyecto se encuentra en etapa de consolidación del backend base.
 - Fase 13: Inicio administrativo backend-first completada.
 - Fase 14: Dashboard financiero backend-first completada.
 - Fase 15: Reportes completada.
-- Siguiente etapa: Fase 16 - Responsive, limpieza visual y experiencia de usuario.
+- Fase 16: Responsive, limpieza visual y experiencia de usuario completada.
+- Siguiente etapa: Fase 17 - Pruebas y validacion integral.
 
 ## Alcance del sistema
 
@@ -177,6 +178,8 @@ Al cierre de la Fase 14, la pantalla `/dashboard-financiero` consume `/api/dashb
 
 Al cierre de la Fase 15, la pantalla `/reportes` consume endpoints reales para reportes comercial, financiero, eventos y paquetes. Los reportes se consultan por rango de fechas o mes/anio segun corresponda, y el reporte financiero reutiliza la logica backend del dashboard financiero.
 
+Al cierre de la Fase 16, el layout administrativo refuerza el comportamiento responsive con menu movil accesible, bloqueo de scroll al abrir paneles, cierre por teclado, enlace para saltar al contenido, filtros adaptables, modales con scroll interno y tablas/cards con mejor control de overflow.
+
 ## Ejecución local
 
 Backend:
@@ -240,4 +243,4 @@ Los archivos `.env` reales no deben versionarse.
 
 ## Siguiente etapa
 
-La siguiente etapa corresponde a la Fase 16 - Responsive, limpieza visual y experiencia de usuario. Se debera pulir la experiencia visual, navegacion y comportamiento responsive del sistema.
+La siguiente etapa corresponde a la Fase 17 - Pruebas y validacion integral. Se debera validar el flujo completo del sistema antes del cierre final.

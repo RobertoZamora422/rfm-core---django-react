@@ -364,6 +364,8 @@ Entregables:
 
 ## Fase 16 - Responsive, limpieza visual y experiencia de usuario
 
+Estado: Completada.
+
 La fase tiene como objetivo consolidar la experiencia administrativa y el comportamiento responsive.
 
 Alcance:
@@ -373,6 +375,14 @@ Alcance:
 - Formularios legibles.
 - Estados visuales consistentes.
 - Revisión de navegación.
+
+Entregables:
+
+- Menu movil del layout administrativo con estado accesible, overlay, bloqueo de scroll y cierre por tecla Escape.
+- Enlace de salto al contenido principal para navegacion por teclado.
+- Ajustes responsive para filtros, acciones de pagina, tarjetas KPI, tablas, cards moviles y reportes.
+- Modales con cierre por overlay/Escape, bloqueo de scroll del fondo y scroll interno del contenido.
+- Estilos de foco visibles y control de overflow para textos, botones, celdas y valores largos.
 
 ## Fase 17 - Pruebas y validación integral
 

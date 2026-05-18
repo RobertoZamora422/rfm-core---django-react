@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first y los reportes basicos se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos y la revision responsive/UX se encuentran completados.
 
 El sistema contempla como flujo principal:
 
@@ -28,15 +28,16 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 - Fase 13 - Inicio administrativo backend-first: Completada.
 - Fase 14 - Dashboard financiero backend-first: Completada.
 - Fase 15 - Reportes: Completada.
+- Fase 16 - Responsive, limpieza visual y experiencia de usuario: Completada.
 
 ## Fase actual
 
-La fase actual corresponde al cierre de reportes.
+La fase actual corresponde al cierre de responsive, limpieza visual y experiencia de usuario.
 
-Se establecen los endpoints `/api/reportes/comercial/`, `/api/reportes/financiero/`, `/api/reportes/eventos/` y `/api/reportes/paquetes/`. La pantalla `/reportes` consume datos reales desde backend y permite consultar reportes por rango de fechas o mes/anio segun corresponda.
+Se consolida el layout administrativo responsive con menu movil accesible, cierre por teclado, bloqueo de scroll para paneles superpuestos, filtros adaptables, modales con scroll interno, tablas/cards mas robustas y estados visuales consistentes.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 16 - Responsive, limpieza visual y experiencia de usuario.
+La siguiente etapa corresponde a la Fase 17 - Pruebas y validacion integral.
 
-Se debera pulir la experiencia visual, navegacion, tablas responsive, estados visuales y consistencia general del sistema.
+Se debera validar el flujo completo del sistema con pruebas integrales y recorrido manual de los modulos principales.

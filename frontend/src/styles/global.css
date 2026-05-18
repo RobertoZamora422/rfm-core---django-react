@@ -22,6 +22,11 @@ body {
   margin: 0;
 }
 
+body.sidebar-lock,
+body.modal-lock {
+  overflow: hidden;
+}
+
 button,
 input,
 select,
@@ -36,6 +41,25 @@ a {
 
 #root {
   min-height: 100svh;
+}
+
+.skip-link {
+  background: #ffffff;
+  border: 1px solid #256d4f;
+  border-radius: 8px;
+  color: #214936;
+  font-weight: 800;
+  left: 12px;
+  padding: 10px 12px;
+  position: fixed;
+  top: 12px;
+  transform: translateY(-160%);
+  transition: transform 160ms ease;
+  z-index: 80;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 .button {
@@ -54,6 +78,23 @@ a {
     border-color 160ms ease,
     color 160ms ease;
   white-space: nowrap;
+}
+
+.button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.button:focus-visible,
+.field__control:focus-visible,
+.sidebar__link:focus-visible,
+.quick-action:focus-visible,
+.text-link:focus-visible,
+.report-selector__item:focus-visible,
+.sidebar-overlay:focus-visible {
+  outline: 3px solid rgba(37, 109, 79, 0.28);
+  outline-offset: 2px;
 }
 
 .button:disabled {
@@ -406,6 +447,8 @@ a {
 .sidebar__nav {
   display: grid;
   gap: 20px;
+  overflow-y: auto;
+  padding-bottom: 12px;
 }
 
 .sidebar__section {
@@ -463,6 +506,15 @@ a {
 .topbar__context span,
 .topbar__context strong {
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__context,
+.topbar__user,
+.page-header > div {
+  min-width: 0;
 }
 
 .topbar__context span {
@@ -488,6 +540,10 @@ a {
   padding: 26px;
 }
 
+.content-area:focus {
+  outline: none;
+}
+
 .page-stack {
   display: grid;
   gap: 22px;
@@ -503,7 +559,9 @@ a {
 .page-header__actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  justify-content: flex-end;
 }
 
 .quick-actions {
@@ -630,6 +688,7 @@ a {
 .kpi-card__value {
   color: #1f2b25;
   font-size: 1.5rem;
+  overflow-wrap: anywhere;
 }
 
 .filters-grid {
@@ -904,6 +963,7 @@ a {
   color: #66736d;
   font-size: 0.88rem;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .home-list__title-row {
@@ -1044,6 +1104,8 @@ a {
 
 .table-wrap {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  width: 100%;
 }
 
 .table-actions {
@@ -1088,6 +1150,7 @@ a {
   border-bottom: 1px solid #dfe5e1;
   padding: 12px;
   text-align: left;
+  vertical-align: top;
 }
 
 .data-table th {
@@ -1134,6 +1197,8 @@ a {
 .mobile-record dd {
   color: #25312b;
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .confirm-dialog {
@@ -1162,7 +1227,9 @@ a {
   background: #ffffff;
   border-radius: 8px;
   box-shadow: 0 24px 70px rgba(12, 22, 17, 0.22);
+  max-height: min(86svh, 760px);
   max-width: 640px;
+  overflow: hidden;
   width: min(100%, 640px);
 }
 
@@ -1181,6 +1248,8 @@ a {
 }
 
 .modal__body {
+  max-height: calc(86svh - 72px);
+  overflow-y: auto;
   padding: 20px;
 }
 
@@ -1235,6 +1304,22 @@ a {
 .detail-list dd {
   color: #223029;
   margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+  .filters-grid,
+  .filters-grid--contracts,
+  .filters-grid--costs,
+  .filters-grid--expenses,
+  .filters-grid--dashboard,
+  .filters-grid--reports {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters-actions {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 980px) {
@@ -1247,6 +1332,7 @@ a {
     height: 100svh;
     left: 0;
     max-width: 310px;
+    overflow-y: auto;
     position: fixed;
     top: 0;
     transform: translateX(-105%);
@@ -1306,6 +1392,11 @@ a {
     display: grid;
   }
 
+  .page-header__actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
   .quick-actions {
     grid-template-columns: 1fr;
   }
@@ -1344,6 +1435,10 @@ a {
     gap: 12px;
   }
 
+  .mobile-record .table-actions {
+    display: grid;
+  }
+
   .form-actions {
     align-items: stretch;
     display: grid;
@@ -1360,5 +1455,70 @@ a {
   .payment-status-item {
     align-items: start;
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-shell,
+  .content-area {
+    padding: 14px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .login-panel {
+    padding: 20px;
+  }
+
+  .login-panel h1,
+  .page-header h1 {
+    font-size: 1.55rem;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .topbar {
+    grid-template-columns: auto 1fr auto;
+    min-height: 64px;
+  }
+
+  .topbar__menu span {
+    display: none;
+  }
+
+  .topbar__menu,
+  .sidebar__close,
+  .modal__header .button {
+    width: auto;
+  }
+
+  .topbar__context span {
+    max-width: 120px;
+  }
+
+  .topbar__user .button span {
+    display: none;
+  }
+
+  .topbar__user .button {
+    padding-inline: 10px;
+    width: auto;
+  }
+
+  .report-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .modal__header,
+  .modal__body {
+    padding: 16px;
   }
 }

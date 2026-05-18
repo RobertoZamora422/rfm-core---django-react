@@ -6,7 +6,11 @@ import { navigationSections } from '../../routes/navigation'
 export function Sidebar({ isOpen, onClose }) {
   return (
     <>
-      <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
+      <aside
+        aria-label="Navegacion principal"
+        className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}
+        id="sidebar-principal"
+      >
         <div className="sidebar__brand">
           <div>
             <span className="sidebar__mark">RFM</span>
@@ -20,7 +24,7 @@ export function Sidebar({ isOpen, onClose }) {
           </Button>
         </div>
 
-        <nav className="sidebar__nav" aria-label="Navegacion principal">
+        <nav className="sidebar__nav">
           {navigationSections.map((section) => (
             <div className="sidebar__section" key={section.title}>
               <span className="sidebar__section-title">{section.title}</span>
@@ -43,7 +47,14 @@ export function Sidebar({ isOpen, onClose }) {
           ))}
         </nav>
       </aside>
-      {isOpen ? <button aria-label="Cerrar menu" className="sidebar-overlay" onClick={onClose} /> : null}
+      {isOpen ? (
+        <button
+          aria-label="Cerrar menu de navegacion"
+          className="sidebar-overlay"
+          onClick={onClose}
+          type="button"
+        />
+      ) : null}
     </>
   )
 }
