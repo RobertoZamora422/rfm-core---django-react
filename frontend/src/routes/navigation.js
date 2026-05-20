@@ -1,7 +1,6 @@
 import {
   BarChart3,
   BriefcaseBusiness,
-  CalendarPlus,
   ClipboardList,
   FileBarChart,
   Home,
@@ -18,7 +17,6 @@ export const navigationSections = [
     title: 'Operacion',
     items: [
       { label: 'Inicio', path: '/inicio', icon: Home },
-      { label: 'Pre-cotizacion', path: '/pre-cotizacion', icon: CalendarPlus },
       { label: 'Cotizaciones', path: '/cotizaciones', icon: ClipboardList },
       { label: 'Contratos', path: '/contratos', icon: BriefcaseBusiness },
     ],

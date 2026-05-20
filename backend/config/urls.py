@@ -1,9 +1,10 @@
 from django.contrib import admin
 from django.urls import include, path
 
-from .views import health_check
+from .views import api_root, health_check
 
 urlpatterns = [
+    path('', api_root, name='api-root'),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='api-health'),
     path('api/', include('negocio.urls')),

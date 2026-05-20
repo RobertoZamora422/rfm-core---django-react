@@ -33,6 +33,13 @@ class TipoEventoSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "creado_en", "actualizado_en"]
 
 
+class PublicTipoEventoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TipoEvento
+        fields = ["id", "nombre", "descripcion"]
+        read_only_fields = fields
+
+
 class PaqueteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Paquete
@@ -72,6 +79,19 @@ class PaqueteSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class PublicPaqueteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Paquete
+        fields = [
+            "id",
+            "nombre",
+            "tipo_servicio",
+            "precio_por_persona",
+            "descripcion",
+        ]
+        read_only_fields = fields
+
+
 class ConfiguracionNegocioSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConfiguracionNegocio
@@ -81,34 +101,16 @@ class ConfiguracionNegocioSerializer(serializers.ModelSerializer):
             "tarifa_base_alquiler",
             "invitados_incluidos_alquiler",
             "costo_invitado_adicional",
-            "capacidad_maxima",
+            "whatsapp_negocio",
+            "whatsapp_numero_url",
             "activo",
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "creado_en", "actualizado_en"]
+        read_only_fields = ["id", "whatsapp_numero_url", "creado_en", "actualizado_en"]
 
     def validate(self, attrs):
         activo = attrs.get("activo", getattr(self.instance, "activo", True))
-        capacidad_maxima = attrs.get(
-            "capacidad_maxima",
-            getattr(self.instance, "capacidad_maxima", None),
-        )
-        invitados_incluidos = attrs.get(
-            "invitados_incluidos_alquiler",
-            getattr(self.instance, "invitados_incluidos_alquiler", None),
-        )
-
-        if (
-            capacidad_maxima is not None
-            and invitados_incluidos is not None
-            and capacidad_maxima < invitados_incluidos
-        ):
-            raise serializers.ValidationError(
-                {
-                    "capacidad_maxima": "La capacidad máxima no puede ser menor que los invitados incluidos."
-                }
-            )
 
         if activo:
             queryset = ConfiguracionNegocio.objects.filter(activo=True)
@@ -116,7 +118,20 @@ class ConfiguracionNegocioSerializer(serializers.ModelSerializer):
                 queryset = queryset.exclude(pk=self.instance.pk)
             if queryset.exists():
                 raise serializers.ValidationError(
-                    {"activo": "Ya existe una configuración activa."}
+                    {"activo": "Ya existe una configuracion activa."}
                 )
 
         return attrs
+
+
+class PublicConfiguracionNegocioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfiguracionNegocio
+        fields = [
+            "nombre_negocio",
+            "tarifa_base_alquiler",
+            "invitados_incluidos_alquiler",
+            "costo_invitado_adicional",
+            "whatsapp_numero_url",
+        ]
+        read_only_fields = fields

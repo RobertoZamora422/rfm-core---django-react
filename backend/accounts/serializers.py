@@ -1,7 +1,5 @@
 """Serializers de la app accounts."""
 
-from base64 import b64encode
-
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
@@ -29,9 +27,6 @@ class LoginSerializer(serializers.Serializer):
             )
 
         attrs["user"] = user
-        attrs["auth_token"] = b64encode(
-            f"{attrs['username']}:{attrs['password']}".encode("utf-8")
-        ).decode("utf-8")
         return attrs
 
 

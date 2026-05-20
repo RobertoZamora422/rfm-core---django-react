@@ -21,7 +21,7 @@ import { formatCurrency, formatDate } from '../utils/formatters'
 
 const quickActions = [
   {
-    label: 'Registrar pre-cotizacion',
+    label: 'Abrir pre-cotizacion publica',
     path: '/pre-cotizacion',
     icon: PlusCircle,
   },

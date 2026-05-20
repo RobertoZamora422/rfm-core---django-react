@@ -1,128 +1,186 @@
 # RFM Core
 
-RFM Core es un sistema web para la pre-cotización, gestión comercial y análisis de rentabilidad de un salón de eventos.
+RFM Core es un sistema web para pre-cotizacion publica, gestion comercial y analisis de rentabilidad de un salon de eventos.
 
-El sistema contempla el siguiente flujo principal:
+Flujo principal:
 
 ```text
-Pre-cotización -> Gestión comercial -> Contrato -> Costos/Gastos -> Rentabilidad
+Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 ```
 
 ## Estado actual
 
-El proyecto se encuentra en etapa de consolidación del backend base.
+El proyecto se encuentra en validacion integral y documentacion final previa a deploy. La version actual consolida la separacion entre flujo publico y panel administrativo, mantiene el backend como fuente de verdad para calculos y deja la configuracion preparada para Render sin afirmar que el despliegue ya exista.
 
-- Fase 0: Documentación base completada.
-- Fase 1: Inicialización técnica completada.
-- Fase 2: Configuración base del backend completada.
-- Fase 3: Modelado del dominio completado.
-- Fase 4: Administración del sistema y datos semilla completada.
-- Fase 5: API REST del core completada.
-- Fase 6: Servicios de negocio y endpoints de acciones completada.
-- Fase 7: Frontend base y layout administrativo completada.
-- Fase 8: Módulos base de administración en frontend completada.
-- Fase 9: Pre-cotización completada.
-- Fase 10: Gestión comercial de cotizaciones completada.
-- Fase 11: Contratos y pagos completada.
-- Fase 12: Costos directos y gastos fijos completada.
-- Fase 13: Inicio administrativo backend-first completada.
-- Fase 14: Dashboard financiero backend-first completada.
-- Fase 15: Reportes completada.
-- Fase 16: Responsive, limpieza visual y experiencia de usuario completada.
-- Fase 17: Pruebas y validacion integral completada.
-- Siguiente etapa: Fase 18 - README final y documentacion de uso.
+## Flujo publico
 
-## Alcance del sistema
+La pre-cotizacion publica no requiere login y no muestra Sidebar ni Topbar administrativo.
 
-Se define como alcance central del sistema:
+Pantallas:
 
-- Clientes.
-- Tipos de evento.
-- Paquetes.
-- Configuración del negocio.
-- Pre-cotizaciones y cotizaciones.
-- Conversión de cotizaciones confirmadas a contratos.
-- Contratos con estado comercial y estado de pago separados.
-- Costos directos por contrato/evento.
-- Gastos fijos mensuales.
-- Inicio administrativo operativo.
-- Dashboard financiero backend-first.
-- Reportes básicos.
-- API REST y frontend administrativo.
+- `/pre-cotizacion`: formulario inicial para cliente/interesado.
+- `/pre-cotizacion/alquiler`: resultado referencial de alquiler del local.
+- `/pre-cotizacion/servicio-completo`: paquetes activos con total referencial por paquete.
+- `/pre-cotizacion/comparacion`: comparacion entre alquiler y servicio completo.
 
-Quedan fuera de esta versión las reservas online automáticas, pasarela de pagos, facturación electrónica, firma electrónica, gestión contable completa, nómina, inventario avanzado, aplicación móvil nativa, chatbot completo, automatización completa con WhatsApp Business API e inteligencia artificial para recomendar paquetes.
+El formulario publico solicita solo nombre, telefono/WhatsApp, tipo de evento, fecha tentativa, numero aproximado de invitados y tipo de servicio de interes. Al enviarlo, el backend registra una cotizacion en estado `nueva`, calcula valores referenciales y permite continuar por WhatsApp usando el numero configurado en Configuracion del negocio.
 
-## Stack técnico
+## Rutas
+
+Rutas publicas:
+
+```text
+/
+/pre-cotizacion
+/pre-cotizacion/alquiler
+/pre-cotizacion/servicio-completo
+/pre-cotizacion/comparacion
+/login
+```
+
+Rutas administrativas protegidas:
+
+```text
+/inicio
+/clientes
+/tipos-evento
+/paquetes
+/configuracion
+/cotizaciones
+/cotizaciones/:id
+/contratos
+/contratos/:id
+/costos-directos
+/gastos-fijos
+/dashboard-financiero
+/reportes
+```
+
+## Stack tecnico
 
 Backend:
 
-- Python 3.13.7 en entorno local.
-- Django 5.2.14.
-- Django REST Framework.
-- django-cors-headers.
-- python-dotenv.
-- Django Admin.
-- SQLite para desarrollo.
-- PostgreSQL previsto para producción.
+- Python 3.13
+- Django 5.2
+- Django REST Framework
+- TokenAuthentication de DRF
+- django-cors-headers
+- python-dotenv
+- WhiteNoise
+- dj-database-url
+- SQLite local y PostgreSQL previsto en Render
 
 Frontend:
 
-- React.
-- Vite.
-- React Router.
-- Axios.
-- lucide-react.
+- React
+- Vite
+- React Router
+- Axios
+- lucide-react
+- CSS tradicional del proyecto
 
 Deploy previsto:
 
-- Render Web Service para backend Django/DRF.
-- Render Static Site para frontend React/Vite.
-- Render PostgreSQL para base de datos.
+- Render Web Service para Django/DRF
+- Render Static Site para React/Vite
+- Render PostgreSQL
 
-## Estructura del repositorio
+## Ejecucion local
 
-```text
-rfm-core/
-|-- backend/
-|-- frontend/
-|-- docs/
-|-- README.md
-`-- .gitignore
+Backend:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py seed_base
+.\.venv\Scripts\python.exe manage.py runserver
 ```
 
-## Documentación
+Frontend:
 
-La documentación viva del proyecto se encuentra en:
-
-```text
-docs/
-|-- 00-estado-del-proyecto.md
-|-- 01-documento-maestro.md
-|-- 02-arquitectura-tecnica.md
-|-- 03-modelo-datos.md
-|-- 04-diseno-ui-ux.md
-|-- 05_plan_tecnico_implementacion.md
-`-- 06_validacion_fase_17.md
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
-Orden de prioridad cuando exista conflicto entre documentos:
+Datos demo:
 
-1. `docs/01-documento-maestro.md`
-2. `docs/02-arquitectura-tecnica.md`
-3. `docs/03-modelo-datos.md`
-4. `docs/04-diseno-ui-ux.md`
-5. `docs/05_plan_tecnico_implementacion.md`
-6. `docs/00-estado-del-proyecto.md`
+```powershell
+cd backend
+.\.venv\Scripts\python.exe manage.py seed_demo
+.\.venv\Scripts\python.exe manage.py clear_demo
+```
 
-## API REST actual
+## Validacion
 
-Al cierre de la Fase 6, el backend establece endpoints autenticados para recursos principales y acciones comerciales:
+Backend:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe manage.py test
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+```
+
+## Variables de entorno
+
+Backend (`backend/.env`):
+
+```text
+DJANGO_SECRET_KEY=
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DATABASE_URL=
+```
+
+Frontend (`frontend/.env`):
+
+```text
+VITE_API_URL=http://127.0.0.1:8000/api
+```
+
+`VITE_API_URL` es la convencion unica para la URL base del API.
+
+El WhatsApp del negocio no se configura en variables de entorno del frontend. El administrador lo ingresa en `/configuracion` con formato ecuatoriano local `09XXXXXXXX`; el backend lo expone al flujo publico como numero listo para `wa.me`. Ejemplo: `0991234567` -> `593991234567`.
+
+## URLs locales
+
+- Backend API: http://127.0.0.1:8000/api
+- Backend health: http://127.0.0.1:8000/api/health/
+- Backend root: http://127.0.0.1:8000/
+- Frontend: http://localhost:5173/
+- Pre-cotizacion publica: http://localhost:5173/pre-cotizacion
+- Panel administrativo: http://localhost:5173/login
+
+## API principal
+
+Publica:
+
+```text
+GET  /api/public/tipos-evento/
+GET  /api/public/paquetes/
+GET  /api/public/configuracion/
+POST /api/pre-cotizacion/
+```
+
+Administrativa protegida:
 
 ```text
 /api/auth/login/
 /api/auth/logout/
 /api/auth/me/
-/api/pre-cotizacion/
 /api/clientes/
 /api/tipos-evento/
 /api/paquetes/
@@ -133,118 +191,24 @@ Al cierre de la Fase 6, el backend establece endpoints autenticados para recurso
 /api/contratos/
 /api/costos-directos/
 /api/gastos-fijos/
-/api/gastos-fijos/resumen/
-/api/inicio-resumen/
 /api/dashboard-financiero/
-/api/reportes/comercial/
-/api/reportes/financiero/
-/api/reportes/eventos/
-/api/reportes/paquetes/
+/api/reportes/
 ```
 
-El endpoint `/api/health/` se mantiene disponible para verificación básica del backend.
+El login devuelve `Authorization: Token <token>` para las solicitudes administrativas.
 
-La Fase 6 establece servicios backend para pre-cotización, cambio de estado comercial y conversión controlada de cotizaciones confirmadas a contratos.
+## Usuario demo
 
-## Frontend actual
+Si se ejecutan los comandos de seed del proyecto, revisar la salida de `seed_base` o `seed_demo` para las credenciales disponibles en el entorno local. No se debe asumir que existen usuarios en una base limpia sin ejecutar migraciones y semillas.
 
-La Fase 7 establece la base administrativa del frontend:
+## Reglas criticas
 
-```text
-frontend/src/
-|-- routes/
-|-- layouts/
-|-- components/
-|-- pages/
-|-- services/
-|-- hooks/
-|-- utils/
-`-- styles/
-```
-
-El frontend cuenta con rutas protegidas, página de login, layout administrativo responsive, Sidebar, Topbar, cliente HTTP con Axios y componentes base reutilizables.
-
-Al cierre de la Fase 8, las pantallas de clientes, tipos de evento, paquetes y configuración consumen datos reales desde la API y permiten creación y edición con validaciones visibles.
-
-Al cierre de la Fase 9, la pantalla de pre-cotización consume catálogos reales, registra solicitudes iniciales en `/api/pre-cotizacion/` y muestra el resultado referencial devuelto por backend.
-
-Al cierre de la Fase 10, la pantalla de cotizaciones consume `/api/cotizaciones/` con filtros reales por estado, tipo de evento, fecha y búsqueda por cliente o teléfono. También permite ver detalle, cambiar estado comercial y convertir cotizaciones confirmadas a contrato usando las acciones del backend.
-
-Al cierre de la Fase 11, la pantalla de contratos consume `/api/contratos/` con filtros reales, detalle por contrato, estados separados de contrato y pago, saldo pendiente y cancelación controlada sin eliminar registros.
-
-Al cierre de la Fase 12, las pantallas `/costos-directos` y `/gastos-fijos` consumen datos reales del backend. Costos directos permite crear, editar, eliminar, listar y filtrar costos asociados a contratos mediante select real. Gastos fijos permite crear, editar, eliminar, listar y filtrar gastos por mes, año y concepto, con total del periodo desde `/api/gastos-fijos/resumen/`.
-
-Al cierre de la Fase 13, la pantalla `/inicio` consume `/api/inicio-resumen/` para mostrar KPIs operativos, eventos proximos enlazados al detalle de contrato, pendientes importantes generados por backend y acciones rapidas administrativas.
-
-Al cierre de la Fase 14, la pantalla `/dashboard-financiero` consume `/api/dashboard-financiero/` con filtros de mes y anio, KPIs financieros, comparacion contra el mes anterior, rentabilidad por evento, estado de pagos e interpretacion del periodo calculados desde backend.
-
-Al cierre de la Fase 15, la pantalla `/reportes` consume endpoints reales para reportes comercial, financiero, eventos y paquetes. Los reportes se consultan por rango de fechas o mes/anio segun corresponda, y el reporte financiero reutiliza la logica backend del dashboard financiero.
-
-Al cierre de la Fase 16, el layout administrativo refuerza el comportamiento responsive con menu movil accesible, bloqueo de scroll al abrir paneles, cierre por teclado, enlace para saltar al contenido, filtros adaptables, modales con scroll interno y tablas/cards con mejor control de overflow.
-
-Al cierre de la Fase 17, el proyecto incorpora una prueba integral automatizada del flujo comercial-financiero, valida la conversion controlada de cotizaciones, confirma que los contratos cancelados no alimentan metricas financieras principales y deja documentada la matriz de checks de backend, migraciones, frontend y recorrido manual.
-
-## Ejecución local
-
-Backend:
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py test
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py runserver
-```
-
-Datos base y demo:
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe manage.py seed_base
-.\.venv\Scripts\python.exe manage.py seed_demo
-.\.venv\Scripts\python.exe manage.py clear_demo
-```
-
-Frontend:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-npm run build
-npm run lint
-```
-
-## Configuración de entorno
-
-Backend:
-
-```text
-backend/.env.example
-```
-
-Frontend:
-
-```text
-frontend/.env.example
-```
-
-Los archivos `.env` reales no deben versionarse.
-
-## Reglas críticas
-
-- Una cotización no es ingreso real.
+- La pre-cotizacion publica no es reserva ni precio final.
+- WhatsApp continua la atencion humana.
+- El WhatsApp del negocio se administra desde Configuracion del negocio.
+- El endpoint publico no abre CRUD administrativo.
+- Solo paquetes y tipos de evento activos se exponen al flujo publico.
+- Una cotizacion no es ingreso real.
 - Solo un contrato confirmado representa ingreso real.
-- Un contrato cancelado no alimenta métricas financieras principales.
-- `estado_contrato` y `estado_pago` son conceptos distintos.
-- El saldo pendiente se calcula como `valor_final - monto_abonado`.
-- `monto_abonado` no puede superar `valor_final`.
-- La lógica financiera principal se calcula en backend, no en React.
-- No se deben usar datos quemados permanentes en frontend.
-
-## Siguiente etapa
-
-La siguiente etapa corresponde a la Fase 18 - README final y documentacion de uso. Se debera consolidar la guia final de instalacion, ejecucion, datos base, variables de entorno, deploy y solucion de problemas comunes.
+- Los calculos comerciales y financieros se mantienen en backend.
+- Render esta previsto como destino de deploy, pero este repositorio no declara un deploy activo.

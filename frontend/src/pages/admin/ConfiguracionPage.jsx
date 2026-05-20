@@ -19,7 +19,8 @@ const columns = [
     header: 'Invitado adicional',
     render: (item) => formatCurrency(item.costo_invitado_adicional),
   },
-  { key: 'capacidad_maxima', header: 'Capacidad maxima' },
+  { key: 'whatsapp_negocio', header: 'WhatsApp' },
+  { key: 'whatsapp_numero_url', header: 'WhatsApp wa.me' },
   {
     key: 'activo',
     header: 'Estado',
@@ -32,17 +33,24 @@ const columns = [
 ]
 
 function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSubmit }) {
+  const [localErrors, setLocalErrors] = useState({})
   const [form, setForm] = useState({
     nombre_negocio: initialValues?.nombre_negocio ?? '',
     tarifa_base_alquiler: initialValues?.tarifa_base_alquiler ?? '0.00',
     invitados_incluidos_alquiler: initialValues?.invitados_incluidos_alquiler ?? 1,
     costo_invitado_adicional: initialValues?.costo_invitado_adicional ?? '0.00',
-    capacidad_maxima: initialValues?.capacidad_maxima ?? 1,
+    whatsapp_negocio: initialValues?.whatsapp_negocio ?? '',
     activo: initialValues?.activo ?? true,
   })
+  const fieldErrors = { ...errors, ...localErrors }
 
   const handleChange = (event) => {
     const { checked, name, type, value } = event.target
+    setLocalErrors((current) => {
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
     setForm((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
@@ -51,13 +59,20 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    if (form.whatsapp_negocio && !/^09\d{8}$/.test(form.whatsapp_negocio)) {
+      setLocalErrors({
+        whatsapp_negocio: 'Ingresa un numero ecuatoriano de 10 digitos que empiece con 09.',
+      })
+      return
+    }
+
     onSubmit(form)
   }
 
   return (
     <form className="resource-form" onSubmit={handleSubmit}>
       <Input
-        error={errors.nombre_negocio}
+        error={fieldErrors.nombre_negocio}
         id="configuracion-nombre"
         label="Nombre del negocio"
         name="nombre_negocio"
@@ -66,7 +81,7 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
         value={form.nombre_negocio}
       />
       <Input
-        error={errors.tarifa_base_alquiler}
+        error={fieldErrors.tarifa_base_alquiler}
         id="configuracion-tarifa"
         label="Tarifa base alquiler"
         min="0"
@@ -78,7 +93,7 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
         value={form.tarifa_base_alquiler}
       />
       <Input
-        error={errors.invitados_incluidos_alquiler}
+        error={fieldErrors.invitados_incluidos_alquiler}
         id="configuracion-invitados-incluidos"
         label="Invitados incluidos alquiler"
         min="1"
@@ -89,7 +104,7 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
         value={form.invitados_incluidos_alquiler}
       />
       <Input
-        error={errors.costo_invitado_adicional}
+        error={fieldErrors.costo_invitado_adicional}
         id="configuracion-costo-adicional"
         label="Costo invitado adicional"
         min="0"
@@ -101,15 +116,16 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
         value={form.costo_invitado_adicional}
       />
       <Input
-        error={errors.capacidad_maxima}
-        id="configuracion-capacidad"
-        label="Capacidad maxima"
-        min="1"
-        name="capacidad_maxima"
+        error={fieldErrors.whatsapp_negocio}
+        helpText="Ingresa el numero en formato ecuatoriano, por ejemplo 0991234567. El sistema lo convertira automaticamente para generar el enlace de WhatsApp."
+        id="configuracion-whatsapp"
+        label="WhatsApp del negocio"
+        maxLength={10}
+        name="whatsapp_negocio"
         onChange={handleChange}
-        required
-        type="number"
-        value={form.capacidad_maxima}
+        placeholder="0991234567"
+        type="tel"
+        value={form.whatsapp_negocio}
       />
       <label className="checkbox-field" htmlFor="configuracion-activa">
         <input
@@ -121,7 +137,7 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
         />
         <span>Configuracion activa</span>
       </label>
-      {errors.activo ? <span className="field__error">{errors.activo}</span> : null}
+      {fieldErrors.activo ? <span className="field__error">{fieldErrors.activo}</span> : null}
       <div className="form-actions">
         <Button onClick={onCancel} variant="secondary">
           Cancelar

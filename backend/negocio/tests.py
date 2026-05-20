@@ -2,9 +2,9 @@ from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APITestCase
@@ -12,6 +12,7 @@ from rest_framework.test import APITestCase
 from comercial.models import Cotizacion
 from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
 from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
+from .validators import normalizar_whatsapp_ecuador
 
 
 class NegocioModelTests(TestCase):
@@ -43,7 +44,7 @@ class NegocioModelTests(TestCase):
             tarifa_base_alquiler=Decimal("1000.00"),
             invitados_incluidos_alquiler=50,
             costo_invitado_adicional=Decimal("10.00"),
-            capacidad_maxima=200,
+            whatsapp_negocio="0991234567",
             activo=True,
         )
 
@@ -53,9 +54,49 @@ class NegocioModelTests(TestCase):
                 tarifa_base_alquiler=Decimal("1200.00"),
                 invitados_incluidos_alquiler=60,
                 costo_invitado_adicional=Decimal("12.00"),
-                capacidad_maxima=220,
+                whatsapp_negocio="0997654321",
                 activo=True,
             )
+
+    def test_configuracion_negocio_acepta_whatsapp_local_valido(self):
+        configuracion = ConfiguracionNegocio.objects.create(
+            nombre_negocio="RFM",
+            tarifa_base_alquiler=Decimal("1000.00"),
+            invitados_incluidos_alquiler=50,
+            costo_invitado_adicional=Decimal("10.00"),
+            whatsapp_negocio="0991234567",
+            activo=True,
+        )
+
+        self.assertEqual(configuracion.whatsapp_numero_url, "593991234567")
+
+    def test_configuracion_negocio_rechaza_whatsapp_invalido(self):
+        invalidos = [
+            "991234567",
+            "593991234567",
+            "099-123-4567",
+            "099 123 4567",
+            "abc123",
+        ]
+
+        for numero in invalidos:
+            with self.subTest(numero=numero):
+                configuracion = ConfiguracionNegocio(
+                    nombre_negocio=f"RFM {numero}",
+                    tarifa_base_alquiler=Decimal("1000.00"),
+                    invitados_incluidos_alquiler=50,
+                    costo_invitado_adicional=Decimal("10.00"),
+                    whatsapp_negocio=numero,
+                    activo=False,
+                )
+                with self.assertRaises(ValidationError):
+                    configuracion.full_clean()
+
+    def test_normalizar_whatsapp_ecuador(self):
+        self.assertEqual(
+            normalizar_whatsapp_ecuador("0991234567"),
+            "593991234567",
+        )
 
 
 class SeedCommandTests(TestCase):
@@ -71,6 +112,10 @@ class SeedCommandTests(TestCase):
         self.assertEqual(TipoEvento.objects.count(), 5)
         self.assertEqual(Paquete.objects.count(), 3)
         self.assertEqual(ConfiguracionNegocio.objects.filter(activo=True).count(), 1)
+        self.assertEqual(
+            ConfiguracionNegocio.objects.get(activo=True).whatsapp_negocio,
+            "0991234567",
+        )
 
     def test_seed_demo_es_idempotente(self):
         self.call_command("seed_demo")
@@ -147,18 +192,22 @@ class NegocioApiTests(APITestCase):
 
     def test_configuracion_activa_es_unica_en_api(self):
         payload = {
-            "nombre_negocio": "Rancho Flor María",
+            "nombre_negocio": "Rancho Flor Maria",
             "tarifa_base_alquiler": "1200.00",
             "invitados_incluidos_alquiler": 80,
             "costo_invitado_adicional": "12.00",
-            "capacidad_maxima": 250,
+            "whatsapp_negocio": "0991234567",
             "activo": True,
         }
 
         first = self.client.post("/api/configuracion-negocio/", payload, format="json")
         second = self.client.post(
             "/api/configuracion-negocio/",
-            {**payload, "nombre_negocio": "Otra configuración"},
+            {
+                **payload,
+                "nombre_negocio": "Otra configuracion",
+                "whatsapp_negocio": "0997654321",
+            },
             format="json",
         )
 
@@ -166,6 +215,40 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(second.status_code, 400)
         self.assertIn("activo", second.data)
         self.assertEqual(ConfiguracionNegocio.objects.filter(activo=True).count(), 1)
+
+    def test_configuracion_api_valida_whatsapp_negocio(self):
+        response = self.client.post(
+            "/api/configuracion-negocio/",
+            {
+                "nombre_negocio": "Rancho Flor Maria",
+                "tarifa_base_alquiler": "1200.00",
+                "invitados_incluidos_alquiler": 80,
+                "costo_invitado_adicional": "12.00",
+                "whatsapp_negocio": "593991234567",
+                "activo": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("whatsapp_negocio", response.data)
+
+    def test_configuracion_publica_devuelve_whatsapp_numero_url(self):
+        ConfiguracionNegocio.objects.create(
+            nombre_negocio="Rancho Flor Maria",
+            tarifa_base_alquiler=Decimal("1200.00"),
+            invitados_incluidos_alquiler=80,
+            costo_invitado_adicional=Decimal("12.00"),
+            whatsapp_negocio="0991234567",
+            activo=True,
+        )
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get("/api/public/configuracion/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["whatsapp_numero_url"], "593991234567")
+        self.assertNotIn("whatsapp_negocio", response.data)
 
     def test_inicio_resumen_usa_datos_reales_del_backend(self):
         hoy = timezone.localdate()

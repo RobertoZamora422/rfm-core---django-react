@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -7,6 +8,9 @@ from .serializers import (
     ClienteSerializer,
     ConfiguracionNegocioSerializer,
     PaqueteSerializer,
+    PublicConfiguracionNegocioSerializer,
+    PublicPaqueteSerializer,
+    PublicTipoEventoSerializer,
     TipoEventoSerializer,
 )
 from .services import inicio_resumen
@@ -70,3 +74,35 @@ class ConfiguracionNegocioViewSet(viewsets.ModelViewSet):
 class InicioResumenAPIView(APIView):
     def get(self, request):
         return Response(inicio_resumen())
+
+
+class PublicTiposEventoAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        queryset = TipoEvento.objects.filter(activo=True).order_by("nombre")
+        return Response(PublicTipoEventoSerializer(queryset, many=True).data)
+
+
+class PublicPaquetesAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        queryset = Paquete.objects.filter(activo=True).order_by("nombre")
+        tipo_servicio = request.query_params.get("tipo_servicio")
+        if tipo_servicio:
+            queryset = queryset.filter(tipo_servicio=tipo_servicio)
+        return Response(PublicPaqueteSerializer(queryset, many=True).data)
+
+
+class PublicConfiguracionAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        configuracion = ConfiguracionNegocio.objects.filter(activo=True).first()
+        if configuracion is None:
+            return Response({})
+        return Response(PublicConfiguracionNegocioSerializer(configuracion).data)

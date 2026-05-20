@@ -68,7 +68,7 @@ def seed_base_data():
         "tarifa_base_alquiler": Decimal("1200.00"),
         "invitados_incluidos_alquiler": 80,
         "costo_invitado_adicional": Decimal("12.00"),
-        "capacidad_maxima": 250,
+        "whatsapp_negocio": "0991234567",
         "activo": True,
     }
     if configuracion:

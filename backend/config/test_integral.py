@@ -28,7 +28,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
             tarifa_base_alquiler=Decimal("1200.00"),
             invitados_incluidos_alquiler=80,
             costo_invitado_adicional=Decimal("12.00"),
-            capacidad_maxima=250,
+            whatsapp_negocio="0991234567",
             activo=True,
         )
 
@@ -49,7 +49,6 @@ class FlujoIntegralRfmCoreTests(APITestCase):
             {
                 "nombre_cliente": "Cliente Integral",
                 "telefono_cliente": "+593 999111333",
-                "correo_cliente": "integral@example.com",
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_tentativa": fecha_evento.isoformat(),

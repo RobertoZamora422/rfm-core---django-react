@@ -32,7 +32,7 @@ export function clearStoredAuth() {
 
 export function setAuthToken(token) {
   if (token) {
-    apiClient.defaults.headers.common.Authorization = `Basic ${token}`
+    apiClient.defaults.headers.common.Authorization = `Token ${token}`
     return
   }
 
@@ -42,7 +42,7 @@ export function setAuthToken(token) {
 apiClient.interceptors.request.use((config) => {
   const { token } = getStoredAuth()
   if (token && !config.headers.Authorization) {
-    config.headers.Authorization = `Basic ${token}`
+    config.headers.Authorization = `Token ${token}`
   }
   return config
 })

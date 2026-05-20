@@ -114,7 +114,7 @@ nombre_negocio
 tarifa_base_alquiler
 invitados_incluidos_alquiler
 costo_invitado_adicional
-capacidad_maxima
+whatsapp_negocio
 activo
 creado_en
 actualizado_en
@@ -124,6 +124,11 @@ Reglas:
 
 - Debe existir una sola configuración activa.
 - Los valores monetarios no pueden ser negativos.
+
+Notas de WhatsApp:
+
+- `whatsapp_negocio` es opcional inicialmente y, cuando se ingresa, debe usar formato local ecuatoriano `09XXXXXXXX`.
+- El backend normaliza `whatsapp_negocio` a `whatsapp_numero_url` para enlaces `wa.me`, por ejemplo `0991234567` -> `593991234567`.
 
 ## Cotizacion
 

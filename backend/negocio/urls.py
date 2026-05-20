@@ -6,6 +6,9 @@ from .views import (
     ConfiguracionNegocioViewSet,
     InicioResumenAPIView,
     PaqueteViewSet,
+    PublicConfiguracionAPIView,
+    PublicPaquetesAPIView,
+    PublicTiposEventoAPIView,
     TipoEventoViewSet,
 )
 
@@ -21,5 +24,8 @@ router.register(
 
 urlpatterns = [
     path("inicio-resumen/", InicioResumenAPIView.as_view(), name="inicio-resumen"),
+    path("public/tipos-evento/", PublicTiposEventoAPIView.as_view(), name="public-tipos-evento"),
+    path("public/paquetes/", PublicPaquetesAPIView.as_view(), name="public-paquetes"),
+    path("public/configuracion/", PublicConfiguracionAPIView.as_view(), name="public-configuracion"),
 ]
 urlpatterns += router.urls

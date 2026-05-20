@@ -70,3 +70,14 @@ cd ..\frontend
 npm run lint
 npm run build
 ```
+
+## Nota de consolidacion posterior
+
+La intervencion de consolidacion de pre-cotizacion publica y preparacion de deploy actualiza el contrato de rutas:
+
+- `/pre-cotizacion` deja de ser ruta administrativa protegida.
+- Las cuatro pantallas publicas usan `PublicLayout`.
+- El panel administrativo permanece protegido desde `/login`.
+- La autenticacion de API administrativa usa `Authorization: Token <token>`.
+
+La matriz vigente de esta intervencion queda documentada en `docs/07-consolidacion-pre-cotizacion-publica-y-deploy.md`.

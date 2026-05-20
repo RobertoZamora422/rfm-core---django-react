@@ -6,6 +6,7 @@ from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError as ApiValidationError
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -32,13 +33,13 @@ def _raise_api_validation_error(exc):
 
 
 def _serializar_calculo(calculo):
-    resultado = {}
-    for clave, valor in calculo.items():
-        if isinstance(valor, Decimal):
-            resultado[clave] = str(valor.quantize(Decimal("0.01")))
-        else:
-            resultado[clave] = valor
-    return resultado
+    if isinstance(calculo, Decimal):
+        return str(calculo.quantize(Decimal("0.01")))
+    if isinstance(calculo, list):
+        return [_serializar_calculo(item) for item in calculo]
+    if isinstance(calculo, dict):
+        return {clave: _serializar_calculo(valor) for clave, valor in calculo.items()}
+    return calculo
 
 
 def _parse_query_date(value, field_name):
@@ -52,23 +53,23 @@ def _parse_query_date(value, field_name):
 
 
 class PreCotizacionAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = PreCotizacionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        datos_cliente = None
-        if data.get("cliente") is None:
-            datos_cliente = {
-                "nombre": data.get("nombre_cliente", "").strip(),
-                "telefono": data.get("telefono_cliente", "").strip(),
-                "correo": data.get("correo_cliente", ""),
-                "observaciones": data.get("observaciones_cliente", ""),
-            }
+        datos_cliente = {
+            "nombre": data.get("nombre_cliente", "").strip(),
+            "telefono": data.get("telefono_cliente", "").strip(),
+            "observaciones": data.get("observaciones_cliente", ""),
+        }
 
         try:
             cotizacion, calculo = crear_pre_cotizacion(
-                cliente=data.get("cliente"),
+                cliente=None,
                 datos_cliente=datos_cliente,
                 tipo_evento=data["tipo_evento"],
                 paquete=data.get("paquete"),

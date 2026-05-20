@@ -3,9 +3,11 @@ from django.db import models
 from django.db.models import Q
 
 from .validators import (
+    normalizar_whatsapp_ecuador,
     validate_non_negative,
     validate_phone,
     validate_positive_integer,
+    validate_whatsapp_ecuador,
 )
 
 
@@ -111,8 +113,10 @@ class ConfiguracionNegocio(TimeStampedModel):
         decimal_places=2,
         validators=[validate_non_negative],
     )
-    capacidad_maxima = models.PositiveIntegerField(
-        validators=[validate_positive_integer],
+    whatsapp_negocio = models.CharField(
+        max_length=10,
+        blank=True,
+        validators=[validate_whatsapp_ecuador],
     )
     activo = models.BooleanField(default=True)
 
@@ -136,20 +140,13 @@ class ConfiguracionNegocio(TimeStampedModel):
                 condition=Q(invitados_incluidos_alquiler__gt=0),
                 name="config_invitados_incluidos_positivo",
             ),
-            models.CheckConstraint(
-                condition=Q(capacidad_maxima__gt=0),
-                name="config_capacidad_maxima_positiva",
-            ),
         ]
 
-    def clean(self):
-        super().clean()
-        if self.capacidad_maxima < self.invitados_incluidos_alquiler:
-            raise ValidationError(
-                {
-                    "capacidad_maxima": "La capacidad máxima no puede ser menor que los invitados incluidos."
-                }
-            )
+    @property
+    def whatsapp_numero_url(self):
+        if not self.whatsapp_negocio:
+            return ""
+        return normalizar_whatsapp_ecuador(self.whatsapp_negocio)
 
     def __str__(self):
         return self.nombre_negocio

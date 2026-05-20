@@ -1,26 +1,28 @@
-# Arquitectura Técnica - RFM Core
+# Arquitectura Tecnica - RFM Core
 
-## Principios arquitectónicos
+## Principios
 
-- Separar interfaz, API, modelos, reglas de negocio, cálculos financieros y persistencia.
-- Mantener backend como fuente de verdad para validaciones y cálculos.
-- Desarrollar por fases cerradas y verificables.
+- Separar interfaz publica, panel administrativo, API, modelos, servicios de negocio y persistencia.
+- Mantener backend como fuente de verdad para validaciones y calculos.
 - Evitar datos quemados permanentes en frontend.
-- Exponer una API REST clara y reutilizable.
-- Priorizar mantenibilidad sobre complejidad innecesaria.
+- Exponer endpoints publicos controlados sin abrir CRUD administrativo.
+- Mantener rutas administrativas protegidas por token.
+- Preparar deploy en Render sin romper compatibilidad local.
 
-## Stack tecnológico
+## Stack
 
 Backend:
 
-- Python.
-- Django.
+- Python 3.13.
+- Django 5.2.
 - Django REST Framework.
+- TokenAuthentication.
 - django-cors-headers.
 - python-dotenv.
-- Django Admin.
-- SQLite para desarrollo.
-- PostgreSQL para producción.
+- WhiteNoise para estaticos en produccion.
+- dj-database-url para `DATABASE_URL`.
+- SQLite local como fallback.
+- PostgreSQL previsto para Render.
 
 Frontend:
 
@@ -28,63 +30,18 @@ Frontend:
 - Vite.
 - React Router.
 - Axios.
-- lucide-react para iconografía de interfaz.
-- CSS modular, CSS tradicional, SASS o estrategia definida en el proyecto.
+- lucide-react.
+- CSS tradicional del proyecto.
 
-Deploy:
+Deploy previsto:
 
-- Render Web Service para backend.
-- Render Static Site para frontend.
-- Render PostgreSQL para producción.
+- Render Web Service para Django/DRF.
+- Render Static Site para React/Vite.
+- Render PostgreSQL.
 
-## Estructura esperada del repositorio
+## Backend
 
-```text
-rfm-core/
-├── backend/
-├── frontend/
-├── docs/
-├── README.md
-└── .gitignore
-```
-
-Al cierre de la Fase 2, el repositorio contiene `backend/` y `frontend/`, Django REST Framework, CORS, apps base del backend y el endpoint `/api/health/`.
-
-Al cierre de la Fase 5, el backend expone endpoints CRUD autenticados para clientes, tipos de evento, paquetes, configuración del negocio, cotizaciones, contratos, costos directos y gastos fijos.
-
-Al cierre de la Fase 6, el backend expone servicios de negocio para pre-cotización, cambio de estado comercial y conversión controlada de cotizaciones confirmadas a contratos.
-
-Al cierre de la Fase 7, el frontend cuenta con React Router, layout administrativo responsive, cliente HTTP, autenticación inicial y componentes base reutilizables.
-
-Al cierre de la Fase 8, el frontend consume la API real para administrar clientes, tipos de evento, paquetes y configuración del negocio.
-
-Al cierre de la Fase 9, el frontend consume `/api/pre-cotizacion/` para registrar solicitudes iniciales y crear cotizaciones reales con resultado referencial generado por backend.
-
-Al cierre de la Fase 10, el backend expone filtros comerciales para `/api/cotizaciones/` por estado, tipo de evento, rango de fecha y búsqueda por cliente o teléfono. El frontend reemplaza el placeholder de cotizaciones por listado, resumen por estado, detalle, cambio de estado y conversión controlada a contrato.
-
-Al cierre de la Fase 11, el backend y frontend gestionan contratos como ventas reales mediante `/api/contratos/`, filtros backend, detalle administrativo, estado contractual, estado de pago calculado, saldo pendiente y cancelación controlada sin eliminación física.
-
-Al cierre de la Fase 12, `/api/costos-directos/` permite filtrar por contrato, búsqueda por cliente/teléfono/concepto y rango de fecha. `/api/gastos-fijos/` permite filtrar por mes, año y concepto, y `/api/gastos-fijos/resumen/` devuelve el total del periodo filtrado. El frontend reemplaza placeholders por pantallas administrativas reales en `/costos-directos` y `/gastos-fijos`.
-
-Al cierre de la Fase 13, `/api/inicio-resumen/` concentra el resumen operativo del inicio administrativo. El frontend `/inicio` no carga listas completas para calcular KPIs; consume datos agregados del backend, muestra eventos proximos confirmados y enlaza al detalle de contrato.
-
-## Organización backend propuesta
-
-Proyecto Django principal:
-
-```text
-backend/config/
-```
-
-Apps recomendadas:
-
-- `accounts`: autenticación y usuario administrativo.
-- `negocio`: clientes, tipos de evento, paquetes y configuración del negocio.
-- `comercial`: pre-cotizaciones, cotizaciones y conversión a contratos.
-- `financiero`: contratos, costos directos, gastos fijos y métricas financieras.
-- `reportes`: reportes comerciales, financieros, eventos y paquetes.
-
-Apps iniciales configuradas:
+Apps principales:
 
 ```text
 accounts
@@ -94,131 +51,121 @@ financiero
 reportes
 ```
 
-Estructura interna recomendada por app:
+Reglas backend:
+
+- `services.py` contiene acciones y calculos de negocio.
+- `selectors.py` contiene consultas reutilizables.
+- Serializers validan contratos de API.
+- ViewSets administrativos usan permisos autenticados por defecto.
+- API publica usa `AllowAny` solo en endpoints acotados.
+- Dinero usa `DecimalField`, no `FloatField`.
+
+## API publica
 
 ```text
-models.py
-serializers.py
-views.py
-urls.py
-admin.py
-services.py
-selectors.py
-validators.py
-tests.py
-migrations/
+GET  /api/public/tipos-evento/
+GET  /api/public/paquetes/
+GET  /api/public/configuracion/
+POST /api/pre-cotizacion/
 ```
 
-## Reglas backend
+Restricciones:
 
-- No concentrar toda la lógica en `views.py`.
-- Usar `services.py` para acciones de negocio.
-- Usar `selectors.py` para consultas reutilizables.
-- Usar `validators.py` para validaciones reutilizables.
-- Usar serializers para validaciones de API.
-- Usar modelos para restricciones fundamentales.
-- Usar `DecimalField` para dinero, nunca `FloatField`.
-- Calcular KPIs financieros principales en backend.
+- Tipos de evento: solo activos.
+- Paquetes: solo activos.
+- Configuracion: solo campos necesarios para el calculo publico.
+- Configuracion publica incluye `whatsapp_numero_url` listo para `wa.me`, no el valor editable administrativo.
+- `POST /api/pre-cotizacion/` no requiere login.
+- El flujo publico no permite seleccionar clientes existentes por ID.
+- No se guarda correo electronico desde la pre-cotizacion publica.
+- No hay edicion ni eliminacion publica.
 
-## API REST prevista
-
-Endpoints esperados por fases:
+## API administrativa
 
 ```text
-/api/health/
-
 /api/auth/login/
 /api/auth/logout/
 /api/auth/me/
-
 /api/clientes/
 /api/tipos-evento/
 /api/paquetes/
 /api/configuracion-negocio/
-
-/api/pre-cotizacion/
 /api/cotizaciones/
 /api/cotizaciones/{id}/cambiar-estado/
 /api/cotizaciones/{id}/convertir-contrato/
-
 /api/contratos/
 /api/costos-directos/
 /api/gastos-fijos/
-/api/gastos-fijos/resumen/
-
 /api/inicio-resumen/
 /api/dashboard-financiero/
-
-/api/reportes/comercial/
-/api/reportes/financiero/
-/api/reportes/eventos/
-/api/reportes/paquetes/
+/api/reportes/
 ```
 
-No todos los endpoints se implementan en una sola fase. Cada fase debe cerrar únicamente su alcance.
+Autenticacion:
 
-En la Fase 5 se implementan los endpoints CRUD principales. En la Fase 6 se implementan las acciones especiales de pre-cotización, cambio de estado y conversión a contrato.
+- Login devuelve `{ auth: { type: "token", token: "..." } }`.
+- Frontend envia `Authorization: Token <token>`.
+- `/api/auth/me/` requiere token.
+- Logout invalida el token actual.
 
-## Organización frontend propuesta
+## Frontend
 
-```text
-frontend/src/
-├── main.jsx
-├── App.jsx
-├── routes/
-├── layouts/
-├── components/
-├── pages/
-├── services/
-├── hooks/
-├── utils/
-└── styles/
-```
+Layouts:
 
-Rutas esperadas:
+- `PublicLayout`: rutas publicas, sin Sidebar ni Topbar administrativo.
+- `AdminLayout`: panel protegido con Sidebar, Topbar y contenido administrativo.
+
+Rutas publicas:
 
 ```text
-/login
-/inicio
+/
 /pre-cotizacion
+/pre-cotizacion/alquiler
+/pre-cotizacion/servicio-completo
+/pre-cotizacion/comparacion
+/login
+```
+
+Rutas administrativas protegidas:
+
+```text
+/inicio
+/clientes
+/tipos-evento
+/paquetes
+/configuracion
 /cotizaciones
 /cotizaciones/:id
 /contratos
 /contratos/:id
-/clientes
-/tipos-evento
-/paquetes
 /costos-directos
 /gastos-fijos
 /dashboard-financiero
 /reportes
-/configuracion
 ```
 
-## Comunicación frontend-backend
+## Variables de entorno
 
-- El frontend debe consumir API real.
-- La URL base de API debe configurarse por variable de entorno.
-- Los errores de validación backend deben mostrarse en UI cerca del campo correspondiente cuando aplique.
-- React no debe duplicar reglas financieras críticas.
+Backend:
 
-## Deploy previsto
+```text
+DJANGO_SECRET_KEY=
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+DATABASE_URL=
+```
 
-Backend en Render:
+Frontend:
 
-- Servicio web Django/DRF.
-- Variables de entorno.
-- Migraciones aplicadas.
-- Archivos estáticos configurados.
-- PostgreSQL en producción.
+```text
+VITE_API_URL=http://127.0.0.1:8000/api
+```
 
-Frontend en Render:
+`VITE_API_URL` es la unica convencion vigente para la URL del API en frontend.
 
-- Static Site.
-- Build de Vite.
-- Variable de entorno para API de producción.
+El numero de WhatsApp del negocio se administra en `ConfiguracionNegocio.whatsapp_negocio` con formato local ecuatoriano `09XXXXXXXX`. La API publica lo entrega normalizado como `whatsapp_numero_url`, por ejemplo `0991234567` -> `593991234567`.
 
-Base de datos:
+## Raiz backend
 
-- SQLite solo para desarrollo.
-- PostgreSQL para producción.
+`GET /` devuelve JSON util con enlaces a health, admin, API, frontend local y pre-cotizacion publica. No reemplaza `/api/health/`.

@@ -38,7 +38,7 @@ class ConfiguracionNegocioAdmin(admin.ModelAdmin):
     list_display = (
         "nombre_negocio",
         "tarifa_base_alquiler",
-        "capacidad_maxima",
+        "whatsapp_negocio",
         "activo",
     )
     list_filter = ("activo",)

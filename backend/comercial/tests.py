@@ -62,7 +62,7 @@ class CotizacionApiTests(APITestCase):
             tarifa_base_alquiler=Decimal("1000.00"),
             invitados_incluidos_alquiler=50,
             costo_invitado_adicional=Decimal("10.00"),
-            capacidad_maxima=200,
+            whatsapp_negocio="0991234567",
             activo=True,
         )
 
@@ -125,12 +125,12 @@ class CotizacionApiTests(APITestCase):
             cotizacion.save()
 
     def test_pre_cotizacion_calcula_y_crea_cotizacion(self):
+        self.client.force_authenticate(user=None)
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre_cliente": "Cliente Nuevo",
-                "telefono_cliente": "+593 999999222",
-                "correo_cliente": "nuevo@example.com",
+                "nombre": "Cliente Nuevo",
+                "telefono": "+593 999999222",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 80,
@@ -143,13 +143,16 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["calculo"]["total_estimado"], "1300.00")
         self.assertEqual(response.data["cotizacion"]["estado"], Cotizacion.Estado.NUEVA)
-        self.assertTrue(Cliente.objects.filter(nombre="Cliente Nuevo").exists())
+        cliente = Cliente.objects.get(nombre="Cliente Nuevo")
+        self.assertEqual(cliente.correo, "")
 
-    def test_pre_cotizacion_respeta_capacidad_maxima(self):
+    def test_pre_cotizacion_acepta_invitados_altos_sin_tope_de_configuracion(self):
+        self.client.force_authenticate(user=None)
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "cliente": self.cliente.id,
+                "nombre": "Cliente Sin Tope",
+                "telefono": "+593 999999223",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 201,
@@ -158,8 +161,126 @@ class CotizacionApiTests(APITestCase):
             format="json",
         )
 
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["calculo"]["total_estimado"], "2510.00")
+
+    def test_pre_cotizacion_publica_rechaza_cliente_existente(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "cliente": self.cliente.id,
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-09-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Paquete.TipoServicio.ALQUILER,
+            },
+            format="json",
+        )
+
         self.assertEqual(response.status_code, 400)
-        self.assertIn("numero_invitados", response.data)
+        self.assertIn("cliente", response.data)
+
+    def test_pre_cotizacion_servicio_completo_calcula_paquetes_activos(self):
+        self.client.force_authenticate(user=None)
+        Paquete.objects.create(
+            nombre="Servicio inactivo",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("99.00"),
+            activo=False,
+        )
+
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre": "Cliente Servicio",
+                "telefono": "+593 999999224",
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-10-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["cotizacion"]["paquete"], None)
+        self.assertEqual(response.data["cotizacion"]["total_estimado"], "2400.00")
+        paquetes = response.data["calculo"]["paquetes"]
+        self.assertEqual(len(paquetes), 1)
+        self.assertEqual(paquetes[0]["nombre"], "Servicio completo")
+        self.assertEqual(paquetes[0]["total_estimado"], "2400.00")
+
+    def test_pre_cotizacion_comparacion_calcula_alquiler_y_servicio(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre": "Cliente Indeciso",
+                "telefono": "+593 999999225",
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-11-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.NO_SEGURO,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["cotizacion"]["estado"], Cotizacion.Estado.NUEVA)
+        self.assertEqual(
+            response.data["cotizacion"]["tipo_servicio"],
+            Cotizacion.TipoServicioInteres.NO_SEGURO,
+        )
+        self.assertEqual(response.data["calculo"]["alquiler"]["total_estimado"], "1300.00")
+        self.assertEqual(
+            response.data["calculo"]["servicio_completo"]["paquetes"][0]["total_estimado"],
+            "2400.00",
+        )
+
+    def test_endpoints_administrativos_siguen_protegidos(self):
+        self.client.force_authenticate(user=None)
+
+        response = self.client.get("/api/cotizaciones/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_endpoints_publicos_devuelven_solo_datos_activos(self):
+        self.client.force_authenticate(user=None)
+        TipoEvento.objects.create(nombre="Evento inactivo", activo=False)
+        Paquete.objects.create(
+            nombre="Paquete inactivo",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("60.00"),
+            activo=False,
+        )
+
+        tipos_response = self.client.get("/api/public/tipos-evento/")
+        paquetes_response = self.client.get(
+            "/api/public/paquetes/",
+            {"tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO},
+        )
+        configuracion_response = self.client.get("/api/public/configuracion/")
+
+        self.assertEqual(tipos_response.status_code, 200)
+        self.assertEqual(paquetes_response.status_code, 200)
+        self.assertEqual(configuracion_response.status_code, 200)
+        self.assertEqual(
+            {item["nombre"] for item in tipos_response.data},
+            {"Boda"},
+        )
+        self.assertEqual(
+            {item["nombre"] for item in paquetes_response.data},
+            {"Servicio completo"},
+        )
+        self.assertEqual(
+            configuracion_response.data["tarifa_base_alquiler"],
+            "1000.00",
+        )
+        self.assertEqual(
+            configuracion_response.data["whatsapp_numero_url"],
+            "593991234567",
+        )
 
     def test_cambiar_estado_cotizacion(self):
         cotizacion = Cotizacion.objects.create(

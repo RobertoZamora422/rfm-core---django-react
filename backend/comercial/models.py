@@ -13,6 +13,11 @@ class Cotizacion(TimeStampedModel):
         CONVERTIDA = "convertida", "Convertida"
         DESCARTADA = "descartada", "Descartada"
 
+    class TipoServicioInteres(models.TextChoices):
+        ALQUILER = "alquiler", "Alquiler del local"
+        SERVICIO_COMPLETO = "servicio_completo", "Servicio completo"
+        NO_SEGURO = "no_seguro", "Aun no estoy seguro"
+
     cliente = models.ForeignKey(
         Cliente,
         on_delete=models.PROTECT,
@@ -36,7 +41,7 @@ class Cotizacion(TimeStampedModel):
     )
     tipo_servicio = models.CharField(
         max_length=30,
-        choices=Paquete.TipoServicio.choices,
+        choices=TipoServicioInteres.choices,
     )
     estado = models.CharField(
         max_length=20,

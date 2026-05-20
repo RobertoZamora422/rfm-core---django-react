@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 
-from negocio.models import Cliente, Paquete, TipoEvento
+from negocio.models import Paquete, TipoEvento
 from negocio.validators import validate_phone
 
 from .models import Cotizacion
@@ -71,14 +71,6 @@ class CotizacionSerializer(serializers.ModelSerializer):
                 {"paquete": "El paquete no corresponde al tipo de servicio indicado."}
             )
 
-        if (
-            tipo_servicio == Paquete.TipoServicio.SERVICIO_COMPLETO
-            and paquete is None
-        ):
-            raise serializers.ValidationError(
-                {"paquete": "El servicio completo debe tener un paquete asociado."}
-            )
-
         if estado == Cotizacion.Estado.CONVERTIDA and (
             self.instance is None
             or self.instance.estado != Cotizacion.Estado.CONVERTIDA
@@ -103,18 +95,20 @@ class CotizacionSerializer(serializers.ModelSerializer):
 
 
 class PreCotizacionSerializer(serializers.Serializer):
-    cliente = serializers.PrimaryKeyRelatedField(
-        queryset=Cliente.objects.all(),
-        required=False,
-        allow_null=True,
-    )
+    cliente = serializers.IntegerField(required=False, write_only=True)
     nombre_cliente = serializers.CharField(required=False, allow_blank=True)
+    nombre = serializers.CharField(required=False, allow_blank=True)
     telefono_cliente = serializers.CharField(
         required=False,
         allow_blank=True,
         validators=[validate_phone],
     )
-    correo_cliente = serializers.EmailField(required=False, allow_blank=True)
+    telefono = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        validators=[validate_phone],
+    )
+    correo_cliente = serializers.EmailField(required=False, allow_blank=True, write_only=True)
     observaciones_cliente = serializers.CharField(required=False, allow_blank=True)
     tipo_evento = serializers.PrimaryKeyRelatedField(
         queryset=TipoEvento.objects.filter(activo=True),
@@ -126,35 +120,35 @@ class PreCotizacionSerializer(serializers.Serializer):
     )
     fecha_tentativa = serializers.DateField()
     numero_invitados = serializers.IntegerField(min_value=1)
-    tipo_servicio = serializers.ChoiceField(choices=Paquete.TipoServicio.choices)
+    tipo_servicio = serializers.ChoiceField(choices=Cotizacion.TipoServicioInteres.choices)
     observaciones = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
-        cliente = attrs.get("cliente")
-        nombre_cliente = attrs.get("nombre_cliente", "").strip()
-        telefono_cliente = attrs.get("telefono_cliente", "").strip()
+        nombre_cliente = (
+            attrs.get("nombre_cliente") or attrs.get("nombre") or ""
+        ).strip()
+        telefono_cliente = (
+            attrs.get("telefono_cliente") or attrs.get("telefono") or ""
+        ).strip()
         paquete = attrs.get("paquete")
         tipo_servicio = attrs.get("tipo_servicio")
 
         errors = {}
-        if cliente is None:
-            if not nombre_cliente:
-                errors["nombre_cliente"] = "El nombre del cliente es obligatorio."
-            if not telefono_cliente:
-                errors["telefono_cliente"] = "El telefono del cliente es obligatorio."
+        if "cliente" in attrs:
+            errors["cliente"] = "El flujo publico no permite seleccionar clientes existentes."
+        if not nombre_cliente:
+            errors["nombre_cliente"] = "El nombre del cliente es obligatorio."
+        if not telefono_cliente:
+            errors["telefono_cliente"] = "El telefono del cliente es obligatorio."
 
         if paquete and paquete.tipo_servicio != tipo_servicio:
             errors["paquete"] = "El paquete no corresponde al tipo de servicio indicado."
 
-        if (
-            tipo_servicio == Paquete.TipoServicio.SERVICIO_COMPLETO
-            and paquete is None
-        ):
-            errors["paquete"] = "El servicio completo debe tener un paquete asociado."
-
         if errors:
             raise serializers.ValidationError(errors)
 
+        attrs["nombre_cliente"] = nombre_cliente
+        attrs["telefono_cliente"] = telefono_cliente
         return attrs
 
 

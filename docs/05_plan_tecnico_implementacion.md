@@ -227,7 +227,7 @@ Entregables:
 
 - Pantalla `/pre-cotizacion` conectada a `/api/pre-cotizacion/`.
 - Carga de clientes, tipos de evento y paquetes desde API real.
-- Registro de cliente nuevo o selección de cliente existente.
+- Registro publico de cliente/interesado sin seleccion de clientes administrativos existentes.
 - Resultado referencial devuelto por backend.
 - Creación de cotización real en estado `nueva`.
 
@@ -407,7 +407,9 @@ Entregables completados:
 
 ## Fase 18 - README final y documentación de uso
 
-La fase tiene como objetivo dejar el proyecto listo para instalación, ejecución y evaluación.
+Estado: En consolidacion.
+
+La fase tiene como objetivo dejar el proyecto listo para instalacion, ejecucion, evaluacion y preparacion de deploy.
 
 Alcance:
 
@@ -418,6 +420,19 @@ Alcance:
 - Variables de entorno.
 - Deploy.
 - Solución de problemas comunes.
+- Separacion definitiva entre pre-cotizacion publica y panel administrativo.
+- Autenticacion administrativa por TokenAuthentication.
+- Root JSON util en backend.
+- Configuracion base para Render con WhiteNoise, `DATABASE_URL` y PostgreSQL previsto.
+
+Entregables esperados:
+
+- README actualizado con rutas publicas, rutas protegidas, comandos, variables y URLs locales.
+- Docs actualizados para dejar claro que la pre-cotizacion es publica.
+- Endpoint publico `POST /api/pre-cotizacion/` sin login y sin CRUD administrativo.
+- Endpoints publicos controlados para catalogos activos.
+- Frontend con `PublicLayout` y `AdminLayout` separados.
+- Validacion con `manage.py check`, `manage.py makemigrations --check --dry-run`, `manage.py test`, `npm run lint` y `npm run build`.
 
 ## Fase 19 - Deploy en Render
 

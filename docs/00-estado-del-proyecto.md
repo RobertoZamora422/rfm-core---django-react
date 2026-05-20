@@ -2,12 +2,14 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion del flujo comercial y financiero inicial. La documentacion inicial, el backend core, los servicios de negocio, el layout frontend administrativo, los modulos base de administracion, la pre-cotizacion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos, la revision responsive/UX y la validacion integral se encuentran completados.
+El proyecto se encuentra en etapa de consolidacion tecnica previa a deploy. La documentacion inicial, el backend core, los servicios de negocio, el layout administrativo, los modulos de administracion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos, la revision responsive/UX y la validacion integral se encuentran completados.
+
+La version actual corrige la separacion conceptual de la pre-cotizacion: el flujo de cliente/interesado es publico, no requiere login, no muestra chrome administrativo y registra una cotizacion inicial gestionable luego desde el panel protegido.
 
 El sistema contempla como flujo principal:
 
 ```text
-Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
+Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 ```
 
 ## Fases completadas
@@ -33,12 +35,17 @@ Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
 
 ## Fase actual
 
-La fase actual corresponde al cierre de pruebas y validacion integral.
+La fase actual corresponde a consolidacion de pre-cotizacion publica, autenticacion por token, preparacion de variables reales para Render y documentacion final previa a deploy.
 
-Se consolida una prueba automatizada transversal del flujo comercial-financiero, junto con la matriz de validacion para backend, migraciones, frontend y recorrido manual principal.
+El flujo publico queda compuesto por cuatro pantallas:
+
+- `/pre-cotizacion`
+- `/pre-cotizacion/alquiler`
+- `/pre-cotizacion/servicio-completo`
+- `/pre-cotizacion/comparacion`
+
+El panel administrativo permanece protegido desde `/login` y concentra clientes, cotizaciones, contratos, costos, gastos, dashboard y reportes.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a la Fase 18 - README final y documentacion de uso.
-
-Se debera preparar la guia final de instalacion, ejecucion local, datos base, variables de entorno, deploy y solucion de problemas comunes.
+La siguiente etapa corresponde a cerrar Fase 18 y preparar Fase 19 - Deploy en Render, aplicando migraciones, variables de entorno y configuracion de servicios en la plataforma.
