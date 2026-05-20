@@ -1,21 +1,41 @@
-import { LogOut, Menu, UserRound } from 'lucide-react'
+import { Menu, PanelLeftClose, PanelLeftOpen, UserRound, X } from 'lucide-react'
 import { Button } from '../ui/Button'
 
-export function Topbar({ isMenuOpen = false, onLogout, onMenuClick, user }) {
+export function Topbar({
+  isCompactViewport = false,
+  isMenuOpen = false,
+  isSidebarCollapsed = false,
+  onMenuClick,
+  user,
+}) {
   const displayName = user?.nombre_completo || user?.username || 'Usuario'
+  const menuIcon = isCompactViewport
+    ? isMenuOpen
+      ? X
+      : Menu
+    : isSidebarCollapsed
+      ? PanelLeftOpen
+      : PanelLeftClose
+  const menuLabel = isCompactViewport
+    ? isMenuOpen
+      ? 'Cerrar menú'
+      : 'Abrir menú'
+    : isSidebarCollapsed
+      ? 'Mostrar menú'
+      : 'Ocultar menú'
 
   return (
     <header className="topbar">
       <Button
-        aria-label="Abrir navegacion"
+        aria-label={menuLabel}
         aria-controls="sidebar-principal"
-        aria-expanded={isMenuOpen}
+        aria-expanded={isCompactViewport ? isMenuOpen : !isSidebarCollapsed}
         className="topbar__menu"
-        icon={Menu}
+        icon={menuIcon}
         onClick={onMenuClick}
         variant="ghost"
       >
-        Menu
+        {menuLabel}
       </Button>
       <div className="topbar__context">
         <span>Sistema administrativo</span>
@@ -24,9 +44,6 @@ export function Topbar({ isMenuOpen = false, onLogout, onMenuClick, user }) {
       <div className="topbar__user">
         <UserRound aria-hidden="true" size={18} />
         <span>{displayName}</span>
-        <Button icon={LogOut} onClick={onLogout} variant="secondary">
-          Salir
-        </Button>
       </div>
     </header>
   )

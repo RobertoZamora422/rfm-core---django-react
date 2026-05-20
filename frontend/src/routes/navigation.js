@@ -14,20 +14,20 @@ import {
 
 export const navigationSections = [
   {
-    title: 'Operacion',
+    title: 'Principal',
     items: [
       { label: 'Inicio', path: '/inicio', icon: Home },
-      { label: 'Cotizaciones', path: '/cotizaciones', icon: ClipboardList },
-      { label: 'Contratos', path: '/contratos', icon: BriefcaseBusiness },
+      { label: 'Dashboard financiero', path: '/dashboard-financiero', icon: BarChart3 },
     ],
   },
   {
-    title: 'Administracion',
+    title: 'Comercial',
     items: [
-      { label: 'Clientes', path: '/clientes', icon: Users },
-      { label: 'Tipos de evento', path: '/tipos-evento', icon: Tags },
+      { label: 'Cotizaciones', path: '/cotizaciones', icon: ClipboardList },
+      { label: 'Contratos', path: '/contratos', icon: BriefcaseBusiness },
       { label: 'Paquetes', path: '/paquetes', icon: Package },
-      { label: 'Configuracion', path: '/configuracion', icon: Settings },
+      { label: 'Tipos de evento', path: '/tipos-evento', icon: Tags },
+      { label: 'Clientes', path: '/clientes', icon: Users },
     ],
   },
   {
@@ -35,8 +35,11 @@ export const navigationSections = [
     items: [
       { label: 'Costos directos', path: '/costos-directos', icon: Receipt },
       { label: 'Gastos fijos', path: '/gastos-fijos', icon: WalletCards },
-      { label: 'Dashboard financiero', path: '/dashboard-financiero', icon: BarChart3 },
       { label: 'Reportes', path: '/reportes', icon: FileBarChart },
     ],
+  },
+  {
+    title: 'Sistema',
+    items: [{ label: 'Configuración', path: '/configuracion', icon: Settings }],
   },
 ]

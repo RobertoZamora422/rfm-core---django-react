@@ -6,17 +6,38 @@ import { useAuth } from '../hooks/useAuth'
 
 export function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isCompactViewport, setIsCompactViewport] = useState(() =>
+    window.matchMedia('(max-width: 980px)').matches,
+  )
   const { logout, user } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    document.body.classList.toggle('sidebar-lock', isSidebarOpen)
+    const mediaQuery = window.matchMedia('(max-width: 980px)')
+
+    const handleViewportChange = (event) => {
+      setIsCompactViewport(event.matches)
+      if (!event.matches) setIsSidebarOpen(false)
+    }
+
+    mediaQuery.addEventListener('change', handleViewportChange)
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleViewportChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    const shouldLockBody = isCompactViewport && isSidebarOpen
+
+    document.body.classList.toggle('sidebar-lock', shouldLockBody)
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setIsSidebarOpen(false)
     }
 
-    if (isSidebarOpen) {
+    if (shouldLockBody) {
       window.addEventListener('keydown', handleKeyDown)
     }
 
@@ -24,7 +45,18 @@ export function AdminLayout() {
       document.body.classList.remove('sidebar-lock')
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isSidebarOpen])
+  }, [isCompactViewport, isSidebarOpen])
+
+  const isDesktopCollapsed = !isCompactViewport && isSidebarCollapsed
+
+  const handleNavigationToggle = () => {
+    if (isCompactViewport) {
+      setIsSidebarOpen((isOpen) => !isOpen)
+      return
+    }
+
+    setIsSidebarCollapsed((isCollapsed) => !isCollapsed)
+  }
 
   const handleLogout = async () => {
     await logout()
@@ -32,16 +64,23 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="admin-shell">
+    <div className={`admin-shell ${isDesktopCollapsed ? 'admin-shell--sidebar-collapsed' : ''}`}>
       <a className="skip-link" href="#contenido-principal">
         Saltar al contenido
       </a>
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar
+        isCollapsed={isDesktopCollapsed}
+        isOpen={isSidebarOpen}
+        onCollapseToggle={() => setIsSidebarCollapsed((isCollapsed) => !isCollapsed)}
+        onClose={() => setIsSidebarOpen(false)}
+        onLogout={handleLogout}
+      />
       <div className="admin-shell__content">
         <Topbar
+          isCompactViewport={isCompactViewport}
+          isSidebarCollapsed={isDesktopCollapsed}
           isMenuOpen={isSidebarOpen}
-          onLogout={handleLogout}
-          onMenuClick={() => setIsSidebarOpen(true)}
+          onMenuClick={handleNavigationToggle}
           user={user}
         />
         <main className="content-area" id="contenido-principal" tabIndex="-1">
