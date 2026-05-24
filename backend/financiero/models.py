@@ -99,7 +99,9 @@ class Contrato(TimeStampedModel):
 
     @property
     def total_costos_directos(self):
-        total = self.costos_directos.aggregate(total=Sum("valor"))["total"]
+        total = self.costos_directos.filter(eliminado=False).aggregate(total=Sum("valor"))[
+            "total"
+        ]
         return total or Decimal("0.00")
 
     @property
@@ -147,6 +149,8 @@ class CostoDirecto(TimeStampedModel):
     )
     fecha = models.DateField()
     observaciones = models.TextField(blank=True)
+    eliminado = models.BooleanField(default=False)
+    eliminado_en = models.DateTimeField(blank=True, null=True)
     es_demo = models.BooleanField(default=False)
 
     class Meta:
@@ -172,6 +176,8 @@ class GastoFijoMensual(TimeStampedModel):
     mes = models.PositiveSmallIntegerField(validators=[validate_month])
     anio = models.PositiveIntegerField(validators=[validate_year])
     observaciones = models.TextField(blank=True)
+    eliminado = models.BooleanField(default=False)
+    eliminado_en = models.DateTimeField(blank=True, null=True)
     es_demo = models.BooleanField(default=False)
 
     class Meta:

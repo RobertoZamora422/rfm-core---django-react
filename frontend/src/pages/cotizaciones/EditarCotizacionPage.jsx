@@ -7,26 +7,33 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import {
   clientesService,
-  contratosService,
+  cotizacionesService,
   paquetesService,
   tiposEventoService,
 } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
-import { ContratoForm } from './ContratoForm'
+import { CotizacionForm } from './CotizacionForm'
 
 function toArray(data) {
   return Array.isArray(data) ? data : data?.results ?? []
 }
 
-function ensureCurrentOption(items, currentId, currentName) {
+function ensureCurrentOption(items, currentId, currentName, extra = {}) {
   if (!currentId || items.some((item) => String(item.id) === String(currentId))) return items
-  return [...items, { id: currentId, nombre: `${currentName || `Registro #${currentId}`} (actual)` }]
+  return [
+    ...items,
+    {
+      ...extra,
+      id: currentId,
+      nombre: `${currentName || `Registro #${currentId}`} (actual)`,
+    },
+  ]
 }
 
-export function EditarContratoPage() {
+export function EditarCotizacionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [contrato, setContrato] = useState(null)
+  const [cotizacion, setCotizacion] = useState(null)
   const [clientes, setClientes] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
   const [paquetes, setPaquetes] = useState([])
@@ -40,21 +47,27 @@ export function EditarContratoPage() {
     setPageError('')
 
     try {
-      const [contratoData, clientesData, tiposData, paquetesData] = await Promise.all([
-        contratosService.retrieve(id),
+      const [cotizacionData, clientesData, tiposData, paquetesData] = await Promise.all([
+        cotizacionesService.retrieve(id),
         clientesService.list(),
         tiposEventoService.list({ activo: true }),
         paquetesService.list({ activo: true }),
       ])
       const tiposActivos = toArray(tiposData)
       const paquetesActivos = toArray(paquetesData)
-      setContrato(contratoData)
+      setCotizacion(cotizacionData)
       setClientes(toArray(clientesData))
       setTiposEvento(
-        ensureCurrentOption(tiposActivos, contratoData.tipo_evento, contratoData.tipo_evento_nombre),
+        ensureCurrentOption(
+          tiposActivos,
+          cotizacionData.tipo_evento,
+          cotizacionData.tipo_evento_nombre,
+        ),
       )
       setPaquetes(
-        ensureCurrentOption(paquetesActivos, contratoData.paquete, contratoData.paquete_nombre),
+        ensureCurrentOption(paquetesActivos, cotizacionData.paquete, cotizacionData.paquete_nombre, {
+          tipo_servicio: cotizacionData.tipo_servicio,
+        }),
       )
     } catch (error) {
       setPageError(getApiErrorMessage(error))
@@ -74,8 +87,8 @@ export function EditarContratoPage() {
     setPageError('')
 
     try {
-      const updated = await contratosService.update(id, payload)
-      navigate(`/contratos/${updated.id}`)
+      const updated = await cotizacionesService.update(id, payload)
+      navigate(`/cotizaciones/${updated.id}`)
     } catch (error) {
       setFieldErrors(getApiFieldErrors(error))
       setPageError(getApiErrorMessage(error))
@@ -88,36 +101,36 @@ export function EditarContratoPage() {
     <div className="page-stack">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to={`/contratos/${id}`}>
+          <Link className="button button--secondary" to={`/cotizaciones/${id}`}>
             <ArrowLeft aria-hidden="true" size={18} />
             <span>Volver</span>
           </Link>
         }
-        description="Actualiza los datos operativos y financieros editables del contrato."
-        title={`Editar contrato #${id}`}
+        description="Actualiza la informacion comercial editable de la cotizacion."
+        title={`Editar cotizacion #${id}`}
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
 
       <Card>
         {isLoading ? (
-          <LoadingState label="Cargando contrato" />
-        ) : contrato ? (
-          <ContratoForm
+          <LoadingState label="Cargando cotizacion" />
+        ) : cotizacion ? (
+          <CotizacionForm
             clientes={clientes}
             errors={fieldErrors}
-            initialValues={contrato}
+            initialValues={cotizacion}
             isLoadingCatalogs={isLoading}
             isSubmitting={isSaving}
-            key={contrato.id}
-            onCancel={() => navigate(`/contratos/${id}`)}
+            key={cotizacion.id}
+            onCancel={() => navigate(`/cotizaciones/${id}`)}
             onSubmit={handleSubmit}
             paquetes={paquetes}
             submitLabel="Guardar cambios"
             tiposEvento={tiposEvento}
           />
         ) : (
-          <ErrorMessage>No se pudo cargar el contrato solicitado.</ErrorMessage>
+          <ErrorMessage>No se pudo cargar la cotizacion solicitada.</ErrorMessage>
         )}
       </Card>
     </div>

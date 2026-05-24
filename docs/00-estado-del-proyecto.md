@@ -6,7 +6,7 @@ El proyecto se encuentra en etapa de consolidacion tecnica previa a deploy. La d
 
 La version actual corrige la separacion conceptual de la pre-cotizacion: el flujo de cliente/interesado es publico, no requiere login, no muestra chrome administrativo y registra una cotizacion inicial gestionable luego desde el panel protegido.
 
-Tambien completa el uso administrativo previo a datos reales: contratos manuales, edicion de contratos, detalle de rentabilidad, costos directos desde contrato, conversion de cotizacion con invitados/paquete finales, sesion persistente entre pestanas y configuracion del negocio tratada como edicion de la configuracion activa.
+Tambien completa el uso administrativo previo a datos reales: cotizaciones administrativas manuales, contratos manuales, edicion de contratos, detalle de rentabilidad, costos directos desde contrato, conversion de cotizacion con invitados/paquete finales, sesion persistente entre pestanas y configuracion del negocio tratada como edicion de la configuracion vigente.
 
 El sistema contempla como flujo principal:
 
@@ -46,8 +46,8 @@ El flujo publico queda compuesto por cuatro pantallas:
 - `/pre-cotizacion/servicio-completo`
 - `/pre-cotizacion/comparacion`
 
-El panel administrativo permanece protegido desde `/login` y concentra clientes, cotizaciones, contratos, costos, gastos, dashboard y reportes. Contratos incluye `/contratos/nuevo`, `/contratos/:id` y `/contratos/:id/editar`.
+El panel administrativo permanece protegido desde `/login` y concentra clientes, cotizaciones, contratos, costos, gastos, dashboard y reportes. Cotizaciones incluye `/cotizaciones/nueva`, `/cotizaciones/:id` y `/cotizaciones/:id/editar`. Contratos incluye `/contratos/nuevo`, `/contratos/:id` y `/contratos/:id/editar`.
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a cerrar Fase 18 y preparar Fase 19 - Deploy en Render, aplicando migraciones, variables de entorno y configuracion de servicios en la plataforma.
+La siguiente etapa corresponde a intentar el deploy manual en Render, aplicando migraciones, `collectstatic`, variables de entorno reales y configuracion de servicios en la plataforma.

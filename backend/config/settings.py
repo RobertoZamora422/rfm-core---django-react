@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 
@@ -16,9 +17,34 @@ def env_list(name, default=""):
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-rfm-core-dev-key")
+def env_bool(name, default=""):
+    return os.getenv(name, default).lower() in {"1", "true", "yes", "on"}
 
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in {"1", "true", "yes", "on"}
+
+DEBUG = env_bool("DJANGO_DEBUG", "True")
+
+if not DEBUG:
+    required_env_vars = [
+        "DJANGO_SECRET_KEY",
+        "DJANGO_ALLOWED_HOSTS",
+        "CORS_ALLOWED_ORIGINS",
+        "CSRF_TRUSTED_ORIGINS",
+        "DATABASE_URL",
+    ]
+    missing_env_vars = [
+        name
+        for name in required_env_vars
+        if not os.getenv(name, "").strip()
+    ]
+    if missing_env_vars:
+        raise ImproperlyConfigured(
+            "Missing required production environment variables: "
+            + ", ".join(missing_env_vars)
+        )
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
+if not SECRET_KEY:
+    SECRET_KEY = "django-insecure-rfm-core-dev-key"
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
@@ -133,6 +159,8 @@ CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
     "http://127.0.0.1:5173,http://localhost:5173",
 )
+
+CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS")
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

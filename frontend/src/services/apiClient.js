@@ -1,6 +1,12 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
+const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL
+
+if (import.meta.env.PROD && !envApiBaseUrl) {
+  throw new Error('VITE_API_BASE_URL es obligatoria para compilar el frontend en produccion.')
+}
+
+const API_BASE_URL = envApiBaseUrl ?? 'http://127.0.0.1:8000/api'
 const AUTH_TOKEN_KEY = 'rfm_core_auth_token'
 const AUTH_USER_KEY = 'rfm_core_auth_user'
 

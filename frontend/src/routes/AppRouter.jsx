@@ -11,6 +11,8 @@ import { EditarContratoPage } from '../pages/contratos/EditarContratoPage'
 import { NuevoContratoPage } from '../pages/contratos/NuevoContratoPage'
 import { CotizacionesPage } from '../pages/cotizaciones/CotizacionesPage'
 import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPage'
+import { EditarCotizacionPage } from '../pages/cotizaciones/EditarCotizacionPage'
+import { NuevaCotizacionPage } from '../pages/cotizaciones/NuevaCotizacionPage'
 import { CostosDirectosPage } from '../pages/finanzas/CostosDirectosPage'
 import { DashboardFinancieroPage } from '../pages/finanzas/DashboardFinancieroPage'
 import { GastosFijosPage } from '../pages/finanzas/GastosFijosPage'
@@ -50,6 +52,8 @@ export function AppRouter() {
           <Route element={<PaquetesPage />} path="paquetes" />
           <Route element={<ConfiguracionPage />} path="configuracion" />
           <Route element={<CotizacionesPage />} path="cotizaciones" />
+          <Route element={<NuevaCotizacionPage />} path="cotizaciones/nueva" />
+          <Route element={<EditarCotizacionPage />} path="cotizaciones/:id/editar" />
           <Route element={<DetalleCotizacionPage />} path="cotizaciones/:id" />
           <Route element={<ContratosPage />} path="contratos" />
           <Route element={<NuevoContratoPage />} path="contratos/nuevo" />

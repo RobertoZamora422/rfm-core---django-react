@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle2,
+  Edit3,
   Eye,
   FilePlus2,
   FilterX,
   PhoneCall,
+  Plus,
   RefreshCw,
   Search,
   XCircle,
@@ -253,6 +255,10 @@ export function CotizacionesPage() {
               <Eye aria-hidden="true" size={18} />
               <span>Detalle</span>
             </Link>
+            <Link className="button button--secondary" to={`/cotizaciones/${item.id}/editar`}>
+              <Edit3 aria-hidden="true" size={18} />
+              <span>Editar</span>
+            </Link>
             {nextAction ? (
               <Button
                 icon={NextIcon}
@@ -288,9 +294,15 @@ export function CotizacionesPage() {
     <div className="page-stack">
       <PageHeader
         actions={
-          <Button icon={RefreshCw} onClick={loadCotizaciones} variant="secondary">
-            Actualizar
-          </Button>
+          <>
+            <Button icon={RefreshCw} onClick={loadCotizaciones} variant="secondary">
+              Actualizar
+            </Button>
+            <Link className="button button--primary" to="/cotizaciones/nueva">
+              <Plus aria-hidden="true" size={18} />
+              <span>Nueva cotizacion</span>
+            </Link>
+          </>
         }
         description="Pipeline comercial conectado a cotizaciones reales del backend."
         title="Cotizaciones"

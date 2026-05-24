@@ -1,4 +1,5 @@
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -69,6 +70,13 @@ class ConfiguracionNegocioViewSet(viewsets.ModelViewSet):
         if activo is not None:
             queryset = queryset.filter(activo=activo.lower() == "true")
         return queryset
+
+    def destroy(self, request, *args, **kwargs):
+        raise ValidationError(
+            {
+                "configuracion": "La configuracion vigente no puede eliminarse porque alimenta los calculos publicos."
+            }
+        )
 
 
 class InicioResumenAPIView(APIView):

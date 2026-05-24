@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q, Sum
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -145,7 +146,7 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             "contrato__cliente",
             "contrato__tipo_evento",
             "contrato__paquete",
-        )
+        ).filter(eliminado=False)
         contrato = _parse_int_query(
             self.request.query_params.get("contrato"),
             "contrato",
@@ -185,9 +186,14 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
 
+    def perform_destroy(self, instance):
+        instance.eliminado = True
+        instance.eliminado_en = timezone.now()
+        instance.save(update_fields=["eliminado", "eliminado_en", "actualizado_en"])
+
 
 class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
-    queryset = GastoFijoMensual.objects.all()
+    queryset = GastoFijoMensual.objects.filter(eliminado=False)
     serializer_class = GastoFijoMensualSerializer
     search_fields = ["concepto", "observaciones"]
 
@@ -220,6 +226,11 @@ class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
         if es_demo is not None:
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
+
+    def perform_destroy(self, instance):
+        instance.eliminado = True
+        instance.eliminado_en = timezone.now()
+        instance.save(update_fields=["eliminado", "eliminado_en", "actualizado_en"])
 
     @action(detail=False, methods=["get"], url_path="resumen")
     def resumen(self, request):

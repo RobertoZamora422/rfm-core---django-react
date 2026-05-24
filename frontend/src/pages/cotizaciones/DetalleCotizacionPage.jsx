@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, FilePlus2, RefreshCw, Save } from 'lucide-react'
+import { ArrowLeft, Edit3, FilePlus2, RefreshCw, Save } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
@@ -144,6 +144,10 @@ export function DetalleCotizacionPage() {
             <Button icon={RefreshCw} onClick={loadCotizacion} variant="secondary">
               Actualizar
             </Button>
+            <Link className="button button--secondary" to={`/cotizaciones/${cotizacion.id}/editar`}>
+              <Edit3 aria-hidden="true" size={18} />
+              <span>Editar</span>
+            </Link>
             {canConvertQuote(cotizacion) ? (
               <Button icon={FilePlus2} onClick={() => setIsConversionOpen(true)}>
                 Convertir

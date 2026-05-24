@@ -84,22 +84,37 @@ class ContratoSerializer(serializers.ModelSerializer):
             getattr(self.instance, "monto_abonado", 0),
         )
         cotizacion = attrs.get("cotizacion")
+        tipo_evento = attrs.get(
+            "tipo_evento",
+            getattr(self.instance, "tipo_evento", None),
+        )
+        paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))
+        errors = {}
 
         if (
             valor_final is not None
             and monto_abonado is not None
             and monto_abonado > valor_final
         ):
-            raise serializers.ValidationError(
-                {"monto_abonado": "El monto abonado no puede superar el valor final."}
-            )
+            errors["monto_abonado"] = "El monto abonado no puede superar el valor final."
+
+        if tipo_evento and not tipo_evento.activo:
+            current_tipo_evento_id = getattr(self.instance, "tipo_evento_id", None)
+            if self.instance is None or tipo_evento.id != current_tipo_evento_id:
+                errors["tipo_evento"] = "El tipo de evento debe estar activo."
+
+        if paquete and not paquete.activo:
+            current_paquete_id = getattr(self.instance, "paquete_id", None)
+            if self.instance is None or paquete.id != current_paquete_id:
+                errors["paquete"] = "El paquete debe estar activo."
 
         if cotizacion and cotizacion.estado != Cotizacion.Estado.CONVERTIDA:
-            raise serializers.ValidationError(
-                {
-                    "cotizacion": "La cotizacion asociada debe convertirse desde la accion comercial correspondiente."
-                }
+            errors["cotizacion"] = (
+                "La cotizacion asociada debe convertirse desde la accion comercial correspondiente."
             )
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         return attrs
 
@@ -156,11 +171,20 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
             "valor",
             "fecha",
             "observaciones",
+            "eliminado",
+            "eliminado_en",
             "es_demo",
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "es_demo", "creado_en", "actualizado_en"]
+        read_only_fields = [
+            "id",
+            "eliminado",
+            "eliminado_en",
+            "es_demo",
+            "creado_en",
+            "actualizado_en",
+        ]
 
     def get_contrato_label(self, obj):
         return f"Contrato #{obj.contrato_id}"
@@ -206,11 +230,20 @@ class GastoFijoMensualSerializer(serializers.ModelSerializer):
             "mes",
             "anio",
             "observaciones",
+            "eliminado",
+            "eliminado_en",
             "es_demo",
             "creado_en",
             "actualizado_en",
         ]
-        read_only_fields = ["id", "es_demo", "creado_en", "actualizado_en"]
+        read_only_fields = [
+            "id",
+            "eliminado",
+            "eliminado_en",
+            "es_demo",
+            "creado_en",
+            "actualizado_en",
+        ]
 
     def validate_concepto(self, value):
         value = (value or "").strip()

@@ -148,5 +148,14 @@ class ConfiguracionNegocio(TimeStampedModel):
             return ""
         return normalizar_whatsapp_ecuador(self.whatsapp_negocio)
 
+    def clean(self):
+        super().clean()
+        if not self.activo:
+            raise ValidationError(
+                {
+                    "activo": "Debe existir una configuracion vigente para calcular pre-cotizaciones."
+                }
+            )
+
     def __str__(self):
         return self.nombre_negocio

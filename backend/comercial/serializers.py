@@ -60,26 +60,58 @@ class CotizacionSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))
+        tipo_evento = attrs.get(
+            "tipo_evento",
+            getattr(self.instance, "tipo_evento", None),
+        )
         tipo_servicio = attrs.get(
             "tipo_servicio",
             getattr(self.instance, "tipo_servicio", None),
         )
         estado = attrs.get("estado")
+        errors = {}
+
+        if self.instance and self.instance.estado == Cotizacion.Estado.CONVERTIDA:
+            locked_fields = [
+                "cliente",
+                "tipo_evento",
+                "paquete",
+                "fecha_tentativa",
+                "numero_invitados",
+                "tipo_servicio",
+                "total_estimado",
+                "estado",
+            ]
+            for field in locked_fields:
+                if field not in attrs:
+                    continue
+                current_value = getattr(self.instance, field)
+                if attrs[field] != current_value:
+                    errors[field] = (
+                        "Una cotizacion convertida no permite modificar datos comerciales criticos."
+                    )
+
+        if tipo_evento and not tipo_evento.activo:
+            current_tipo_evento_id = getattr(self.instance, "tipo_evento_id", None)
+            if self.instance is None or tipo_evento.id != current_tipo_evento_id:
+                errors["tipo_evento"] = "El tipo de evento debe estar activo."
+
+        if paquete and not paquete.activo:
+            current_paquete_id = getattr(self.instance, "paquete_id", None)
+            if self.instance is None or paquete.id != current_paquete_id:
+                errors["paquete"] = "El paquete debe estar activo."
 
         if paquete and tipo_servicio and paquete.tipo_servicio != tipo_servicio:
-            raise serializers.ValidationError(
-                {"paquete": "El paquete no corresponde al tipo de servicio indicado."}
-            )
+            errors["paquete"] = "El paquete no corresponde al tipo de servicio indicado."
+
+        if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO and not paquete:
+            errors["paquete"] = "El servicio completo requiere seleccionar un paquete."
 
         if estado == Cotizacion.Estado.CONVERTIDA and (
             self.instance is None
             or self.instance.estado != Cotizacion.Estado.CONVERTIDA
         ):
-            raise serializers.ValidationError(
-                {
-                    "estado": "La conversion a contrato debe realizarse desde la accion correspondiente."
-                }
-            )
+            errors["estado"] = "La conversion a contrato debe realizarse desde la accion correspondiente."
 
         if (
             self.instance
@@ -87,11 +119,22 @@ class CotizacionSerializer(serializers.ModelSerializer):
             and estado
             and estado != Cotizacion.Estado.CONVERTIDA
         ):
-            raise serializers.ValidationError(
-                {"estado": "Una cotizacion convertida no permite cambios de estado."}
-            )
+            errors["estado"] = "Una cotizacion convertida no permite cambios de estado."
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         return attrs
+
+    def validate_numero_invitados(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("El numero de invitados debe ser mayor que cero.")
+        return value
+
+    def validate_total_estimado(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El total estimado no puede ser negativo.")
+        return value
 
 
 class PreCotizacionSerializer(serializers.Serializer):

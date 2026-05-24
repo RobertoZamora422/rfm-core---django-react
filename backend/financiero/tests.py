@@ -233,6 +233,40 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("cotizacion", response.data)
 
+    def test_rechaza_asignar_catalogos_inactivos_en_contrato(self):
+        tipo_inactivo = TipoEvento.objects.create(nombre="Evento inactivo", activo=False)
+        paquete_inactivo = Paquete.objects.create(
+            nombre="Paquete inactivo",
+            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            precio_por_persona=Decimal("0.00"),
+            activo=False,
+        )
+        base_payload = {
+            "cliente": self.cliente.id,
+            "tipo_evento": self.tipo_evento.id,
+            "paquete": self.paquete.id,
+            "fecha_evento": "2026-08-01",
+            "numero_invitados": 80,
+            "valor_final": "2000.00",
+            "monto_abonado": "500.00",
+        }
+
+        tipo_response = self.client.post(
+            "/api/contratos/",
+            {**base_payload, "tipo_evento": tipo_inactivo.id},
+            format="json",
+        )
+        paquete_response = self.client.post(
+            "/api/contratos/",
+            {**base_payload, "paquete": paquete_inactivo.id},
+            format="json",
+        )
+
+        self.assertEqual(tipo_response.status_code, 400)
+        self.assertIn("tipo_evento", tipo_response.data)
+        self.assertEqual(paquete_response.status_code, 400)
+        self.assertIn("paquete", paquete_response.data)
+
     def test_filtra_contratos_por_busqueda_estado_pago_tipo_evento_y_fechas(self):
         cumpleanos = TipoEvento.objects.create(nombre="Cumpleanos")
         otro_cliente = Cliente.objects.create(
@@ -316,6 +350,39 @@ class FinancieroApiTests(APITestCase):
 
         self.assertEqual(costo.status_code, 201)
         self.assertEqual(gasto.status_code, 201)
+
+    def test_eliminacion_de_costo_y_gasto_es_logica_y_excluye_consultas(self):
+        contrato = self.crear_contrato()
+        costo = CostoDirecto.objects.create(
+            contrato=contrato,
+            concepto="Catering",
+            valor=Decimal("700.00"),
+            fecha=date(2026, 8, 1),
+        )
+        gasto = GastoFijoMensual.objects.create(
+            concepto="Servicios basicos",
+            valor=Decimal("300.00"),
+            mes=8,
+            anio=2026,
+        )
+
+        costo_delete = self.client.delete(f"/api/costos-directos/{costo.id}/")
+        gasto_delete = self.client.delete(f"/api/gastos-fijos/{gasto.id}/")
+        costo.refresh_from_db()
+        gasto.refresh_from_db()
+        costos_list = self.client.get("/api/costos-directos/")
+        gastos_list = self.client.get("/api/gastos-fijos/", {"mes": 8, "anio": 2026})
+        resumen = self.client.get("/api/gastos-fijos/resumen/", {"mes": 8, "anio": 2026})
+
+        self.assertEqual(costo_delete.status_code, 204)
+        self.assertEqual(gasto_delete.status_code, 204)
+        self.assertTrue(costo.eliminado)
+        self.assertIsNotNone(costo.eliminado_en)
+        self.assertTrue(gasto.eliminado)
+        self.assertIsNotNone(gasto.eliminado_en)
+        self.assertEqual(costos_list.data, [])
+        self.assertEqual(gastos_list.data, [])
+        self.assertEqual(resumen.data["total_periodo"], "0.00")
 
     def test_lista_costos_directos_con_datos_de_contrato_y_filtros(self):
         contrato_objetivo = self.crear_contrato()
@@ -494,6 +561,13 @@ class FinancieroApiTests(APITestCase):
             fecha=date(2026, 8, 18),
         )
         CostoDirecto.objects.create(
+            contrato=contrato_2,
+            concepto="Costo eliminado",
+            valor=Decimal("999.00"),
+            fecha=date(2026, 8, 18),
+            eliminado=True,
+        )
+        CostoDirecto.objects.create(
             contrato=contrato_cancelado,
             concepto="Costo cancelado",
             valor=Decimal("999.00"),
@@ -516,6 +590,13 @@ class FinancieroApiTests(APITestCase):
             valor=Decimal("100.00"),
             mes=8,
             anio=2026,
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Gasto eliminado",
+            valor=Decimal("999.00"),
+            mes=8,
+            anio=2026,
+            eliminado=True,
         )
         GastoFijoMensual.objects.create(
             concepto="Arriendo julio",

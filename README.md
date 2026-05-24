@@ -14,6 +14,8 @@ El proyecto se encuentra en validacion integral y documentacion final previa a d
 
 La administracion de contratos permite creacion manual, edicion de campos operativos/financieros editables, detalle de rentabilidad por contrato y registro de costos directos desde el detalle. La sesion administrativa se persiste en `localStorage` para mantenerse entre pestanas del mismo navegador.
 
+La administracion de cotizaciones permite crear y editar oportunidades comerciales desde el panel sin confundirlas con ingresos reales. Las cotizaciones convertidas bloquean cambios criticos para no romper su contrato asociado.
+
 ## Flujo publico
 
 La pre-cotizacion publica no requiere login y no muestra Sidebar ni Topbar administrativo.
@@ -49,7 +51,9 @@ Rutas administrativas protegidas:
 /paquetes
 /configuracion
 /cotizaciones
+/cotizaciones/nueva
 /cotizaciones/:id
+/cotizaciones/:id/editar
 /contratos
 /contratos/nuevo
 /contratos/:id
@@ -146,16 +150,19 @@ DJANGO_SECRET_KEY=
 DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+CSRF_TRUSTED_ORIGINS=
 DATABASE_URL=
 ```
 
 Frontend (`frontend/.env`):
 
 ```text
-VITE_API_URL=http://127.0.0.1:8000/api
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-`VITE_API_URL` es la convencion unica para la URL base del API.
+`VITE_API_BASE_URL` es la convencion vigente para la URL base del API. En desarrollo el frontend conserva fallback local; en produccion debe definirse explicitamente.
+
+Si `DJANGO_DEBUG=False`, el backend exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `DATABASE_URL`. Si falta alguna, Django falla al iniciar con un error claro.
 
 El WhatsApp del negocio no se configura en variables de entorno del frontend. El administrador lo ingresa en `/configuracion` con formato ecuatoriano local `09XXXXXXXX`; el backend lo expone al flujo publico como numero listo para `wa.me`. Ejemplo: `0991234567` -> `593991234567`.
 
@@ -201,6 +208,50 @@ Administrativa protegida:
 
 El login devuelve `Authorization: Token <token>` para las solicitudes administrativas.
 
+## Deploy manual en Render
+
+No hay deploy activo declarado en este repositorio. Para intentar un deploy manual posterior, usar placeholders hasta crear los servicios reales.
+
+Backend Render Web Service:
+
+- Root Directory: `backend`
+- Build Command: `pip install -r requirements.txt`
+- Start Command: `gunicorn config.wsgi:application`
+- Runtime: Python
+- Variables obligatorias:
+  - `DJANGO_SECRET_KEY=<valor-seguro-generado>`
+  - `DJANGO_DEBUG=False`
+  - `DJANGO_ALLOWED_HOSTS=backend-url.onrender.com`
+  - `DATABASE_URL=<Render PostgreSQL Internal Database URL>`
+  - `CORS_ALLOWED_ORIGINS=https://frontend-url.onrender.com`
+  - `CSRF_TRUSTED_ORIGINS=https://frontend-url.onrender.com,https://backend-url.onrender.com`
+
+Comandos operativos backend:
+
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py seed_base
+python manage.py createsuperuser
+```
+
+`seed_base` carga datos base reales del negocio. `seed_demo` queda separado para demostracion y no debe ejecutarse sobre datos reales salvo decision explicita.
+
+Frontend Render Static Site:
+
+- Root Directory: `frontend`
+- Build Command: `npm install && npm run build`
+- Publish Directory: `dist`
+- Variable obligatoria:
+  - `VITE_API_BASE_URL=https://backend-url.onrender.com/api`
+
+PostgreSQL:
+
+- Crear una base PostgreSQL en Render.
+- Copiar su `DATABASE_URL` al Web Service backend.
+- Ejecutar migraciones antes de operar con datos reales.
+- No mezclar datos demo con datos reales.
+
 ## Usuario demo
 
 Si se ejecutan los comandos de seed del proyecto, revisar la salida de `seed_base` o `seed_demo` para las credenciales disponibles en el entorno local. No se debe asumir que existen usuarios en una base limpia sin ejecutar migraciones y semillas.
@@ -212,6 +263,9 @@ Si se ejecutan los comandos de seed del proyecto, revisar la salida de `seed_bas
 - El WhatsApp del negocio se administra desde Configuracion del negocio.
 - El endpoint publico no abre CRUD administrativo.
 - Solo paquetes y tipos de evento activos se exponen al flujo publico.
+- Contratos y cotizaciones administrativas nuevas solo deben asignar catalogos activos.
+- Costos directos y gastos fijos se eliminan logicamente desde la API para no borrar evidencia financiera.
+- Reportes pueden exportarse como CSV desde la respuesta backend ya calculada.
 - Una cotizacion no es ingreso real.
 - Solo un contrato confirmado representa ingreso real.
 - Los calculos comerciales y financieros se mantienen en backend.

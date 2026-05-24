@@ -17,12 +17,11 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onSubmit }) {
     invitados_incluidos_alquiler: initialValues?.invitados_incluidos_alquiler ?? 1,
     costo_invitado_adicional: initialValues?.costo_invitado_adicional ?? '0.00',
     whatsapp_negocio: initialValues?.whatsapp_negocio ?? '',
-    activo: initialValues?.activo ?? true,
   })
   const fieldErrors = { ...errors, ...localErrors }
 
   const handleChange = (event) => {
-    const { checked, name, type, value } = event.target
+    const { name, value } = event.target
     setLocalErrors((current) => {
       const next = { ...current }
       delete next[name]
@@ -30,7 +29,7 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onSubmit }) {
     })
     setForm((current) => ({
       ...current,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }))
   }
 
@@ -106,17 +105,10 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onSubmit }) {
           value={form.whatsapp_negocio}
         />
       </div>
-      <label className="checkbox-field" htmlFor="configuracion-activa">
-        <input
-          checked={form.activo}
-          id="configuracion-activa"
-          name="activo"
-          onChange={handleChange}
-          type="checkbox"
-        />
-        <span>Configuracion activa</span>
-      </label>
-      {fieldErrors.activo ? <span className="field__error">{fieldErrors.activo}</span> : null}
+      <div className="notice-message">
+        Estos valores se usan para calcular nuevas pre-cotizaciones. Revisalos antes de guardar
+        cambios.
+      </div>
       <div className="form-actions">
         <Button isLoading={isSubmitting} type="submit">
           Guardar configuracion
@@ -208,7 +200,8 @@ export function ConfiguracionPage() {
       {actionMessage ? <div className="success-message">{actionMessage}</div> : null}
       {!canCreate && !activeConfig ? (
         <div className="warning-message">
-          No existe una configuracion activa. Edita el registro existente y marcalo como activo.
+          No existe una configuracion vigente. Guarda este formulario para restaurar los parametros
+          usados por la pre-cotizacion publica.
         </div>
       ) : null}
 

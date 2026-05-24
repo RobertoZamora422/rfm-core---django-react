@@ -422,7 +422,8 @@ export function GastosFijosPage() {
       >
         <div className="confirm-dialog">
           <p>
-            Se eliminara el gasto fijo #{deletingItem?.id}. Esta accion solo afecta este registro operativo mensual.
+            Se marcara como eliminado el gasto fijo #{deletingItem?.id}. No se borrara
+            fisicamente, pero dejara de contar en dashboard y reportes.
           </p>
           <div className="form-actions">
             <Button onClick={() => setDeletingItem(null)} variant="secondary">

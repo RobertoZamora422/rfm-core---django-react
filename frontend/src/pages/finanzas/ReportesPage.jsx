@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
+  Download,
   FileText,
   FilterX,
   Package,
@@ -115,6 +116,90 @@ function formatKpiValue(kpi) {
   if (kpi.format === 'currency') return formatCurrency(kpi.value)
   if (kpi.format === 'percent') return formatPercent(kpi.value)
   return kpi.value
+}
+
+function csvEscape(value) {
+  const text = value === null || value === undefined ? '' : String(value)
+  if (!/[",\n\r]/.test(text)) return text
+  return `"${text.replaceAll('"', '""')}"`
+}
+
+function downloadCsv(filename, rows) {
+  if (!rows.length) return
+  const headers = Object.keys(rows[0])
+  const csv = [
+    headers.map(csvEscape).join(','),
+    ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(',')),
+  ].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+function buildExportRows(activeReport, data) {
+  if (!data) return []
+
+  if (activeReport === 'comercial') {
+    return (data.cotizaciones ?? []).map((row) => ({
+      cotizacion: row.id,
+      cliente: row.cliente_nombre,
+      telefono: row.cliente_telefono,
+      evento: row.tipo_evento_nombre,
+      fecha_tentativa: row.fecha_tentativa,
+      estado: getStatusLabel(row.estado, quoteStatusLabels),
+      total_estimado: row.total_estimado,
+      contrato_id: row.contrato_id ?? '',
+    }))
+  }
+
+  if (activeReport === 'financiero') {
+    return (data.rentabilidad_eventos ?? []).map((row) => ({
+      contrato: row.contrato_id,
+      cliente: row.cliente_nombre,
+      evento: row.tipo_evento_nombre,
+      fecha_evento: row.fecha_evento,
+      valor_final: row.valor_final,
+      costos_directos: row.costos_directos,
+      utilidad_bruta: row.utilidad_bruta,
+      margen_bruto: row.margen_bruto,
+      estado_pago: getStatusLabel(row.estado_pago, paymentLabels),
+      saldo_pendiente: row.saldo_pendiente,
+    }))
+  }
+
+  if (activeReport === 'eventos') {
+    return (data.eventos ?? []).map((row) => ({
+      contrato: row.contrato_id,
+      cliente: row.cliente_nombre,
+      telefono: row.cliente_telefono,
+      evento: row.tipo_evento_nombre,
+      fecha_evento: row.fecha_evento,
+      invitados: row.numero_invitados,
+      estado_contrato: getStatusLabel(row.estado_contrato, contractStatusLabels),
+      estado_pago: getStatusLabel(row.estado_pago, paymentLabels),
+      valor_final: row.valor_final,
+      monto_abonado: row.monto_abonado,
+      saldo_pendiente: row.saldo_pendiente,
+    }))
+  }
+
+  return (data.paquetes ?? []).map((row) => ({
+    paquete: row.paquete_nombre,
+    tipo_servicio: row.tipo_servicio,
+    cotizaciones: row.cotizaciones,
+    cotizaciones_convertidas: row.cotizaciones_convertidas,
+    contratos_confirmados: row.contratos_confirmados,
+    ingresos_confirmados: row.ingresos_confirmados,
+    costos_directos: row.costos_directos,
+    utilidad_bruta: row.utilidad_bruta,
+    margen_bruto: row.margen_bruto,
+  }))
 }
 
 function ReportSelector({ activeReport, onChange }) {
@@ -630,13 +715,29 @@ export function ReportesPage() {
     return <PackagesReport data={reportData} />
   }
 
+  const handleExportCsv = () => {
+    const rows = buildExportRows(activeReport, reportData)
+    const timestamp = new Date().toISOString().slice(0, 10)
+    downloadCsv(`rfm-core-reporte-${activeReport}-${timestamp}.csv`, rows)
+  }
+
   return (
     <div className="page-stack">
       <PageHeader
         actions={
-          <Button disabled={isLoading} icon={RefreshCw} onClick={loadReport} variant="secondary">
-            Actualizar
-          </Button>
+          <>
+            <Button disabled={isLoading} icon={RefreshCw} onClick={loadReport} variant="secondary">
+              Actualizar
+            </Button>
+            <Button
+              disabled={isLoading || !reportData}
+              icon={Download}
+              onClick={handleExportCsv}
+              variant="secondary"
+            >
+              Exportar CSV
+            </Button>
+          </>
         }
         description="Reportes comerciales, financieros, de eventos y paquetes desde backend."
         title="Reportes"

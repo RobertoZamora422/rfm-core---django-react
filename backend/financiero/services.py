@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from .models import Contrato, CostoDirecto, GastoFijoMensual
@@ -71,10 +71,15 @@ def _period_metrics(mes, anio):
     contratos = _confirmed_contracts_between(inicio, fin)
     costos_directos = CostoDirecto.objects.filter(
         contrato__estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        eliminado=False,
         fecha__gte=inicio,
         fecha__lte=fin,
     )
-    gastos_fijos = GastoFijoMensual.objects.filter(mes=mes, anio=anio)
+    gastos_fijos = GastoFijoMensual.objects.filter(
+        eliminado=False,
+        mes=mes,
+        anio=anio,
+    )
 
     ingresos = _sum(contratos, "valor_final")
     costos = _sum(costos_directos, "valor")
@@ -103,7 +108,12 @@ def _event_profitability(mes, anio):
     contratos = (
         _confirmed_contracts_between(inicio, fin)
         .select_related("cliente", "tipo_evento", "paquete")
-        .annotate(costos_directos_total=Sum("costos_directos__valor"))
+        .annotate(
+            costos_directos_total=Sum(
+                "costos_directos__valor",
+                filter=Q(costos_directos__eliminado=False),
+            )
+        )
         .order_by("-fecha_evento", "-id")
     )
 

@@ -23,16 +23,16 @@ class ContratoAdmin(admin.ModelAdmin):
 
 @admin.register(CostoDirecto)
 class CostoDirectoAdmin(admin.ModelAdmin):
-    list_display = ("concepto", "contrato", "valor", "fecha", "es_demo")
-    list_filter = ("fecha", "es_demo")
+    list_display = ("concepto", "contrato", "valor", "fecha", "eliminado", "es_demo")
+    list_filter = ("fecha", "eliminado", "es_demo")
     search_fields = ("concepto", "contrato__cliente__nombre", "observaciones")
     autocomplete_fields = ("contrato",)
-    readonly_fields = ("creado_en", "actualizado_en")
+    readonly_fields = ("creado_en", "actualizado_en", "eliminado_en")
 
 
 @admin.register(GastoFijoMensual)
 class GastoFijoMensualAdmin(admin.ModelAdmin):
-    list_display = ("concepto", "valor", "mes", "anio", "es_demo")
-    list_filter = ("anio", "mes", "es_demo")
+    list_display = ("concepto", "valor", "mes", "anio", "eliminado", "es_demo")
+    list_filter = ("anio", "mes", "eliminado", "es_demo")
     search_fields = ("concepto", "observaciones")
-    readonly_fields = ("creado_en", "actualizado_en")
+    readonly_fields = ("creado_en", "actualizado_en", "eliminado_en")

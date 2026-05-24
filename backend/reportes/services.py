@@ -280,6 +280,7 @@ def reporte_paquetes(desde, hasta):
     costos = (
         CostoDirecto.objects.filter(
             contrato__estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+            eliminado=False,
             contrato__fecha_evento__gte=desde,
             contrato__fecha_evento__lte=hasta,
         )

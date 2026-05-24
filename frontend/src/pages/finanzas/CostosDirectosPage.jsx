@@ -452,7 +452,8 @@ export function CostosDirectosPage() {
       >
         <div className="confirm-dialog">
           <p>
-            Se eliminara el costo directo #{deletingItem?.id}. Esta accion solo afecta este registro financiero.
+            Se marcara como eliminado el costo directo #{deletingItem?.id}. No se borrara
+            fisicamente, pero dejara de contar en rentabilidad, dashboard y reportes.
           </p>
           <div className="form-actions">
             <Button onClick={() => setDeletingItem(null)} variant="secondary">

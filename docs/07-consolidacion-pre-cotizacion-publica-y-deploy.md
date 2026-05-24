@@ -78,8 +78,65 @@ La preparacion para Render incluye:
 - `DATABASE_URL` con SQLite como fallback local.
 - `STATIC_ROOT`.
 - WhiteNoise para estaticos en produccion.
+- `CSRF_TRUSTED_ORIGINS` leido desde entorno.
+- Falla explicita si `DJANGO_DEBUG=False` y faltan variables criticas.
 
 No se declara deploy activo. La Fase 19 debe crear servicios y variables reales en Render.
+
+## Configuracion exacta para Render
+
+Backend Render Web Service:
+
+```text
+Root Directory: backend
+Build Command: pip install -r requirements.txt
+Start Command: gunicorn config.wsgi:application
+```
+
+Variables backend obligatorias:
+
+```text
+DJANGO_SECRET_KEY=<valor-seguro-generado>
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=backend-url.onrender.com
+DATABASE_URL=<Render PostgreSQL Internal Database URL>
+CORS_ALLOWED_ORIGINS=https://frontend-url.onrender.com
+CSRF_TRUSTED_ORIGINS=https://frontend-url.onrender.com,https://backend-url.onrender.com
+```
+
+Comandos operativos backend:
+
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py seed_base
+python manage.py createsuperuser
+```
+
+Frontend Render Static Site:
+
+```text
+Root Directory: frontend
+Build Command: npm install && npm run build
+Publish Directory: dist
+VITE_API_BASE_URL=https://backend-url.onrender.com/api
+```
+
+PostgreSQL:
+
+- Crear una base PostgreSQL en Render.
+- Usar su `DATABASE_URL` en el backend.
+- Ejecutar migraciones antes de registrar datos reales.
+- Mantener `seed_base` para datos base y `seed_demo` separado de datos reales.
+
+## Cierres funcionales posteriores a la auditoria
+
+- Configuracion del negocio no puede desactivarse ni eliminarse desde la API normal.
+- Contratos y cotizaciones administrativas validan catalogos activos para nuevas asignaciones.
+- Cotizaciones administrativas cuentan con rutas de creacion y edicion.
+- Costos directos y gastos fijos usan eliminacion logica.
+- Reportes se pueden exportar como CSV desde los datos backend ya calculados.
+- El resultado publico de pre-cotizacion se persiste temporalmente para sobrevivir refrescos.
 
 ## Validacion requerida
 

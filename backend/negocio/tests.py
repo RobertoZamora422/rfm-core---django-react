@@ -87,10 +87,23 @@ class NegocioModelTests(TestCase):
                     invitados_incluidos_alquiler=50,
                     costo_invitado_adicional=Decimal("10.00"),
                     whatsapp_negocio=numero,
-                    activo=False,
+                    activo=True,
                 )
                 with self.assertRaises(ValidationError):
                     configuracion.full_clean()
+
+    def test_configuracion_negocio_no_puede_quedar_inactiva(self):
+        configuracion = ConfiguracionNegocio(
+            nombre_negocio="RFM",
+            tarifa_base_alquiler=Decimal("1000.00"),
+            invitados_incluidos_alquiler=50,
+            costo_invitado_adicional=Decimal("10.00"),
+            whatsapp_negocio="0991234567",
+            activo=False,
+        )
+
+        with self.assertRaises(ValidationError):
+            configuracion.save()
 
     def test_normalizar_whatsapp_ecuador(self):
         self.assertEqual(
@@ -232,6 +245,57 @@ class NegocioApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("whatsapp_negocio", response.data)
+
+    def test_configuracion_api_no_permite_desactivar_o_eliminar_vigente(self):
+        configuracion = ConfiguracionNegocio.objects.create(
+            nombre_negocio="Rancho Flor Maria",
+            tarifa_base_alquiler=Decimal("1200.00"),
+            invitados_incluidos_alquiler=80,
+            costo_invitado_adicional=Decimal("12.00"),
+            whatsapp_negocio="0991234567",
+            activo=True,
+        )
+
+        patch_response = self.client.patch(
+            f"/api/configuracion-negocio/{configuracion.id}/",
+            {"activo": False},
+            format="json",
+        )
+        delete_response = self.client.delete(
+            f"/api/configuracion-negocio/{configuracion.id}/",
+        )
+
+        self.assertEqual(patch_response.status_code, 400)
+        self.assertIn("activo", patch_response.data)
+        self.assertEqual(delete_response.status_code, 400)
+        configuracion.refresh_from_db()
+        self.assertTrue(configuracion.activo)
+
+    def test_configuracion_api_recupera_configuracion_heredada_inactiva(self):
+        ConfiguracionNegocio.objects.bulk_create(
+            [
+                ConfiguracionNegocio(
+                    nombre_negocio="Rancho Flor Maria",
+                    tarifa_base_alquiler=Decimal("1200.00"),
+                    invitados_incluidos_alquiler=80,
+                    costo_invitado_adicional=Decimal("12.00"),
+                    whatsapp_negocio="0991234567",
+                    activo=False,
+                )
+            ]
+        )
+        configuracion = ConfiguracionNegocio.objects.get()
+
+        response = self.client.patch(
+            f"/api/configuracion-negocio/{configuracion.id}/",
+            {"tarifa_base_alquiler": "1300.00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        configuracion.refresh_from_db()
+        self.assertTrue(configuracion.activo)
+        self.assertEqual(configuracion.tarifa_base_alquiler, Decimal("1300.00"))
 
     def test_configuracion_publica_devuelve_whatsapp_numero_url(self):
         ConfiguracionNegocio.objects.create(

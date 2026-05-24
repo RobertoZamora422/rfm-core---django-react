@@ -91,6 +91,7 @@ Restricciones:
 /api/paquetes/
 /api/configuracion-negocio/
 /api/cotizaciones/
+/api/cotizaciones/{id}/
 /api/cotizaciones/{id}/cambiar-estado/
 /api/cotizaciones/{id}/convertir-contrato/
 /api/contratos/
@@ -136,7 +137,9 @@ Rutas administrativas protegidas:
 /paquetes
 /configuracion
 /cotizaciones
+/cotizaciones/nueva
 /cotizaciones/:id
+/cotizaciones/:id/editar
 /contratos
 /contratos/nuevo
 /contratos/:id
@@ -156,16 +159,60 @@ DJANGO_SECRET_KEY=
 DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+CSRF_TRUSTED_ORIGINS=
 DATABASE_URL=
 ```
 
 Frontend:
 
 ```text
-VITE_API_URL=http://127.0.0.1:8000/api
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-`VITE_API_URL` es la unica convencion vigente para la URL del API en frontend.
+`VITE_API_BASE_URL` es la convencion vigente para la URL del API en frontend. En produccion debe estar definida; el fallback local solo aplica a desarrollo.
+
+Con `DJANGO_DEBUG=False`, el backend exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `DATABASE_URL`.
+
+## Render manual
+
+Backend Render Web Service:
+
+```text
+Root Directory: backend
+Build Command: pip install -r requirements.txt
+Start Command: gunicorn config.wsgi:application
+```
+
+Variables backend:
+
+```text
+DJANGO_SECRET_KEY=<valor-seguro-generado>
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=backend-url.onrender.com
+DATABASE_URL=<Render PostgreSQL Internal Database URL>
+CORS_ALLOWED_ORIGINS=https://frontend-url.onrender.com
+CSRF_TRUSTED_ORIGINS=https://frontend-url.onrender.com,https://backend-url.onrender.com
+```
+
+Comandos posteriores a crear el servicio:
+
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py seed_base
+python manage.py createsuperuser
+```
+
+Frontend Render Static Site:
+
+```text
+Root Directory: frontend
+Build Command: npm install && npm run build
+Publish Directory: dist
+VITE_API_BASE_URL=https://backend-url.onrender.com/api
+```
+
+PostgreSQL debe proveer `DATABASE_URL`; las migraciones deben ejecutarse antes de operar con datos reales. `seed_demo` no debe mezclarse con datos reales.
 
 El numero de WhatsApp del negocio se administra en `ConfiguracionNegocio.whatsapp_negocio` con formato local ecuatoriano `09XXXXXXXX`. La API publica lo entrega normalizado como `whatsapp_numero_url`, por ejemplo `0991234567` -> `593991234567`.
 

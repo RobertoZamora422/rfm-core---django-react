@@ -7,18 +7,18 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import {
   clientesService,
-  contratosService,
+  cotizacionesService,
   paquetesService,
   tiposEventoService,
 } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
-import { ContratoForm } from './ContratoForm'
+import { CotizacionForm } from './CotizacionForm'
 
 function toArray(data) {
   return Array.isArray(data) ? data : data?.results ?? []
 }
 
-export function NuevoContratoPage() {
+export function NuevaCotizacionPage() {
   const navigate = useNavigate()
   const [clientes, setClientes] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
@@ -59,8 +59,8 @@ export function NuevoContratoPage() {
     setPageError('')
 
     try {
-      const created = await contratosService.create(payload)
-      navigate(`/contratos/${created.id}`)
+      const created = await cotizacionesService.create(payload)
+      navigate(`/cotizaciones/${created.id}`)
     } catch (error) {
       setFieldErrors(getApiFieldErrors(error))
       setPageError(getApiErrorMessage(error))
@@ -73,13 +73,13 @@ export function NuevoContratoPage() {
     <div className="page-stack">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to="/contratos">
+          <Link className="button button--secondary" to="/cotizaciones">
             <ArrowLeft aria-hidden="true" size={18} />
             <span>Volver</span>
           </Link>
         }
-        description="Registra un contrato real sin modificar manualmente el estado de pago."
-        title="Nuevo contrato"
+        description="Registra una cotizacion administrativa sin crear contrato ni ingreso real."
+        title="Nueva cotizacion"
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
@@ -88,15 +88,15 @@ export function NuevoContratoPage() {
         {isLoadingCatalogs ? (
           <LoadingState label="Cargando datos del formulario" />
         ) : (
-          <ContratoForm
+          <CotizacionForm
             clientes={clientes}
             errors={fieldErrors}
             isLoadingCatalogs={isLoadingCatalogs}
             isSubmitting={isSaving}
-            onCancel={() => navigate('/contratos')}
+            onCancel={() => navigate('/cotizaciones')}
             onSubmit={handleSubmit}
             paquetes={paquetes}
-            submitLabel="Crear contrato"
+            submitLabel="Crear cotizacion"
             tiposEvento={tiposEvento}
           />
         )}

@@ -110,6 +110,60 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("paquete", response.data)
 
+    def test_cotizacion_admin_requiere_paquete_para_servicio_completo(self):
+        response = self.client.post(
+            "/api/cotizaciones/",
+            {
+                "cliente": self.cliente.id,
+                "tipo_evento": self.tipo_evento.id,
+                "paquete": None,
+                "fecha_tentativa": "2026-08-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "estado": Cotizacion.Estado.NUEVA,
+                "total_estimado": "2400.00",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("paquete", response.data)
+
+    def test_cotizacion_admin_rechaza_catalogos_inactivos(self):
+        tipo_inactivo = TipoEvento.objects.create(nombre="Inactivo", activo=False)
+        paquete_inactivo = Paquete.objects.create(
+            nombre="Paquete inactivo",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("25.00"),
+            activo=False,
+        )
+        base_payload = {
+            "cliente": self.cliente.id,
+            "tipo_evento": self.tipo_evento.id,
+            "paquete": self.paquete.id,
+            "fecha_tentativa": "2026-08-01",
+            "numero_invitados": 80,
+            "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+            "estado": Cotizacion.Estado.NUEVA,
+            "total_estimado": "2400.00",
+        }
+
+        tipo_response = self.client.post(
+            "/api/cotizaciones/",
+            {**base_payload, "tipo_evento": tipo_inactivo.id},
+            format="json",
+        )
+        paquete_response = self.client.post(
+            "/api/cotizaciones/",
+            {**base_payload, "paquete": paquete_inactivo.id},
+            format="json",
+        )
+
+        self.assertEqual(tipo_response.status_code, 400)
+        self.assertIn("tipo_evento", tipo_response.data)
+        self.assertEqual(paquete_response.status_code, 400)
+        self.assertIn("paquete", paquete_response.data)
+
     def test_total_estimado_no_puede_ser_negativo(self):
         cotizacion = Cotizacion(
             cliente=self.cliente,
@@ -373,6 +427,44 @@ class CotizacionApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("estado", response.data)
+
+    def test_cotizacion_convertida_bloquea_datos_criticos_pero_permite_observaciones(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONVERTIDA,
+            total_estimado=Decimal("2400.00"),
+        )
+        Contrato.objects.create(
+            cotizacion=cotizacion,
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_evento=date(2026, 8, 1),
+            numero_invitados=80,
+            valor_final=Decimal("2400.00"),
+            monto_abonado=Decimal("0.00"),
+        )
+
+        critical_response = self.client.patch(
+            f"/api/cotizaciones/{cotizacion.id}/",
+            {"numero_invitados": 100},
+            format="json",
+        )
+        observation_response = self.client.patch(
+            f"/api/cotizaciones/{cotizacion.id}/",
+            {"observaciones": "Nota administrativa"},
+            format="json",
+        )
+
+        self.assertEqual(critical_response.status_code, 400)
+        self.assertIn("numero_invitados", critical_response.data)
+        self.assertEqual(observation_response.status_code, 200)
+        self.assertEqual(observation_response.data["observaciones"], "Nota administrativa")
 
     def test_convertir_cotizacion_confirmada_a_contrato(self):
         paquete_final = Paquete.objects.create(

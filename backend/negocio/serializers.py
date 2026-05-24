@@ -110,18 +110,30 @@ class ConfiguracionNegocioSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "whatsapp_numero_url", "creado_en", "actualizado_en"]
 
     def validate(self, attrs):
-        activo = attrs.get("activo", getattr(self.instance, "activo", True))
+        if "activo" in attrs and not attrs["activo"]:
+            raise serializers.ValidationError(
+                {
+                    "activo": "La configuracion del negocio no puede desactivarse desde la operacion normal."
+                }
+            )
 
-        if activo:
-            queryset = ConfiguracionNegocio.objects.filter(activo=True)
-            if self.instance:
-                queryset = queryset.exclude(pk=self.instance.pk)
-            if queryset.exists():
-                raise serializers.ValidationError(
-                    {"activo": "Ya existe una configuracion activa."}
-                )
+        queryset = ConfiguracionNegocio.objects.filter(activo=True)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(
+                {"activo": "Ya existe una configuracion activa."}
+            )
 
         return attrs
+
+    def create(self, validated_data):
+        validated_data["activo"] = True
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data["activo"] = True
+        return super().update(instance, validated_data)
 
 
 class PublicConfiguracionNegocioSerializer(serializers.ModelSerializer):

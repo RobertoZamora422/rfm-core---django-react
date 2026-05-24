@@ -121,6 +121,13 @@ class ReportesApiTests(APITestCase):
             fecha=date(2026, 8, 10),
         )
         CostoDirecto.objects.create(
+            contrato=contrato,
+            concepto="Costo eliminado",
+            valor=Decimal("999.00"),
+            fecha=date(2026, 8, 10),
+            eliminado=True,
+        )
+        CostoDirecto.objects.create(
             contrato=cancelado,
             concepto="Costo cancelado",
             valor=Decimal("900.00"),
@@ -131,6 +138,13 @@ class ReportesApiTests(APITestCase):
             valor=Decimal("400.00"),
             mes=8,
             anio=2026,
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Gasto eliminado",
+            valor=Decimal("999.00"),
+            mes=8,
+            anio=2026,
+            eliminado=True,
         )
 
         response = self.client.get(
@@ -212,6 +226,13 @@ class ReportesApiTests(APITestCase):
             concepto="Catering",
             valor=Decimal("900.00"),
             fecha=date(2026, 8, 10),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_premium,
+            concepto="Costo eliminado",
+            valor=Decimal("999.00"),
+            fecha=date(2026, 8, 10),
+            eliminado=True,
         )
         CostoDirecto.objects.create(
             contrato=contrato_alquiler_cancelado,
