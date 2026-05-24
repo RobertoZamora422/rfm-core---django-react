@@ -7,11 +7,11 @@ from negocio.models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
 
 
 BASE_TIPOS_EVENTO = [
-    ("Boda", "Celebracion matrimonial."),
-    ("Quincea\u00f1era", "Evento social de quince a\u00f1os."),
-    ("Cumplea\u00f1os", "Celebracion familiar o social."),
-    ("Evento corporativo", "Evento empresarial o institucional."),
-    ("Bautizo", "Celebracion religiosa y familiar."),
+    ("Boda", "Celebracion matrimonial en Rancho Flor Maria."),
+    ("Quincea\u00f1era", "Evento social de quince a\u00f1os con recepcion familiar."),
+    ("Cumplea\u00f1os", "Celebracion familiar o social en salon de eventos."),
+    ("Evento corporativo", "Evento empresarial, institucional o de integracion."),
+    ("Bautizo", "Celebracion religiosa y familiar con recepcion privada."),
 ]
 
 BASE_PAQUETES = [
@@ -19,19 +19,19 @@ BASE_PAQUETES = [
         "nombre": "Alquiler del local",
         "tipo_servicio": Paquete.TipoServicio.ALQUILER,
         "precio_por_persona": Decimal("0.00"),
-        "descripcion": "Uso del salon de eventos sin servicio integral por persona.",
+        "descripcion": "Uso del salon y areas del rancho sin servicio integral por persona.",
     },
     {
         "nombre": "Servicio completo est\u00e1ndar",
         "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
-        "precio_por_persona": Decimal("28.00"),
-        "descripcion": "Servicio completo referencial para eventos sociales.",
+        "precio_por_persona": Decimal("30.00"),
+        "descripcion": "Servicio integral base con salon, menaje, atencion y coordinacion del evento.",
     },
     {
         "nombre": "Servicio completo premium",
         "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
-        "precio_por_persona": Decimal("38.00"),
-        "descripcion": "Servicio completo referencial con mayor cobertura.",
+        "precio_por_persona": Decimal("42.00"),
+        "descripcion": "Servicio integral ampliado con montaje, decoracion reforzada y mayor cobertura operativa.",
     },
 ]
 
@@ -171,7 +171,7 @@ def seed_demo_data():
         numero_invitados=120,
         tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
         estado=Cotizacion.Estado.CONVERTIDA,
-        total_estimado=Decimal("4560.00"),
+        total_estimado=Decimal("5040.00"),
         observaciones="Cotizacion demo convertida con abono parcial.",
         es_demo=True,
     )
@@ -195,7 +195,7 @@ def seed_demo_data():
         numero_invitados=60,
         tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
         estado=Cotizacion.Estado.DESCARTADA,
-        total_estimado=Decimal("1680.00"),
+        total_estimado=Decimal("1800.00"),
         observaciones="Cotizacion demo descartada.",
         es_demo=True,
     )
@@ -207,7 +207,7 @@ def seed_demo_data():
         numero_invitados=140,
         tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
         estado=Cotizacion.Estado.CONFIRMADA,
-        total_estimado=Decimal("5320.00"),
+        total_estimado=Decimal("5880.00"),
         observaciones="Cotizacion demo confirmada y lista para convertir.",
         es_demo=True,
     )
@@ -219,7 +219,7 @@ def seed_demo_data():
         numero_invitados=50,
         tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
         estado=Cotizacion.Estado.NUEVA,
-        total_estimado=Decimal("1400.00"),
+        total_estimado=Decimal("1500.00"),
         observaciones="Cotizacion demo nueva.",
         es_demo=True,
     )
@@ -243,7 +243,7 @@ def seed_demo_data():
         paquete=premium,
         fecha_evento=today + timedelta(days=45),
         numero_invitados=120,
-        valor_final=Decimal("4560.00"),
+        valor_final=Decimal("5040.00"),
         monto_abonado=Decimal("1500.00"),
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         observaciones="Contrato demo con abono parcial.",
@@ -268,7 +268,7 @@ def seed_demo_data():
         paquete=estandar,
         fecha_evento=today - timedelta(days=25),
         numero_invitados=70,
-        valor_final=Decimal("1960.00"),
+        valor_final=Decimal("2100.00"),
         monto_abonado=Decimal("0.00"),
         estado_contrato=Contrato.EstadoContrato.CANCELADO,
         observaciones="Contrato demo cancelado para verificar que sus costos no alimenten metricas principales.",

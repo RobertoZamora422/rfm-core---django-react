@@ -12,6 +12,8 @@ Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rent
 
 El proyecto se encuentra en validacion integral y documentacion final previa a deploy. La version actual consolida la separacion entre flujo publico y panel administrativo, mantiene el backend como fuente de verdad para calculos y deja la configuracion preparada para Render sin afirmar que el despliegue ya exista.
 
+La administracion de contratos permite creacion manual, edicion de campos operativos/financieros editables, detalle de rentabilidad por contrato y registro de costos directos desde el detalle. La sesion administrativa se persiste en `localStorage` para mantenerse entre pestanas del mismo navegador.
+
 ## Flujo publico
 
 La pre-cotizacion publica no requiere login y no muestra Sidebar ni Topbar administrativo.
@@ -49,7 +51,9 @@ Rutas administrativas protegidas:
 /cotizaciones
 /cotizaciones/:id
 /contratos
+/contratos/nuevo
 /contratos/:id
+/contratos/:id/editar
 /costos-directos
 /gastos-fijos
 /dashboard-financiero

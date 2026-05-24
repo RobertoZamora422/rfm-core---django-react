@@ -12,6 +12,9 @@ from negocio.selectors import obtener_configuracion_activa
 from .models import Cotizacion
 
 
+_UNSET = object()
+
+
 def _validar_tipo_servicio_y_paquete(tipo_servicio, paquete):
     if paquete and paquete.tipo_servicio != tipo_servicio:
         raise ValidationError(
@@ -179,6 +182,8 @@ def convertir_cotizacion_a_contrato(
     cotizacion,
     *,
     fecha_evento=None,
+    numero_invitados=None,
+    paquete=_UNSET,
     valor_final=None,
     monto_abonado=None,
     observaciones="",
@@ -202,13 +207,24 @@ def convertir_cotizacion_a_contrato(
             {"cotizacion": "La cotizacion ya tiene un contrato asociado."}
         )
 
+    paquete_final = cotizacion.paquete if paquete is _UNSET else paquete
+
+    if (
+        paquete_final
+        and cotizacion.tipo_servicio != Cotizacion.TipoServicioInteres.NO_SEGURO
+        and paquete_final.tipo_servicio != cotizacion.tipo_servicio
+    ):
+        raise ValidationError(
+            {"paquete": "El paquete final no corresponde al tipo de servicio de la cotizacion."}
+        )
+
     contrato = Contrato.objects.create(
         cotizacion=cotizacion,
         cliente=cotizacion.cliente,
         tipo_evento=cotizacion.tipo_evento,
-        paquete=cotizacion.paquete,
+        paquete=paquete_final,
         fecha_evento=fecha_evento or cotizacion.fecha_tentativa,
-        numero_invitados=cotizacion.numero_invitados,
+        numero_invitados=numero_invitados or cotizacion.numero_invitados,
         valor_final=valor_final if valor_final is not None else cotizacion.total_estimado,
         monto_abonado=monto_abonado if monto_abonado is not None else Decimal("0.00"),
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,

@@ -165,6 +165,12 @@ class CambiarEstadoCotizacionSerializer(serializers.Serializer):
 
 class ConvertirContratoSerializer(serializers.Serializer):
     fecha_evento = serializers.DateField(required=False)
+    numero_invitados = serializers.IntegerField(min_value=1, required=False)
+    paquete = serializers.PrimaryKeyRelatedField(
+        queryset=Paquete.objects.filter(activo=True),
+        required=False,
+        allow_null=True,
+    )
     valor_final = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,

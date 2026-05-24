@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Edit3, Plus, RefreshCw } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { DataTable } from '../../components/ui/DataTable'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { contratosService } from '../../services/resourceService'
+import { contratosService, costosDirectosService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
-import { formatCurrency, formatDate } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
 import { getEstadoContratoLabel, getEstadoPagoLabel } from './contractConstants'
 
 function DetailItem({ label, value }) {
@@ -21,9 +22,14 @@ function DetailItem({ label, value }) {
   )
 }
 
+function toArray(data) {
+  return Array.isArray(data) ? data : data?.results ?? []
+}
+
 export function DetalleContratoPage() {
   const { id } = useParams()
   const [contrato, setContrato] = useState(null)
+  const [costosDirectos, setCostosDirectos] = useState([])
   const [pageError, setPageError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
@@ -32,8 +38,12 @@ export function DetalleContratoPage() {
     setPageError('')
 
     try {
-      const data = await contratosService.retrieve(id)
-      setContrato(data)
+      const [contratoData, costosData] = await Promise.all([
+        contratosService.retrieve(id),
+        costosDirectosService.list({ contrato: id }),
+      ])
+      setContrato(contratoData)
+      setCostosDirectos(toArray(costosData))
     } catch (error) {
       setPageError(getApiErrorMessage(error))
     } finally {
@@ -73,6 +83,24 @@ export function DetalleContratoPage() {
   }
 
   const isCanceled = contrato.estado_contrato === 'cancelado'
+  const costosColumns = [
+    { key: 'concepto', header: 'Concepto' },
+    {
+      key: 'valor',
+      header: 'Valor',
+      render: (item) => formatCurrency(item.valor),
+    },
+    {
+      key: 'fecha',
+      header: 'Fecha',
+      render: (item) => formatDate(item.fecha),
+    },
+    {
+      key: 'observaciones',
+      header: 'Observaciones',
+      render: (item) => item.observaciones || '-',
+    },
+  ]
 
   return (
     <div className="page-stack">
@@ -86,6 +114,10 @@ export function DetalleContratoPage() {
             <Button icon={RefreshCw} onClick={loadContrato} variant="secondary">
               Actualizar
             </Button>
+            <Link className="button button--primary" to={`/contratos/${contrato.id}/editar`}>
+              <Edit3 aria-hidden="true" size={18} />
+              <span>Editar contrato</span>
+            </Link>
           </>
         }
         description="Resumen operativo, comercial y financiero del contrato."
@@ -95,7 +127,7 @@ export function DetalleContratoPage() {
       <ErrorMessage>{pageError}</ErrorMessage>
       {isCanceled ? (
         <div className="warning-message">
-          Este contrato está cancelado y no se incluye en los indicadores financieros principales.
+          Este contrato esta cancelado. Se conserva como historial, pero no se incluye en los indicadores financieros principales.
         </div>
       ) : null}
 
@@ -160,6 +192,12 @@ export function DetalleContratoPage() {
               <DetailItem label="Monto abonado" value={formatCurrency(contrato.monto_abonado)} />
               <DetailItem label="Saldo pendiente" value={formatCurrency(contrato.saldo_pendiente)} />
               <DetailItem
+                label="Total costos directos"
+                value={formatCurrency(contrato.total_costos_directos)}
+              />
+              <DetailItem label="Utilidad bruta" value={formatCurrency(contrato.utilidad_bruta)} />
+              <DetailItem label="Margen bruto" value={formatPercent(contrato.margen_bruto)} />
+              <DetailItem
                 label="Estado pago"
                 value={
                   <StatusBadge status={contrato.estado_pago}>
@@ -175,7 +213,28 @@ export function DetalleContratoPage() {
       <Card>
         <div className="detail-section">
           <div className="detail-section__header">
-            <h2>Cotización origen</h2>
+            <h2>Costos directos</h2>
+            <Link
+              className="button button--primary"
+              to={`/costos-directos?contrato=${contrato.id}&nuevo=1`}
+            >
+              <Plus aria-hidden="true" size={18} />
+              <span>Registrar costo directo</span>
+            </Link>
+          </div>
+          <DataTable
+            columns={costosColumns}
+            emptyMessage="Este contrato aun no tiene costos directos registrados."
+            mobileTitle={(item) => item.concepto}
+            rows={costosDirectos}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="detail-section">
+          <div className="detail-section__header">
+            <h2>Cotizacion origen</h2>
           </div>
           {contrato.cotizacion ? (
             <Link className="button button--secondary detail-link" to={`/cotizaciones/${contrato.cotizacion}`}>

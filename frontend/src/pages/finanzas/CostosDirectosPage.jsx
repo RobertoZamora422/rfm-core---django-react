@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Edit3, FilterX, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -155,16 +155,22 @@ function CostoDirectoForm({
 }
 
 export function CostosDirectosPage() {
+  const [searchParams] = useSearchParams()
+  const contratoParam = searchParams.get('contrato') ?? ''
+  const shouldOpenCreateFromQuery = searchParams.get('nuevo') === '1'
   const [costos, setCostos] = useState([])
   const [contratos, setContratos] = useState([])
-  const [filters, setFilters] = useState(initialFilters)
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters)
+  const [filters, setFilters] = useState(() => ({ ...initialFilters, contrato: contratoParam }))
+  const [appliedFilters, setAppliedFilters] = useState(() => ({ ...initialFilters, contrato: contratoParam }))
   const [fieldErrors, setFieldErrors] = useState({})
   const [pageError, setPageError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [editingItem, setEditingItem] = useState(null)
+  const [newItemInitialValues, setNewItemInitialValues] = useState(() =>
+    shouldOpenCreateFromQuery ? { ...emptyForm, contrato: contratoParam } : null,
+  )
   const [deletingItem, setDeletingItem] = useState(null)
-  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(shouldOpenCreateFromQuery)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingContracts, setIsLoadingContracts] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -226,6 +232,7 @@ export function CostosDirectosPage() {
 
   const openCreate = () => {
     setEditingItem(null)
+    setNewItemInitialValues(null)
     setFieldErrors({})
     setPageError('')
     setIsFormOpen(true)
@@ -233,6 +240,7 @@ export function CostosDirectosPage() {
 
   const openEdit = (item) => {
     setEditingItem(item)
+    setNewItemInitialValues(null)
     setFieldErrors({})
     setPageError('')
     setIsFormOpen(true)
@@ -240,6 +248,7 @@ export function CostosDirectosPage() {
 
   const closeForm = () => {
     setEditingItem(null)
+    setNewItemInitialValues(null)
     setIsFormOpen(false)
   }
 
@@ -427,10 +436,10 @@ export function CostosDirectosPage() {
         <CostoDirectoForm
           contratos={contratos}
           errors={fieldErrors}
-          initialValues={editingItem}
+          initialValues={editingItem ?? newItemInitialValues}
           isLoadingContracts={isLoadingContracts}
           isSubmitting={isSaving}
-          key={editingItem?.id ?? 'nuevo'}
+          key={editingItem?.id ?? newItemInitialValues?.contrato ?? 'nuevo'}
           onCancel={closeForm}
           onSubmit={handleSubmit}
         />

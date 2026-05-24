@@ -375,6 +375,11 @@ class CotizacionApiTests(APITestCase):
         self.assertIn("estado", response.data)
 
     def test_convertir_cotizacion_confirmada_a_contrato(self):
+        paquete_final = Paquete.objects.create(
+            nombre="Servicio final",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("35.00"),
+        )
         cotizacion = Cotizacion.objects.create(
             cliente=self.cliente,
             tipo_evento=self.tipo_evento,
@@ -388,7 +393,13 @@ class CotizacionApiTests(APITestCase):
 
         response = self.client.post(
             f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
-            {"monto_abonado": "400.00", "observaciones": "Contrato inicial"},
+            {
+                "numero_invitados": 100,
+                "paquete": paquete_final.id,
+                "valor_final": "3500.00",
+                "monto_abonado": "400.00",
+                "observaciones": "Contrato inicial",
+            },
             format="json",
         )
 
@@ -397,7 +408,9 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(cotizacion.estado, Cotizacion.Estado.CONVERTIDA)
         self.assertEqual(response.data["contrato"]["estado_pago"], Contrato.EstadoPago.ABONADO)
-        self.assertEqual(response.data["contrato"]["valor_final"], "2400.00")
+        self.assertEqual(response.data["contrato"]["numero_invitados"], 100)
+        self.assertEqual(response.data["contrato"]["paquete"], paquete_final.id)
+        self.assertEqual(response.data["contrato"]["valor_final"], "3500.00")
         self.assertEqual(
             response.data["cotizacion"]["contrato_id"],
             response.data["contrato"]["id"],
@@ -424,6 +437,32 @@ class CotizacionApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("estado", response.data)
+
+    def test_convertir_rechaza_paquete_final_de_otro_tipo_servicio(self):
+        paquete_alquiler = Paquete.objects.create(
+            nombre="Alquiler final",
+            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            precio_por_persona=Decimal("0.00"),
+        )
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        response = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {"paquete": paquete_alquiler.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("paquete", response.data)
 
     def test_convertir_rechaza_conversion_doble(self):
         cotizacion = Cotizacion.objects.create(

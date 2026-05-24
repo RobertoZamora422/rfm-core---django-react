@@ -222,9 +222,10 @@ export function ContratosPage() {
       <PageHeader
         actions={
           <>
-            <Button disabled icon={Plus} title="Los contratos manuales aun no tienen flujo habilitado.">
-              Nuevo contrato
-            </Button>
+            <Link className="button button--primary" to="/contratos/nuevo">
+              <Plus aria-hidden="true" size={18} />
+              <span>Nuevo contrato</span>
+            </Link>
             <Button icon={RefreshCw} onClick={loadContratos} variant="secondary">
               Actualizar
             </Button>

@@ -156,12 +156,19 @@ class CotizacionViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         try:
+            conversion_data = {
+                "fecha_evento": serializer.validated_data.get("fecha_evento"),
+                "numero_invitados": serializer.validated_data.get("numero_invitados"),
+                "valor_final": serializer.validated_data.get("valor_final"),
+                "monto_abonado": serializer.validated_data.get("monto_abonado"),
+                "observaciones": serializer.validated_data.get("observaciones", ""),
+            }
+            if "paquete" in serializer.validated_data:
+                conversion_data["paquete"] = serializer.validated_data["paquete"]
+
             contrato = convertir_cotizacion_a_contrato(
                 cotizacion,
-                fecha_evento=serializer.validated_data.get("fecha_evento"),
-                valor_final=serializer.validated_data.get("valor_final"),
-                monto_abonado=serializer.validated_data.get("monto_abonado"),
-                observaciones=serializer.validated_data.get("observaciones", ""),
+                **conversion_data,
             )
         except DjangoValidationError as exc:
             _raise_api_validation_error(exc)

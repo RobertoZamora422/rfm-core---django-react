@@ -105,6 +105,7 @@ Autenticacion:
 
 - Login devuelve `{ auth: { type: "token", token: "..." } }`.
 - Frontend envia `Authorization: Token <token>`.
+- Frontend conserva la sesion administrativa en `localStorage` usando las claves `rfm_core_auth_token` y `rfm_core_auth_user`.
 - `/api/auth/me/` requiere token.
 - Logout invalida el token actual.
 
@@ -137,7 +138,9 @@ Rutas administrativas protegidas:
 /cotizaciones
 /cotizaciones/:id
 /contratos
+/contratos/nuevo
 /contratos/:id
+/contratos/:id/editar
 /costos-directos
 /gastos-fijos
 /dashboard-financiero

@@ -7,6 +7,8 @@ import { PaquetesPage } from '../pages/admin/PaquetesPage'
 import { TiposEventoPage } from '../pages/admin/TiposEventoPage'
 import { ContratosPage } from '../pages/contratos/ContratosPage'
 import { DetalleContratoPage } from '../pages/contratos/DetalleContratoPage'
+import { EditarContratoPage } from '../pages/contratos/EditarContratoPage'
+import { NuevoContratoPage } from '../pages/contratos/NuevoContratoPage'
 import { CotizacionesPage } from '../pages/cotizaciones/CotizacionesPage'
 import { DetalleCotizacionPage } from '../pages/cotizaciones/DetalleCotizacionPage'
 import { CostosDirectosPage } from '../pages/finanzas/CostosDirectosPage'
@@ -50,6 +52,8 @@ export function AppRouter() {
           <Route element={<CotizacionesPage />} path="cotizaciones" />
           <Route element={<DetalleCotizacionPage />} path="cotizaciones/:id" />
           <Route element={<ContratosPage />} path="contratos" />
+          <Route element={<NuevoContratoPage />} path="contratos/nuevo" />
+          <Route element={<EditarContratoPage />} path="contratos/:id/editar" />
           <Route element={<DetalleContratoPage />} path="contratos/:id" />
           <Route element={<CostosDirectosPage />} path="costos-directos" />
           <Route element={<GastosFijosPage />} path="gastos-fijos" />

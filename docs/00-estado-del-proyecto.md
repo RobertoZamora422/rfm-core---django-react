@@ -6,6 +6,8 @@ El proyecto se encuentra en etapa de consolidacion tecnica previa a deploy. La d
 
 La version actual corrige la separacion conceptual de la pre-cotizacion: el flujo de cliente/interesado es publico, no requiere login, no muestra chrome administrativo y registra una cotizacion inicial gestionable luego desde el panel protegido.
 
+Tambien completa el uso administrativo previo a datos reales: contratos manuales, edicion de contratos, detalle de rentabilidad, costos directos desde contrato, conversion de cotizacion con invitados/paquete finales, sesion persistente entre pestanas y configuracion del negocio tratada como edicion de la configuracion activa.
+
 El sistema contempla como flujo principal:
 
 ```text
@@ -44,7 +46,7 @@ El flujo publico queda compuesto por cuatro pantallas:
 - `/pre-cotizacion/servicio-completo`
 - `/pre-cotizacion/comparacion`
 
-El panel administrativo permanece protegido desde `/login` y concentra clientes, cotizaciones, contratos, costos, gastos, dashboard y reportes.
+El panel administrativo permanece protegido desde `/login` y concentra clientes, cotizaciones, contratos, costos, gastos, dashboard y reportes. Contratos incluye `/contratos/nuevo`, `/contratos/:id` y `/contratos/:id/editar`.
 
 ## Proximos pasos
 

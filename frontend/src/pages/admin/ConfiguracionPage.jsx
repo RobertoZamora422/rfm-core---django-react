@@ -1,38 +1,15 @@
-import { useState } from 'react'
-import { ResourcePage } from '../../components/admin/ResourcePage'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
+import { Card } from '../../components/ui/Card'
+import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { Input } from '../../components/ui/Input'
-import { StatusBadge } from '../../components/ui/StatusBadge'
+import { LoadingState } from '../../components/ui/LoadingState'
+import { PageHeader } from '../../components/ui/PageHeader'
 import { configuracionNegocioService } from '../../services/resourceService'
-import { formatCurrency } from '../../utils/formatters'
+import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 
-const columns = [
-  { key: 'nombre_negocio', header: 'Negocio' },
-  {
-    key: 'tarifa_base_alquiler',
-    header: 'Tarifa base',
-    render: (item) => formatCurrency(item.tarifa_base_alquiler),
-  },
-  { key: 'invitados_incluidos_alquiler', header: 'Invitados incluidos' },
-  {
-    key: 'costo_invitado_adicional',
-    header: 'Invitado adicional',
-    render: (item) => formatCurrency(item.costo_invitado_adicional),
-  },
-  { key: 'whatsapp_negocio', header: 'WhatsApp' },
-  { key: 'whatsapp_numero_url', header: 'WhatsApp wa.me' },
-  {
-    key: 'activo',
-    header: 'Estado',
-    render: (item) => (
-      <StatusBadge status={item.activo ? 'confirmado' : 'descartada'}>
-        {item.activo ? 'Activa' : 'Inactiva'}
-      </StatusBadge>
-    ),
-  },
-]
-
-function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSubmit }) {
+function ConfiguracionForm({ errors, initialValues, isSubmitting, onSubmit }) {
   const [localErrors, setLocalErrors] = useState({})
   const [form, setForm] = useState({
     nombre_negocio: initialValues?.nombre_negocio ?? '',
@@ -80,53 +57,55 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
         required
         value={form.nombre_negocio}
       />
-      <Input
-        error={fieldErrors.tarifa_base_alquiler}
-        id="configuracion-tarifa"
-        label="Tarifa base alquiler"
-        min="0"
-        name="tarifa_base_alquiler"
-        onChange={handleChange}
-        required
-        step="0.01"
-        type="number"
-        value={form.tarifa_base_alquiler}
-      />
-      <Input
-        error={fieldErrors.invitados_incluidos_alquiler}
-        id="configuracion-invitados-incluidos"
-        label="Invitados incluidos alquiler"
-        min="1"
-        name="invitados_incluidos_alquiler"
-        onChange={handleChange}
-        required
-        type="number"
-        value={form.invitados_incluidos_alquiler}
-      />
-      <Input
-        error={fieldErrors.costo_invitado_adicional}
-        id="configuracion-costo-adicional"
-        label="Costo invitado adicional"
-        min="0"
-        name="costo_invitado_adicional"
-        onChange={handleChange}
-        required
-        step="0.01"
-        type="number"
-        value={form.costo_invitado_adicional}
-      />
-      <Input
-        error={fieldErrors.whatsapp_negocio}
-        helpText="Ingresa el numero en formato ecuatoriano, por ejemplo 0991234567. El sistema lo convertira automaticamente para generar el enlace de WhatsApp."
-        id="configuracion-whatsapp"
-        label="WhatsApp del negocio"
-        maxLength={10}
-        name="whatsapp_negocio"
-        onChange={handleChange}
-        placeholder="0991234567"
-        type="tel"
-        value={form.whatsapp_negocio}
-      />
+      <div className="form-grid">
+        <Input
+          error={fieldErrors.tarifa_base_alquiler}
+          id="configuracion-tarifa"
+          label="Tarifa base alquiler"
+          min="0"
+          name="tarifa_base_alquiler"
+          onChange={handleChange}
+          required
+          step="0.01"
+          type="number"
+          value={form.tarifa_base_alquiler}
+        />
+        <Input
+          error={fieldErrors.invitados_incluidos_alquiler}
+          id="configuracion-invitados-incluidos"
+          label="Invitados incluidos alquiler"
+          min="1"
+          name="invitados_incluidos_alquiler"
+          onChange={handleChange}
+          required
+          type="number"
+          value={form.invitados_incluidos_alquiler}
+        />
+        <Input
+          error={fieldErrors.costo_invitado_adicional}
+          id="configuracion-costo-adicional"
+          label="Costo invitado adicional"
+          min="0"
+          name="costo_invitado_adicional"
+          onChange={handleChange}
+          required
+          step="0.01"
+          type="number"
+          value={form.costo_invitado_adicional}
+        />
+        <Input
+          error={fieldErrors.whatsapp_negocio}
+          helpText="Ingresa el numero en formato ecuatoriano, por ejemplo 0991234567. El sistema lo convertira automaticamente para generar el enlace de WhatsApp."
+          id="configuracion-whatsapp"
+          label="WhatsApp del negocio"
+          maxLength={10}
+          name="whatsapp_negocio"
+          onChange={handleChange}
+          placeholder="0991234567"
+          type="tel"
+          value={form.whatsapp_negocio}
+        />
+      </div>
       <label className="checkbox-field" htmlFor="configuracion-activa">
         <input
           checked={form.activo}
@@ -139,29 +118,113 @@ function ConfiguracionForm({ errors, initialValues, isSubmitting, onCancel, onSu
       </label>
       {fieldErrors.activo ? <span className="field__error">{fieldErrors.activo}</span> : null}
       <div className="form-actions">
-        <Button onClick={onCancel} variant="secondary">
-          Cancelar
-        </Button>
         <Button isLoading={isSubmitting} type="submit">
-          Guardar
+          Guardar configuracion
         </Button>
       </div>
     </form>
   )
 }
 
+function toArray(data) {
+  return Array.isArray(data) ? data : data?.results ?? []
+}
+
 export function ConfiguracionPage() {
+  const [configuraciones, setConfiguraciones] = useState([])
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [pageError, setPageError] = useState('')
+  const [actionMessage, setActionMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const activeConfig = useMemo(
+    () => configuraciones.find((configuracion) => configuracion.activo) ?? null,
+    [configuraciones],
+  )
+  const editableConfig = activeConfig ?? configuraciones[0] ?? null
+  const canCreate = configuraciones.length === 0
+
+  const loadConfiguracion = useCallback(async () => {
+    setIsLoading(true)
+    setPageError('')
+
+    try {
+      const data = await configuracionNegocioService.list()
+      setConfiguraciones(toArray(data))
+    } catch (error) {
+      setPageError(getApiErrorMessage(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadConfiguracion, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadConfiguracion])
+
+  const handleSubmit = async (payload) => {
+    setIsSaving(true)
+    setFieldErrors({})
+    setPageError('')
+    setActionMessage('')
+
+    try {
+      if (canCreate) {
+        const created = await configuracionNegocioService.create(payload)
+        setConfiguraciones([created])
+        setActionMessage('Configuracion creada.')
+      } else {
+        const updated = await configuracionNegocioService.update(editableConfig.id, payload)
+        setConfiguraciones((current) =>
+          current.map((configuracion) =>
+            configuracion.id === updated.id ? updated : configuracion,
+          ),
+        )
+        setActionMessage('Configuracion actualizada.')
+      }
+    } catch (error) {
+      setFieldErrors(getApiFieldErrors(error))
+      setPageError(getApiErrorMessage(error))
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   return (
-    <ResourcePage
-      allowDelete={false}
-      columns={columns}
-      createLabel="Crear configuracion"
-      description="Parametros generales usados para calculos comerciales del negocio."
-      emptyMessage="No existe configuracion registrada."
-      FormComponent={ConfiguracionForm}
-      mobileTitle={(item) => item.nombre_negocio}
-      service={configuracionNegocioService}
-      title="Configuracion"
-    />
+    <div className="page-stack">
+      <PageHeader
+        actions={
+          <Button icon={RefreshCw} onClick={loadConfiguracion} variant="secondary">
+            Actualizar
+          </Button>
+        }
+        description="Edita los parametros activos que usa el backend para los calculos comerciales."
+        title="Configuracion"
+      />
+
+      <ErrorMessage>{pageError}</ErrorMessage>
+      {actionMessage ? <div className="success-message">{actionMessage}</div> : null}
+      {!canCreate && !activeConfig ? (
+        <div className="warning-message">
+          No existe una configuracion activa. Edita el registro existente y marcalo como activo.
+        </div>
+      ) : null}
+
+      <Card>
+        {isLoading ? (
+          <LoadingState label="Cargando configuracion" />
+        ) : (
+          <ConfiguracionForm
+            errors={fieldErrors}
+            initialValues={editableConfig}
+            isSubmitting={isSaving}
+            key={editableConfig?.id ?? 'nueva'}
+            onSubmit={handleSubmit}
+          />
+        )}
+      </Card>
+    </div>
   )
 }
