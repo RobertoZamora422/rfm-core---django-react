@@ -67,7 +67,7 @@ function UpcomingEventItem({ event }) {
       <div className="home-list__content">
         <strong>{event.cliente_nombre}</strong>
         <span>
-          {event.tipo_evento_nombre} · {formatDate(event.fecha_evento)}
+          {event.tipo_evento_nombre} - {formatDate(event.fecha_evento)}
         </span>
         <span>Saldo pendiente: {formatCurrency(event.saldo_pendiente)}</span>
       </div>

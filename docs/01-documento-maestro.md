@@ -86,6 +86,27 @@ No se implementan reservas online automaticas, bloqueo automatico de fechas, com
 - Mostrar dashboard financiero con metricas calculadas en backend.
 - Exponer reportes basicos.
 
+## Inicio administrativo
+
+Inicio administrativo es una pantalla operativa diaria del panel protegido. Su objetivo es ayudar al administrador o asesor a decidir que atender primero, no analizar historicos ni explicar rentabilidad.
+
+Datos que muestra actualmente:
+
+- Cotizaciones nuevas pendientes de primer contacto.
+- Cotizaciones registradas en el mes actual.
+- Contratos confirmados con evento en el mes actual.
+- Eventos proximos basados solo en contratos confirmados y no cancelados.
+- Pendientes importantes generados por reglas backend: cotizaciones nuevas, cotizaciones activas sin contrato, eventos proximos con saldo y eventos realizados sin costos directos activos.
+- Accesos rapidos a pre-cotizacion publica, cotizaciones, contratos y costos directos.
+
+Inicio se alimenta de `GET /api/inicio-resumen/`, implementado como agregado backend-first. React presenta el payload y no carga listas completas para recalcular KPIs operativos.
+
+## Separacion entre Inicio, Dashboard financiero y Reportes
+
+- Inicio administrativo: seguimiento operativo del dia y proximas acciones.
+- Dashboard financiero: analisis mensual de ingresos, costos, utilidad, margen, estado de pagos y comparaciones.
+- Reportes: consultas historicas o exportables por periodo y categoria.
+
 ## Reglas de negocio criticas
 
 - Una pre-cotizacion publica no es reserva ni precio final.

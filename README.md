@@ -22,6 +22,16 @@ La administracion de contratos permite creacion manual, edicion de campos operat
 
 La administracion de cotizaciones permite crear y editar oportunidades comerciales desde el panel sin confundirlas con ingresos reales. Las cotizaciones convertidas bloquean cambios criticos para no romper su contrato asociado.
 
+## Inicio administrativo, dashboard y reportes
+
+`/inicio` es la pantalla operativa diaria del panel administrativo. Consume `GET /api/inicio-resumen/` y muestra cotizaciones nuevas, cotizaciones del mes, contratos confirmados del mes, eventos proximos, pendientes importantes y accesos rapidos.
+
+`/dashboard-financiero` es el tablero de analisis financiero mensual. Consume `GET /api/dashboard-financiero/` y muestra ingresos, costos, utilidad, margenes, estado de pagos y comparaciones.
+
+`/reportes` concentra consultas historicas o exportables por periodo. Consume los endpoints bajo `/api/reportes/`.
+
+React no calcula KPIs de Inicio cargando listas completas; el backend entrega el resumen listo para presentar.
+
 ## Flujo publico
 
 La pre-cotizacion publica no requiere login y no muestra Sidebar ni Topbar administrativo.
@@ -219,6 +229,7 @@ Administrativa protegida:
 /api/contratos/
 /api/costos-directos/
 /api/gastos-fijos/
+/api/inicio-resumen/
 /api/dashboard-financiero/
 /api/reportes/
 ```

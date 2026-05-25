@@ -410,7 +410,7 @@ class NegocioApiTests(APITestCase):
             monto_abonado=Decimal("0.00"),
             estado_contrato=Contrato.EstadoContrato.CANCELADO,
         )
-        Contrato.objects.create(
+        contrato_sin_costos_activos = Contrato.objects.create(
             cliente=cliente,
             tipo_evento=tipo_evento,
             paquete=paquete,
@@ -419,6 +419,14 @@ class NegocioApiTests(APITestCase):
             valor_final=Decimal("2200.00"),
             monto_abonado=Decimal("2200.00"),
             estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_sin_costos_activos,
+            concepto="Costo eliminado",
+            valor=Decimal("300.00"),
+            fecha=hoy - timedelta(days=38),
+            eliminado=True,
+            eliminado_en=timezone.now(),
         )
 
         response = self.client.get("/api/inicio-resumen/")

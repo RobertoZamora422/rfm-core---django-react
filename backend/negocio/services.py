@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 
-from django.db.models import F
+from django.db.models import Count, F, Q
 from django.utils import timezone
 
 from comercial.models import Cotizacion
@@ -123,11 +123,20 @@ def inicio_resumen(fecha_referencia=None):
             )
         )
 
-    eventos_sin_costos = Contrato.objects.filter(
-        estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
-        fecha_evento__lt=fecha,
-        costos_directos__isnull=True,
-    ).count()
+    eventos_sin_costos = (
+        Contrato.objects.filter(
+            estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+            fecha_evento__lt=fecha,
+        )
+        .annotate(
+            costos_directos_activos=Count(
+                "costos_directos",
+                filter=Q(costos_directos__eliminado=False),
+            )
+        )
+        .filter(costos_directos_activos=0)
+        .count()
+    )
     if eventos_sin_costos:
         pendientes.append(
             _pending_item(

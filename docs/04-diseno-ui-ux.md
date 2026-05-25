@@ -45,6 +45,29 @@ Caracteristicas:
 - Gestiona clientes, tipos de evento, paquetes, configuracion, cotizaciones, contratos, costos, gastos, dashboard y reportes.
 - No contiene la pre-cotizacion publica como modulo protegido.
 
+## Inicio administrativo
+
+`/inicio` es la primera pantalla operativa del panel administrativo.
+
+Debe comunicar trabajo pendiente y proximas acciones:
+
+- KPIs operativos del resumen backend.
+- Eventos proximos con enlace al detalle del contrato.
+- Pendientes importantes calculados en backend.
+- Accesos rapidos a flujos frecuentes.
+
+Estados esperados:
+
+- Loading mientras se consulta `GET /api/inicio-resumen/`.
+- Error visible si falla la consulta.
+- Empty state cuando no hay resumen, eventos o pendientes.
+
+Limites de UX:
+
+- No debe mezclar graficas financieras ni reportes historicos.
+- No debe mostrar datos quemados permanentes.
+- No debe recalcular KPIs a partir de listas completas en React.
+
 ## Navegacion
 
 Publica:

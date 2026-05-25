@@ -45,6 +45,8 @@ Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rent
 
 La fase actual corresponde a auditoria profesional, limpieza segura y sincronizacion documental posterior al deploy. El objetivo es mantener estable el flujo aprobado, no reescribir la arquitectura.
 
+Revision actual: Inicio administrativo queda confirmado como pantalla operativa diaria. Consume `GET /api/inicio-resumen/`, muestra KPIs operativos, eventos proximos, pendientes importantes y accesos rapidos. No reemplaza el dashboard financiero ni los reportes.
+
 El flujo publico queda compuesto por cuatro pantallas:
 
 - `/pre-cotizacion`
@@ -52,7 +54,7 @@ El flujo publico queda compuesto por cuatro pantallas:
 - `/pre-cotizacion/servicio-completo`
 - `/pre-cotizacion/comparacion`
 
-El panel administrativo permanece protegido desde `/login` y concentra clientes, cotizaciones, contratos, costos, gastos, dashboard y reportes. Cotizaciones incluye `/cotizaciones/nueva`, `/cotizaciones/:id` y `/cotizaciones/:id/editar`. Contratos incluye `/contratos/nuevo`, `/contratos/:id` y `/contratos/:id/editar`.
+El panel administrativo permanece protegido desde `/login` y concentra inicio operativo, clientes, cotizaciones, contratos, costos, gastos, dashboard financiero y reportes. Cotizaciones incluye `/cotizaciones/nueva`, `/cotizaciones/:id` y `/cotizaciones/:id/editar`. Contratos incluye `/contratos/nuevo`, `/contratos/:id` y `/contratos/:id/editar`.
 
 ## Proximos pasos
 

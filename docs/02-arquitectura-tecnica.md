@@ -102,6 +102,31 @@ Restricciones:
 /api/reportes/
 ```
 
+### Inicio administrativo
+
+`GET /api/inicio-resumen/` es el contrato backend-first para la pantalla `/inicio`.
+
+Implementacion:
+
+- Servicio: `backend/negocio/services.py` -> `inicio_resumen()`.
+- Vista: `backend/negocio/views.py` -> `InicioResumenAPIView`.
+- Ruta: `backend/negocio/urls.py` -> `inicio-resumen/`.
+- Consumo frontend: `frontend/src/services/resourceService.js` -> `inicioService.resumen()`.
+
+Payload principal:
+
+- `fecha_referencia` y `periodo`.
+- `kpis`: cotizaciones nuevas, cotizaciones del mes, contratos confirmados del mes y eventos proximos.
+- `eventos_proximos`: contratos confirmados futuros, excluyendo cancelados, listos para enlazar a `/contratos/:id`.
+- `pendientes_importantes`: senales operativas calculadas en backend.
+
+Decisiones tecnicas:
+
+- Inicio no carga `/api/cotizaciones/` ni `/api/contratos/` para calcular KPIs en React.
+- Los eventos proximos y metricas operativas principales excluyen contratos cancelados.
+- Los pendientes de eventos realizados sin costos consideran costos directos activos; costos eliminados logicamente no cierran el pendiente.
+- Inicio no reemplaza `/api/dashboard-financiero/` ni `/api/reportes/`; esos endpoints cubren analisis financiero y reportes historicos.
+
 Autenticacion:
 
 - Login devuelve `{ auth: { type: "token", token: "..." } }`.

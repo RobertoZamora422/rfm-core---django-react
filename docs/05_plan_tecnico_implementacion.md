@@ -315,6 +315,14 @@ Entregables:
 - Eventos proximos enlazados al detalle de contrato.
 - Acciones rapidas administrativas sin datos quemados permanentes.
 
+Decision tecnica vigente:
+
+- Inicio es una pantalla operativa diaria, no un dashboard financiero ni un modulo de reportes.
+- El endpoint devuelve datos listos para presentar: `fecha_referencia`, `periodo`, `kpis`, `eventos_proximos` y `pendientes_importantes`.
+- React consume `inicioService.resumen()` y no calcula KPIs cargando listas completas.
+- Los eventos proximos se basan en contratos `confirmado` futuros; los contratos `cancelado` quedan fuera.
+- Los pendientes de eventos realizados sin costos directos se calculan con costos activos; costos eliminados logicamente no cuentan como evidencia vigente.
+
 ## Fase 14 - Dashboard financiero backend-first
 
 Estado: Completada.
