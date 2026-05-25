@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Ban, Eye, FilterX, Plus, RefreshCw, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -37,10 +37,19 @@ function buildQueryParams(filters) {
 }
 
 export function ContratosPage() {
+  const [searchParams] = useSearchParams()
+  const initialFiltersFromQuery = {
+    buscar: searchParams.get('buscar') ?? searchParams.get('search') ?? '',
+    estado_contrato: searchParams.get('estado_contrato') ?? '',
+    estado_pago: searchParams.get('estado_pago') ?? '',
+    tipo_evento: searchParams.get('tipo_evento') ?? '',
+    desde: searchParams.get('desde') ?? '',
+    hasta: searchParams.get('hasta') ?? '',
+  }
   const [contratos, setContratos] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
-  const [filters, setFilters] = useState(initialFilters)
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters)
+  const [filters, setFilters] = useState(initialFiltersFromQuery)
+  const [appliedFilters, setAppliedFilters] = useState(initialFiltersFromQuery)
   const [pageError, setPageError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [contractToCancel, setContractToCancel] = useState(null)

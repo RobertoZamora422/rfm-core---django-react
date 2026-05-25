@@ -45,7 +45,9 @@ Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rent
 
 La fase actual corresponde a auditoria profesional, limpieza segura y sincronizacion documental posterior al deploy. El objetivo es mantener estable el flujo aprobado, no reescribir la arquitectura.
 
-Revision actual: Inicio administrativo queda confirmado como pantalla operativa diaria. Consume `GET /api/inicio-resumen/`, muestra KPIs operativos, eventos proximos, pendientes importantes y accesos rapidos. No reemplaza el dashboard financiero ni los reportes.
+Revision actual: Inicio administrativo queda confirmado como pantalla operativa diaria. Consume `GET /api/inicio-resumen/`, muestra KPIs operativos, eventos proximos, pendientes importantes y accesos rapidos agrupados. No reemplaza el dashboard financiero ni los reportes.
+
+La revision de Inicio mantiene la fuente backend-first y ajusta la pantalla a uso diario: bienvenida con fecha, cuatro KPIs operativos, acciones frecuentes separadas entre gestion comercial y finanzas/reportes, maximo 5 eventos proximos enlazados a contratos y pendientes calculados con reglas del backend.
 
 El flujo publico queda compuesto por cuatro pantallas:
 

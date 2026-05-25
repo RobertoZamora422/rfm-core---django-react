@@ -23,6 +23,23 @@ def _month_bounds(fecha):
     return inicio, fin
 
 
+def _month_name(fecha):
+    return [
+        "enero",
+        "febrero",
+        "marzo",
+        "abril",
+        "mayo",
+        "junio",
+        "julio",
+        "agosto",
+        "septiembre",
+        "octubre",
+        "noviembre",
+        "diciembre",
+    ][fecha.month - 1]
+
+
 def _event_summary(contrato):
     return {
         "id": contrato.id,
@@ -30,6 +47,7 @@ def _event_summary(contrato):
         "cliente_nombre": contrato.cliente.nombre,
         "cliente_telefono": contrato.cliente.telefono,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
+        "paquete_nombre": contrato.paquete.nombre if contrato.paquete_id else "",
         "fecha_evento": contrato.fecha_evento.isoformat(),
         "estado_pago": contrato.estado_pago,
         "saldo_pendiente": _money(contrato.saldo_pendiente),
@@ -53,6 +71,7 @@ def inicio_resumen(fecha_referencia=None):
 
     fecha = fecha_referencia or timezone.localdate()
     inicio_mes, fin_mes = _month_bounds(fecha)
+    mes_nombre = _month_name(fecha)
 
     cotizaciones_nuevas = Cotizacion.objects.filter(
         estado=Cotizacion.Estado.NUEVA,
@@ -61,7 +80,7 @@ def inicio_resumen(fecha_referencia=None):
         creado_en__date__gte=inicio_mes,
         creado_en__date__lte=fin_mes,
     ).count()
-    contratos_mes = Contrato.objects.filter(
+    eventos_mes = Contrato.objects.filter(
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         fecha_evento__gte=inicio_mes,
         fecha_evento__lte=fin_mes,
@@ -85,10 +104,47 @@ def inicio_resumen(fecha_referencia=None):
             _pending_item(
                 "cotizaciones_nuevas",
                 "Cotizaciones nuevas sin gestionar",
-                "Requieren primer contacto o clasificacion comercial.",
+                "Requieren primer contacto o seguimiento comercial.",
                 cotizaciones_nuevas,
                 "alta",
                 "/cotizaciones?estado=nueva",
+            )
+        )
+
+    eventos_sin_costos = (
+        contratos_confirmados_futuros.annotate(
+            costos_directos_activos=Count(
+                "costos_directos",
+                filter=Q(costos_directos__eliminado=False),
+            )
+        )
+        .filter(costos_directos_activos=0)
+        .count()
+    )
+    if eventos_sin_costos:
+        pendientes.append(
+            _pending_item(
+                "eventos_sin_costos",
+                "Eventos proximos sin costos directos registrados",
+                "Falta registrar costos asociados a contratos confirmados futuros.",
+                eventos_sin_costos,
+                "media",
+                "/costos-directos",
+            )
+        )
+
+    eventos_con_saldo = contratos_confirmados_futuros.filter(
+        monto_abonado__lt=F("valor_final")
+    ).count()
+    if eventos_con_saldo:
+        pendientes.append(
+            _pending_item(
+                "eventos_con_saldo",
+                "Eventos proximos con saldo pendiente",
+                "Contratos confirmados futuros aun tienen valores por cobrar.",
+                eventos_con_saldo,
+                "alta",
+                "/contratos",
             )
         )
 
@@ -108,71 +164,31 @@ def inicio_resumen(fecha_referencia=None):
             )
         )
 
-    eventos_con_saldo = contratos_confirmados_futuros.filter(
-        monto_abonado__lt=F("valor_final")
-    ).count()
-    if eventos_con_saldo:
-        pendientes.append(
-            _pending_item(
-                "eventos_con_saldo",
-                "Eventos proximos con saldo pendiente",
-                "Contratos confirmados aun tienen valores por cobrar.",
-                eventos_con_saldo,
-                "alta",
-                "/contratos",
-            )
-        )
-
-    eventos_sin_costos = (
-        Contrato.objects.filter(
-            estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
-            fecha_evento__lt=fecha,
-        )
-        .annotate(
-            costos_directos_activos=Count(
-                "costos_directos",
-                filter=Q(costos_directos__eliminado=False),
-            )
-        )
-        .filter(costos_directos_activos=0)
-        .count()
-    )
-    if eventos_sin_costos:
-        pendientes.append(
-            _pending_item(
-                "eventos_sin_costos",
-                "Eventos realizados sin costos directos",
-                "Falta registrar costos reales para analizar rentabilidad.",
-                eventos_sin_costos,
-                "media",
-                "/costos-directos",
-            )
-        )
-
     return {
         "fecha_referencia": fecha.isoformat(),
         "periodo": {
             "mes": fecha.month,
             "anio": fecha.year,
+            "mes_nombre": mes_nombre,
         },
         "kpis": [
             {
                 "key": "cotizaciones_nuevas",
                 "label": "Cotizaciones nuevas",
                 "value": cotizaciones_nuevas,
-                "detail": "Pendientes de primer contacto",
+                "detail": "Pendientes de gestion",
             },
             {
                 "key": "cotizaciones_mes",
                 "label": "Cotizaciones del mes",
                 "value": cotizaciones_mes,
-                "detail": "Registradas en el periodo actual",
+                "detail": "Registradas en el mes actual",
             },
             {
-                "key": "contratos_mes",
-                "label": "Contratos del mes",
-                "value": contratos_mes,
-                "detail": "Eventos confirmados del periodo",
+                "key": "eventos_mes",
+                "label": "Eventos del mes",
+                "value": eventos_mes,
+                "detail": "Confirmados en el mes actual",
             },
             {
                 "key": "eventos_proximos",

@@ -24,7 +24,9 @@ La administracion de cotizaciones permite crear y editar oportunidades comercial
 
 ## Inicio administrativo, dashboard y reportes
 
-`/inicio` es la pantalla operativa diaria del panel administrativo. Consume `GET /api/inicio-resumen/` y muestra cotizaciones nuevas, cotizaciones del mes, contratos confirmados del mes, eventos proximos, pendientes importantes y accesos rapidos.
+`/inicio` es la pantalla operativa diaria del panel administrativo. Consume `GET /api/inicio-resumen/` y muestra cotizaciones nuevas, cotizaciones del mes, eventos del mes, eventos proximos, pendientes importantes y accesos rapidos agrupados por gestion comercial y finanzas/reportes.
+
+Los eventos proximos salen de contratos confirmados no cancelados, maximo 5 en Inicio, con enlace al detalle del contrato. Los pendientes importantes priorizan cotizaciones nuevas sin gestionar, eventos proximos sin costos directos activos, eventos proximos con saldo pendiente y oportunidades avanzadas sin contrato.
 
 `/dashboard-financiero` es el tablero de analisis financiero mensual. Consume `GET /api/dashboard-financiero/` y muestra ingresos, costos, utilidad, margenes, estado de pagos y comparaciones.
 

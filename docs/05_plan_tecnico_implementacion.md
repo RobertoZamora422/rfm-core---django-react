@@ -312,8 +312,8 @@ Entregables:
 - Endpoint autenticado `GET /api/inicio-resumen/`.
 - Prueba backend del resumen con cotizaciones, contratos confirmados/cancelados y pendientes.
 - Pantalla `/inicio` conectada a datos reales del backend.
-- Eventos proximos enlazados al detalle de contrato.
-- Acciones rapidas administrativas sin datos quemados permanentes.
+- Eventos proximos enlazados al detalle de contrato, maximo 5 en la pantalla inicial.
+- Acciones rapidas administrativas agrupadas por gestion comercial y finanzas/reportes sin datos quemados permanentes.
 
 Decision tecnica vigente:
 
@@ -321,7 +321,8 @@ Decision tecnica vigente:
 - El endpoint devuelve datos listos para presentar: `fecha_referencia`, `periodo`, `kpis`, `eventos_proximos` y `pendientes_importantes`.
 - React consume `inicioService.resumen()` y no calcula KPIs cargando listas completas.
 - Los eventos proximos se basan en contratos `confirmado` futuros; los contratos `cancelado` quedan fuera.
-- Los pendientes de eventos realizados sin costos directos se calculan con costos activos; costos eliminados logicamente no cuentan como evidencia vigente.
+- Los KPIs principales son cotizaciones nuevas, cotizaciones del mes, eventos del mes y eventos proximos.
+- Los pendientes de eventos proximos sin costos directos se calculan con costos activos; costos eliminados logicamente no cuentan como evidencia vigente.
 
 ## Fase 14 - Dashboard financiero backend-first
 

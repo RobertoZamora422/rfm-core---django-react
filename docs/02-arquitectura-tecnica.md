@@ -116,15 +116,15 @@ Implementacion:
 Payload principal:
 
 - `fecha_referencia` y `periodo`.
-- `kpis`: cotizaciones nuevas, cotizaciones del mes, contratos confirmados del mes y eventos proximos.
-- `eventos_proximos`: contratos confirmados futuros, excluyendo cancelados, listos para enlazar a `/contratos/:id`.
+- `kpis`: cotizaciones nuevas, cotizaciones del mes, eventos del mes y eventos proximos.
+- `eventos_proximos`: maximo 5 contratos confirmados futuros, excluyendo cancelados, listos para enlazar a `/contratos/:id` e incluyendo cliente, tipo de evento, paquete si aplica, fecha, estado de pago y saldo pendiente.
 - `pendientes_importantes`: senales operativas calculadas en backend.
 
 Decisiones tecnicas:
 
 - Inicio no carga `/api/cotizaciones/` ni `/api/contratos/` para calcular KPIs en React.
 - Los eventos proximos y metricas operativas principales excluyen contratos cancelados.
-- Los pendientes de eventos realizados sin costos consideran costos directos activos; costos eliminados logicamente no cierran el pendiente.
+- Los pendientes de eventos proximos sin costos consideran solo costos directos activos; costos eliminados logicamente no cierran el pendiente.
 - Inicio no reemplaza `/api/dashboard-financiero/` ni `/api/reportes/`; esos endpoints cubren analisis financiero y reportes historicos.
 
 Autenticacion:

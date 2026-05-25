@@ -96,8 +96,8 @@ Datos que muestra actualmente:
 - Cotizaciones registradas en el mes actual.
 - Contratos confirmados con evento en el mes actual.
 - Eventos proximos basados solo en contratos confirmados y no cancelados.
-- Pendientes importantes generados por reglas backend: cotizaciones nuevas, cotizaciones activas sin contrato, eventos proximos con saldo y eventos realizados sin costos directos activos.
-- Accesos rapidos a pre-cotizacion publica, cotizaciones, contratos y costos directos.
+- Pendientes importantes generados por reglas backend: cotizaciones nuevas, eventos proximos sin costos directos activos, eventos proximos con saldo pendiente y cotizaciones activas sin contrato.
+- Accesos rapidos agrupados: pre-cotizacion publica, cotizaciones, contratos, paquetes, costos directos, gastos fijos, dashboard financiero y reportes.
 
 Inicio se alimenta de `GET /api/inicio-resumen/`, implementado como agregado backend-first. React presenta el payload y no carga listas completas para recalcular KPIs operativos.
 

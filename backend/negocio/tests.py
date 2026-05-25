@@ -180,7 +180,7 @@ class NegocioApiTests(APITestCase):
         kpis = {item["key"]: item["value"] for item in response.data["kpis"]}
         self.assertEqual(kpis["cotizaciones_nuevas"], 0)
         self.assertEqual(kpis["cotizaciones_mes"], 0)
-        self.assertEqual(kpis["contratos_mes"], 0)
+        self.assertEqual(kpis["eventos_mes"], 0)
         self.assertEqual(kpis["eventos_proximos"], 0)
         self.assertEqual(response.data["eventos_proximos"], [])
         self.assertEqual(response.data["pendientes_importantes"], [])
@@ -400,6 +400,14 @@ class NegocioApiTests(APITestCase):
             monto_abonado=Decimal("500.00"),
             estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         )
+        CostoDirecto.objects.create(
+            contrato=contrato_proximo,
+            concepto="Costo eliminado futuro",
+            valor=Decimal("120.00"),
+            fecha=hoy,
+            eliminado=True,
+            eliminado_en=timezone.now(),
+        )
         Contrato.objects.create(
             cliente=cliente,
             tipo_evento=tipo_evento,
@@ -434,14 +442,30 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["fecha_referencia"], hoy.isoformat())
         kpis = {item["key"]: item["value"] for item in response.data["kpis"]}
+        kpi_details = {item["key"]: item["detail"] for item in response.data["kpis"]}
         self.assertEqual(kpis["cotizaciones_nuevas"], 1)
         self.assertEqual(kpis["cotizaciones_mes"], 2)
-        self.assertEqual(kpis["contratos_mes"], 1)
+        self.assertEqual(kpis["eventos_mes"], 1)
         self.assertEqual(kpis["eventos_proximos"], 1)
+        self.assertEqual(
+            kpi_details["cotizaciones_mes"],
+            "Registradas en el mes actual",
+        )
+        self.assertEqual(
+            kpi_details["eventos_mes"],
+            "Confirmados en el mes actual",
+        )
         self.assertEqual(
             response.data["eventos_proximos"][0]["contrato_id"],
             contrato_proximo.id,
         )
+        self.assertEqual(
+            response.data["eventos_proximos"][0]["paquete_nombre"],
+            paquete.nombre,
+        )
+        pendientes_por_tipo = {
+            item["tipo"]: item for item in response.data["pendientes_importantes"]
+        }
         pending_types = {
             item["tipo"] for item in response.data["pendientes_importantes"]
         }
@@ -449,3 +473,4 @@ class NegocioApiTests(APITestCase):
         self.assertIn("cotizaciones_sin_contrato", pending_types)
         self.assertIn("eventos_con_saldo", pending_types)
         self.assertIn("eventos_sin_costos", pending_types)
+        self.assertEqual(pendientes_por_tipo["eventos_sin_costos"]["cantidad"], 1)

@@ -51,10 +51,11 @@ Caracteristicas:
 
 Debe comunicar trabajo pendiente y proximas acciones:
 
-- KPIs operativos del resumen backend.
-- Eventos proximos con enlace al detalle del contrato.
+- Encabezado de bienvenida con fecha y accion de actualizar.
+- Cuatro KPIs operativos del resumen backend: cotizaciones nuevas, cotizaciones del mes, eventos del mes y eventos proximos.
+- Accesos rapidos agrupados en gestion comercial y finanzas/reportes.
+- Eventos proximos con enlace al detalle del contrato y datos minimos de cliente, tipo, paquete si aplica, fecha, estado de pago y saldo.
 - Pendientes importantes calculados en backend.
-- Accesos rapidos a flujos frecuentes.
 
 Estados esperados:
 
