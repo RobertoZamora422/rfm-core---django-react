@@ -40,6 +40,42 @@ class CotizacionModelTests(TestCase):
             cotizacion.save()
 
 
+class CotizacionCleanDatabaseApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="admin",
+            password="test-pass",
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_cotizaciones_sin_registros_devuelve_lista_vacia(self):
+        response = self.client.get("/api/cotizaciones/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
+
+    def test_pre_cotizacion_sin_configuracion_devuelve_error_controlado(self):
+        tipo_evento = TipoEvento.objects.create(nombre="Boda")
+        self.client.force_authenticate(user=None)
+
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre_cliente": "Cliente Publico",
+                "telefono_cliente": "0991234567",
+                "tipo_evento": tipo_evento.id,
+                "fecha_tentativa": "2026-05-20",
+                "numero_invitados": 80,
+                "tipo_servicio": "alquiler",
+                "observaciones": "",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("configuracion", response.data)
+
+
 class CotizacionApiTests(APITestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(

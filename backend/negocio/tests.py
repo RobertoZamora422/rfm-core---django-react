@@ -170,6 +170,47 @@ class NegocioApiTests(APITestCase):
         )
         self.client.force_authenticate(self.user)
 
+    def test_inicio_resumen_sin_datos_devuelve_ceros_y_estructuras_vacias(self):
+        hoy = timezone.localdate()
+
+        response = self.client.get("/api/inicio-resumen/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["fecha_referencia"], hoy.isoformat())
+        kpis = {item["key"]: item["value"] for item in response.data["kpis"]}
+        self.assertEqual(kpis["cotizaciones_nuevas"], 0)
+        self.assertEqual(kpis["cotizaciones_mes"], 0)
+        self.assertEqual(kpis["contratos_mes"], 0)
+        self.assertEqual(kpis["eventos_proximos"], 0)
+        self.assertEqual(response.data["eventos_proximos"], [])
+        self.assertEqual(response.data["pendientes_importantes"], [])
+
+    def test_configuracion_negocio_ausente_no_provoca_error_500(self):
+        list_response = self.client.get("/api/configuracion-negocio/")
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.data, [])
+
+        self.client.force_authenticate(user=None)
+        public_response = self.client.get("/api/public/configuracion/")
+
+        self.assertEqual(public_response.status_code, 200)
+        self.assertEqual(public_response.data, {})
+
+    def test_catalogos_y_clientes_sin_registros_devuelven_lista_vacia(self):
+        endpoints = [
+            "/api/clientes/",
+            "/api/paquetes/",
+            "/api/tipos-evento/",
+        ]
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.get(endpoint)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data, [])
+
     def test_cliente_crud_basico(self):
         response = self.client.post(
             "/api/clientes/",

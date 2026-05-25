@@ -178,11 +178,20 @@ def _payment_status(mes, anio):
             }
         )
 
+    conteos = {
+        key: counts.get(key, 0)
+        for key, _label in Contrato.EstadoPago.choices
+    }
+
     return {
         "total_contratos": contratos.count(),
         "valor_total": _money(total_valor),
         "monto_abonado": _money(total_abonado),
         "saldo_pendiente": _money(saldo_pendiente),
+        "pendiente": conteos.get(Contrato.EstadoPago.PENDIENTE, 0),
+        "abonado": conteos.get(Contrato.EstadoPago.ABONADO, 0),
+        "pagado": conteos.get(Contrato.EstadoPago.PAGADO, 0),
+        "conteos": conteos,
         "estados": estados,
     }
 
@@ -244,6 +253,7 @@ def dashboard_financiero(mes=None, anio=None):
 
     return {
         "periodo": current["periodo"],
+        **serialized_current,
         "kpis": [
             {
                 "key": "ingresos_mes",

@@ -78,6 +78,60 @@ class FinancieroModelTests(TestCase):
             gasto.save()
 
 
+class FinancieroCleanDatabaseApiTests(APITestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="admin",
+            password="test-pass",
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_dashboard_financiero_con_base_limpia_devuelve_ceros(self):
+        response = self.client.get(
+            "/api/dashboard-financiero/",
+            {"mes": 5, "anio": 2026},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["ingresos_mes"], "0.00")
+        self.assertEqual(response.data["costos_directos_mes"], "0.00")
+        self.assertEqual(response.data["gastos_fijos_mes"], "0.00")
+        self.assertEqual(response.data["utilidad_neta"], "0.00")
+        self.assertEqual(response.data["margen_neto"], "0.00")
+        self.assertEqual(response.data["metricas"]["ingresos_mes"], "0.00")
+        self.assertEqual(response.data["rentabilidad_eventos"], [])
+        self.assertEqual(response.data["estado_pagos"]["pendiente"], 0)
+        self.assertEqual(response.data["estado_pagos"]["abonado"], 0)
+        self.assertEqual(response.data["estado_pagos"]["pagado"], 0)
+        variacion_ingresos = response.data["comparacion_mes_anterior"]["variaciones"][
+            "ingresos_mes"
+        ]
+        self.assertIsNone(variacion_ingresos["porcentaje"])
+
+    def test_gastos_fijos_resumen_sin_gastos_devuelve_total_cero(self):
+        response = self.client.get(
+            "/api/gastos-fijos/resumen/",
+            {"mes": 5, "anio": 2026},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["total_periodo"], "0.00")
+
+    def test_listados_financieros_sin_registros_devuelven_lista_vacia(self):
+        endpoints = [
+            "/api/contratos/",
+            "/api/costos-directos/",
+            "/api/gastos-fijos/",
+        ]
+
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.get(endpoint)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data, [])
+
+
 class FinancieroApiTests(APITestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
