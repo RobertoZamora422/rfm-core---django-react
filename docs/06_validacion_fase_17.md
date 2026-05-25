@@ -2,6 +2,8 @@
 
 Fecha de cierre: 2026-05-18
 
+Nota de mantenimiento: este documento conserva la evidencia historica de Fase 17. La validacion actual posterior al deploy en Render se registra en `docs/07-consolidacion-pre-cotizacion-publica-y-deploy.md`.
+
 ## Objetivo
 
 Validar el flujo completo de RFM Core antes de pasar a la documentacion final:

@@ -22,7 +22,7 @@ Backend:
 - WhiteNoise para estaticos en produccion.
 - dj-database-url para `DATABASE_URL`.
 - SQLite local como fallback.
-- PostgreSQL previsto para Render.
+- PostgreSQL en Render.
 
 Frontend:
 
@@ -33,7 +33,7 @@ Frontend:
 - lucide-react.
 - CSS tradicional del proyecto.
 
-Deploy previsto:
+Deploy actual:
 
 - Render Web Service para Django/DRF.
 - Render Static Site para React/Vite.
@@ -160,6 +160,7 @@ DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 CSRF_TRUSTED_ORIGINS=
+FRONTEND_PUBLIC_URL=http://localhost:5173
 DATABASE_URL=
 ```
 
@@ -172,6 +173,8 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api
 `VITE_API_BASE_URL` es la convencion vigente para la URL del API en frontend. En produccion debe estar definida; el fallback local solo aplica a desarrollo.
 
 Con `DJANGO_DEBUG=False`, el backend exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `DATABASE_URL`.
+
+`FRONTEND_PUBLIC_URL` alimenta los enlaces informativos de la raiz JSON del backend. No participa en calculos ni autenticacion.
 
 ## Render manual
 
@@ -188,10 +191,11 @@ Variables backend:
 ```text
 DJANGO_SECRET_KEY=<valor-seguro-generado>
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=backend-url.onrender.com
+DJANGO_ALLOWED_HOSTS=rfm-core-backend.onrender.com
 DATABASE_URL=<Render PostgreSQL Internal Database URL>
-CORS_ALLOWED_ORIGINS=https://frontend-url.onrender.com
-CSRF_TRUSTED_ORIGINS=https://frontend-url.onrender.com,https://backend-url.onrender.com
+CORS_ALLOWED_ORIGINS=https://rfm-core-frontend.onrender.com
+CSRF_TRUSTED_ORIGINS=https://rfm-core-frontend.onrender.com,https://rfm-core-backend.onrender.com
+FRONTEND_PUBLIC_URL=https://rfm-core-frontend.onrender.com
 ```
 
 Comandos posteriores a crear el servicio:
@@ -209,7 +213,7 @@ Frontend Render Static Site:
 Root Directory: frontend
 Build Command: npm install && npm run build
 Publish Directory: dist
-VITE_API_BASE_URL=https://backend-url.onrender.com/api
+VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api
 ```
 
 PostgreSQL debe proveer `DATABASE_URL`; las migraciones deben ejecutarse antes de operar con datos reales. `seed_demo` no debe mezclarse con datos reales.

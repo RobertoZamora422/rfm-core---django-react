@@ -41,9 +41,30 @@ function buildQueryParams(filters) {
 }
 
 function buildContractLabel(contrato) {
+  if (contrato.contrato_descripcion) return contrato.contrato_descripcion
+  if (contrato.contrato_label && !contrato.cliente_nombre) return contrato.contrato_label
+
   return `Contrato #${contrato.id} - ${contrato.cliente_nombre} - ${contrato.tipo_evento_nombre} (${formatDate(
     contrato.fecha_evento,
   )})`
+}
+
+function buildContractOptions(contratos, initialValues) {
+  if (!initialValues?.contrato) return contratos
+  if (contratos.some((contrato) => String(contrato.id) === String(initialValues.contrato))) {
+    return contratos
+  }
+
+  const fallbackLabel = initialValues.contrato_label || `Contrato #${initialValues.contrato}`
+
+  return [
+    ...contratos,
+    {
+      id: initialValues.contrato,
+      contrato_descripcion:
+        initialValues.contrato_descripcion || `${fallbackLabel} (actual no confirmado)`,
+    },
+  ]
 }
 
 function buildInitialForm(item) {
@@ -68,6 +89,7 @@ function CostoDirectoForm({
   onSubmit,
 }) {
   const [form, setForm] = useState(() => buildInitialForm(initialValues))
+  const contractOptions = buildContractOptions(contratos, initialValues)
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -95,7 +117,7 @@ function CostoDirectoForm({
         value={form.contrato}
       >
         <option value="">Seleccione un contrato</option>
-        {contratos.map((contrato) => (
+        {contractOptions.map((contrato) => (
           <option key={contrato.id} value={contrato.id}>
             {buildContractLabel(contrato)}
           </option>
@@ -194,7 +216,7 @@ export function CostosDirectosPage() {
     setIsLoadingContracts(true)
 
     try {
-      const data = await contratosService.list()
+      const data = await contratosService.list({ estado_contrato: 'confirmado' })
       setContratos(toArray(data))
     } catch (error) {
       setPageError(getApiErrorMessage(error))

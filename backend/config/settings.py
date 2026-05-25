@@ -47,6 +47,10 @@ if not SECRET_KEY:
     SECRET_KEY = "django-insecure-rfm-core-dev-key"
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+FRONTEND_PUBLIC_URL = (
+    os.getenv("FRONTEND_PUBLIC_URL", "http://localhost:5173").strip().rstrip("/")
+    or "http://localhost:5173"
+)
 
 
 INSTALLED_APPS = [

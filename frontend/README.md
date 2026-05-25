@@ -2,6 +2,11 @@
 
 Aplicacion React/Vite del panel administrativo y flujo publico de pre-cotizacion de RFM Core.
 
+Produccion actual en Render:
+
+- Frontend: https://rfm-core-frontend.onrender.com/
+- API usada por el bundle desplegado: https://rfm-core-backend.onrender.com/api
+
 ## Comandos
 
 ```powershell
@@ -32,5 +37,5 @@ Publish Directory: dist
 Variable requerida:
 
 ```text
-VITE_API_BASE_URL=https://backend-url.onrender.com/api
+VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api
 ```

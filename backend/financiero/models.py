@@ -99,6 +99,10 @@ class Contrato(TimeStampedModel):
 
     @property
     def total_costos_directos(self):
+        annotated_total = getattr(self, "total_costos_directos_anotado", None)
+        if annotated_total is not None:
+            return annotated_total or Decimal("0.00")
+
         total = self.costos_directos.filter(eliminado=False).aggregate(total=Sum("valor"))[
             "total"
         ]

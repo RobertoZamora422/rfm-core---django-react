@@ -10,7 +10,13 @@ Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rent
 
 ## Estado actual
 
-El proyecto se encuentra en validacion integral y documentacion final previa a deploy. La version actual consolida la separacion entre flujo publico y panel administrativo, mantiene el backend como fuente de verdad para calculos y deja la configuracion preparada para Render sin afirmar que el despliegue ya exista.
+El proyecto ya cuenta con deploy manual en Render y se encuentra en etapa de mantenimiento tecnico, validacion academica y revision operativa. La version actual consolida la separacion entre flujo publico y panel administrativo, mantiene el backend como fuente de verdad para calculos y conserva configuracion compatible con ejecucion local y Render.
+
+URLs de produccion verificadas:
+
+- Frontend: https://rfm-core-frontend.onrender.com/
+- Backend API: https://rfm-core-backend.onrender.com/api
+- Backend health: https://rfm-core-backend.onrender.com/api/health/
 
 La administracion de contratos permite creacion manual, edicion de campos operativos/financieros editables, detalle de rentabilidad por contrato y registro de costos directos desde el detalle. La sesion administrativa se persiste en `localStorage` para mantenerse entre pestanas del mismo navegador.
 
@@ -76,7 +82,7 @@ Backend:
 - python-dotenv
 - WhiteNoise
 - dj-database-url
-- SQLite local y PostgreSQL previsto en Render
+- SQLite local y PostgreSQL en Render
 
 Frontend:
 
@@ -87,7 +93,7 @@ Frontend:
 - lucide-react
 - CSS tradicional del proyecto
 
-Deploy previsto:
+Deploy actual:
 
 - Render Web Service para Django/DRF
 - Render Static Site para React/Vite
@@ -151,6 +157,7 @@ DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 CSRF_TRUSTED_ORIGINS=
+FRONTEND_PUBLIC_URL=http://localhost:5173
 DATABASE_URL=
 ```
 
@@ -164,6 +171,8 @@ VITE_API_BASE_URL=http://127.0.0.1:8000/api
 
 Si `DJANGO_DEBUG=False`, el backend exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `DATABASE_URL`. Si falta alguna, Django falla al iniciar con un error claro.
 
+`FRONTEND_PUBLIC_URL` es opcional para desarrollo y permite que la raiz JSON del backend publique enlaces coherentes al frontend. En Render debe apuntar al Static Site activo.
+
 El WhatsApp del negocio no se configura en variables de entorno del frontend. El administrador lo ingresa en `/configuracion` con formato ecuatoriano local `09XXXXXXXX`; el backend lo expone al flujo publico como numero listo para `wa.me`. Ejemplo: `0991234567` -> `593991234567`.
 
 ## URLs locales
@@ -174,6 +183,14 @@ El WhatsApp del negocio no se configura en variables de entorno del frontend. El
 - Frontend: http://localhost:5173/
 - Pre-cotizacion publica: http://localhost:5173/pre-cotizacion
 - Panel administrativo: http://localhost:5173/login
+
+## URLs de produccion
+
+- Frontend: https://rfm-core-frontend.onrender.com/
+- Pre-cotizacion publica: https://rfm-core-frontend.onrender.com/pre-cotizacion
+- Panel administrativo: https://rfm-core-frontend.onrender.com/login
+- Backend API: https://rfm-core-backend.onrender.com/api
+- Backend health: https://rfm-core-backend.onrender.com/api/health/
 
 ## API principal
 
@@ -210,7 +227,7 @@ El login devuelve `Authorization: Token <token>` para las solicitudes administra
 
 ## Deploy manual en Render
 
-No hay deploy activo declarado en este repositorio. Para intentar un deploy manual posterior, usar placeholders hasta crear los servicios reales.
+Render es el entorno real de produccion del proyecto. Para mantener o recrear el deploy, conservar las rutas, nombres de variables y comandos siguientes.
 
 Backend Render Web Service:
 
@@ -221,10 +238,11 @@ Backend Render Web Service:
 - Variables obligatorias:
   - `DJANGO_SECRET_KEY=<valor-seguro-generado>`
   - `DJANGO_DEBUG=False`
-  - `DJANGO_ALLOWED_HOSTS=backend-url.onrender.com`
+  - `DJANGO_ALLOWED_HOSTS=rfm-core-backend.onrender.com`
   - `DATABASE_URL=<Render PostgreSQL Internal Database URL>`
-  - `CORS_ALLOWED_ORIGINS=https://frontend-url.onrender.com`
-  - `CSRF_TRUSTED_ORIGINS=https://frontend-url.onrender.com,https://backend-url.onrender.com`
+  - `CORS_ALLOWED_ORIGINS=https://rfm-core-frontend.onrender.com`
+  - `CSRF_TRUSTED_ORIGINS=https://rfm-core-frontend.onrender.com,https://rfm-core-backend.onrender.com`
+  - `FRONTEND_PUBLIC_URL=https://rfm-core-frontend.onrender.com`
 
 Comandos operativos backend:
 
@@ -243,7 +261,7 @@ Frontend Render Static Site:
 - Build Command: `npm install && npm run build`
 - Publish Directory: `dist`
 - Variable obligatoria:
-  - `VITE_API_BASE_URL=https://backend-url.onrender.com/api`
+  - `VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api`
 
 PostgreSQL:
 
@@ -269,4 +287,4 @@ Si se ejecutan los comandos de seed del proyecto, revisar la salida de `seed_bas
 - Una cotizacion no es ingreso real.
 - Solo un contrato confirmado representa ingreso real.
 - Los calculos comerciales y financieros se mantienen en backend.
-- Render esta previsto como destino de deploy, pero este repositorio no declara un deploy activo.
+- Render es el entorno real de produccion; cualquier cambio debe validarse localmente antes de actualizar servicios.

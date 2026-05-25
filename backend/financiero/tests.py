@@ -531,6 +531,25 @@ class FinancieroApiTests(APITestCase):
                 self.assertEqual(response.status_code, 400)
                 self.assertIn(field, response.data)
 
+    def test_rechaza_costo_directo_para_contrato_cancelado(self):
+        contrato = self.crear_contrato(
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+
+        response = self.client.post(
+            "/api/costos-directos/",
+            {
+                "contrato": contrato.id,
+                "concepto": "Costo cancelado",
+                "valor": "100.00",
+                "fecha": "2026-08-01",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("contrato", response.data)
+
     def test_filtra_gastos_fijos_y_devuelve_resumen_del_periodo(self):
         GastoFijoMensual.objects.create(
             concepto="Servicios basicos",

@@ -16,6 +16,7 @@ from .serializers import (
     CostoDirectoSerializer,
     GastoFijoMensualSerializer,
 )
+from .selectors import contratos_con_relaciones
 from .services import dashboard_financiero
 
 
@@ -74,12 +75,7 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     search_fields = ["cliente__nombre", "cliente__telefono", "observaciones"]
 
     def get_queryset(self):
-        queryset = Contrato.objects.select_related(
-            "cotizacion",
-            "cliente",
-            "tipo_evento",
-            "paquete",
-        )
+        queryset = contratos_con_relaciones()
         estado_contrato = self.request.query_params.get("estado_contrato")
         estado_pago = self.request.query_params.get("estado_pago")
         cliente = self.request.query_params.get("cliente")

@@ -423,7 +423,7 @@ Alcance:
 - Separacion definitiva entre pre-cotizacion publica y panel administrativo.
 - Autenticacion administrativa por TokenAuthentication.
 - Root JSON util en backend.
-- Configuracion base para Render con WhiteNoise, `DATABASE_URL` y PostgreSQL previsto.
+- Configuracion base para Render con WhiteNoise, `DATABASE_URL` y PostgreSQL en produccion.
 
 Entregables esperados:
 

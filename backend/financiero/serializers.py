@@ -199,6 +199,10 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
     def validate_contrato(self, value):
         if value is None:
             raise serializers.ValidationError("El contrato es obligatorio.")
+        if value.estado_contrato != Contrato.EstadoContrato.CONFIRMADO:
+            raise serializers.ValidationError(
+                "Solo se pueden registrar costos directos en contratos confirmados."
+            )
         return value
 
     def validate_concepto(self, value):

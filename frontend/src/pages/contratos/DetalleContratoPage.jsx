@@ -214,13 +214,17 @@ export function DetalleContratoPage() {
         <div className="detail-section">
           <div className="detail-section__header">
             <h2>Costos directos</h2>
-            <Link
-              className="button button--primary"
-              to={`/costos-directos?contrato=${contrato.id}&nuevo=1`}
-            >
-              <Plus aria-hidden="true" size={18} />
-              <span>Registrar costo directo</span>
-            </Link>
+            {isCanceled ? (
+              <p className="muted-text">No se registran nuevos costos en contratos cancelados.</p>
+            ) : (
+              <Link
+                className="button button--primary"
+                to={`/costos-directos?contrato=${contrato.id}&nuevo=1`}
+              >
+                <Plus aria-hidden="true" size={18} />
+                <span>Registrar costo directo</span>
+              </Link>
+            )}
           </div>
           <DataTable
             columns={costosColumns}

@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Corregir la regresion conceptual que trataba la pre-cotizacion como parte del panel protegido y dejar el proyecto preparado para validacion final previa a deploy en Render.
+Corregir la regresion conceptual que trataba la pre-cotizacion como parte del panel protegido y dejar el proyecto preparado para validacion final y mantenimiento posterior al deploy en Render.
 
 ## Cambios funcionales
 
@@ -81,7 +81,11 @@ La preparacion para Render incluye:
 - `CSRF_TRUSTED_ORIGINS` leido desde entorno.
 - Falla explicita si `DJANGO_DEBUG=False` y faltan variables criticas.
 
-No se declara deploy activo. La Fase 19 debe crear servicios y variables reales en Render.
+Deploy activo verificado:
+
+- Frontend: https://rfm-core-frontend.onrender.com/
+- Backend API: https://rfm-core-backend.onrender.com/api
+- Backend health: https://rfm-core-backend.onrender.com/api/health/
 
 ## Configuracion exacta para Render
 
@@ -98,10 +102,11 @@ Variables backend obligatorias:
 ```text
 DJANGO_SECRET_KEY=<valor-seguro-generado>
 DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=backend-url.onrender.com
+DJANGO_ALLOWED_HOSTS=rfm-core-backend.onrender.com
 DATABASE_URL=<Render PostgreSQL Internal Database URL>
-CORS_ALLOWED_ORIGINS=https://frontend-url.onrender.com
-CSRF_TRUSTED_ORIGINS=https://frontend-url.onrender.com,https://backend-url.onrender.com
+CORS_ALLOWED_ORIGINS=https://rfm-core-frontend.onrender.com
+CSRF_TRUSTED_ORIGINS=https://rfm-core-frontend.onrender.com,https://rfm-core-backend.onrender.com
+FRONTEND_PUBLIC_URL=https://rfm-core-frontend.onrender.com
 ```
 
 Comandos operativos backend:
@@ -119,7 +124,7 @@ Frontend Render Static Site:
 Root Directory: frontend
 Build Command: npm install && npm run build
 Publish Directory: dist
-VITE_API_BASE_URL=https://backend-url.onrender.com/api
+VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api
 ```
 
 PostgreSQL:
@@ -157,16 +162,14 @@ npm run build
 | --- | --- | --- |
 | Backend | `manage.py check` | Sin issues |
 | Backend | `manage.py makemigrations --check --dry-run` | No changes detected |
-| Backend | `manage.py test` | 68 pruebas OK |
+| Backend | `manage.py test` | 90 pruebas OK |
+| Frontend | `npm install` | Dependencias al dia, 0 vulnerabilidades reportadas |
 | Frontend | `npm run lint` | Sin errores |
 | Frontend | `npm run build` | Build generado correctamente |
-| Runtime API | `GET /`, `GET /api/health/`, catalogos publicos, `POST /api/pre-cotizacion/` | OK |
-| Runtime API | `/api/cotizaciones/` sin token | 401 |
-| Runtime API | Login token, `/api/auth/me/`, cotizacion publica visible en admin | OK |
-| Runtime UI | `/pre-cotizacion` y rutas de resultado en navegador interno | OK |
-| Runtime UI | `/inicio` sin token redirige a `/login` | OK |
-| Runtime UI | Login administrativo con token | OK |
-| Runtime UI | Enlace WhatsApp con `wa.me`, numero de Configuracion y mensaje prellenado | OK |
+| Runtime local API | `GET /`, `GET /api/health/` en `127.0.0.1:8000` | HTTP 200 |
+| Runtime local UI | `GET /pre-cotizacion` en `127.0.0.1:5173` | HTTP 200 |
+| Runtime produccion | `GET https://rfm-core-frontend.onrender.com/` | HTTP 200 |
+| Runtime produccion | `GET https://rfm-core-backend.onrender.com/api/health/` | HTTP 200 |
 
 Nota: durante `manage.py test` aparece una advertencia no bloqueante de WhiteNoise porque `staticfiles/` no existe hasta ejecutar `collectstatic`.
 

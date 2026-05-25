@@ -2,7 +2,7 @@
 
 ## Estado general
 
-El proyecto se encuentra en etapa de consolidacion tecnica previa a deploy. La documentacion inicial, el backend core, los servicios de negocio, el layout administrativo, los modulos de administracion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos, la revision responsive/UX y la validacion integral se encuentran completados.
+El proyecto se encuentra en etapa de mantenimiento tecnico posterior al deploy manual en Render. La documentacion inicial, el backend core, los servicios de negocio, el layout administrativo, los modulos de administracion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos, la revision responsive/UX y la validacion integral se encuentran completados.
 
 La version actual corrige la separacion conceptual de la pre-cotizacion: el flujo de cliente/interesado es publico, no requiere login, no muestra chrome administrativo y registra una cotizacion inicial gestionable luego desde el panel protegido.
 
@@ -35,9 +35,15 @@ Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rent
 - Fase 16 - Responsive, limpieza visual y experiencia de usuario: Completada.
 - Fase 17 - Pruebas y validacion integral: Completada.
 
+## Estado actual de produccion
+
+- Frontend Render Static Site: https://rfm-core-frontend.onrender.com/
+- Backend Render Web Service: https://rfm-core-backend.onrender.com/api
+- Health backend: https://rfm-core-backend.onrender.com/api/health/
+
 ## Fase actual
 
-La fase actual corresponde a consolidacion de pre-cotizacion publica, autenticacion por token, preparacion de variables reales para Render y documentacion final previa a deploy.
+La fase actual corresponde a auditoria profesional, limpieza segura y sincronizacion documental posterior al deploy. El objetivo es mantener estable el flujo aprobado, no reescribir la arquitectura.
 
 El flujo publico queda compuesto por cuatro pantallas:
 
@@ -50,4 +56,4 @@ El panel administrativo permanece protegido desde `/login` y concentra clientes,
 
 ## Proximos pasos
 
-La siguiente etapa corresponde a intentar el deploy manual en Render, aplicando migraciones, `collectstatic`, variables de entorno reales y configuracion de servicios en la plataforma.
+La siguiente etapa corresponde a revisar variables reales en Render, ejecutar migraciones/`collectstatic` cuando haya cambios de backend y validar el frontend antes de cada nuevo despliegue.
