@@ -23,23 +23,6 @@ def _month_bounds(fecha):
     return inicio, fin
 
 
-def _month_name(fecha):
-    return [
-        "enero",
-        "febrero",
-        "marzo",
-        "abril",
-        "mayo",
-        "junio",
-        "julio",
-        "agosto",
-        "septiembre",
-        "octubre",
-        "noviembre",
-        "diciembre",
-    ][fecha.month - 1]
-
-
 def _event_summary(contrato):
     return {
         "id": contrato.id,
@@ -71,7 +54,6 @@ def inicio_resumen(fecha_referencia=None):
 
     fecha = fecha_referencia or timezone.localdate()
     inicio_mes, fin_mes = _month_bounds(fecha)
-    mes_nombre = _month_name(fecha)
 
     cotizaciones_nuevas = Cotizacion.objects.filter(
         estado=Cotizacion.Estado.NUEVA,
@@ -169,7 +151,6 @@ def inicio_resumen(fecha_referencia=None):
         "periodo": {
             "mes": fecha.month,
             "anio": fecha.year,
-            "mes_nombre": mes_nombre,
         },
         "kpis": [
             {
