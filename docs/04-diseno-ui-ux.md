@@ -69,6 +69,33 @@ Limites de UX:
 - No debe mostrar datos quemados permanentes.
 - No debe recalcular KPIs a partir de listas completas en React.
 
+## Dashboard financiero
+
+`/dashboard-financiero` es una pantalla ejecutiva de analisis mensual, separada de Inicio y Reportes.
+
+Estructura visual:
+
+- Header con titulo, descripcion, selector de mes/anio y accion de actualizar.
+- KPIs financieros principales en grid responsive: ingresos, costos directos, utilidad bruta/margen bruto, gastos fijos, utilidad neta/margen neto y ticket promedio.
+- Desempeno comercial separado de los KPIs: paquete mas vendido, paquete mas rentable, tipo de evento mas frecuente y tipo de evento mas rentable.
+- Analisis comparativo del negocio con graficos de evolucion mensual, mes actual vs mes anterior, rentabilidad por paquete, analisis por tipo de evento, top de eventos rentables y cobranza.
+- Tabla de rentabilidad por evento.
+- Pendientes financieros.
+- Interpretacion del periodo.
+
+Estados esperados:
+
+- Loading mientras se consulta `GET /api/dashboard-financiero/`.
+- Error visible si falla la consulta.
+- Empty states profesionales cuando no hay contratos confirmados, costos, gastos, comparacion o informacion suficiente para interpretar el periodo.
+
+Limites de UX:
+
+- No debe mostrar datos inventados ni mocks permanentes.
+- No debe mezclar las cards comerciales con los KPIs financieros principales.
+- No debe contar cotizaciones ni contratos cancelados como ingresos.
+- Debe renderizar metricas principales calculadas por backend y usar graficos solo como visualizacion.
+
 ## Navegacion
 
 Publica:

@@ -31,6 +31,7 @@ Frontend:
 - React Router.
 - Axios.
 - lucide-react.
+- Recharts para graficos del dashboard financiero.
 - CSS tradicional del proyecto.
 
 Deploy actual:
@@ -126,6 +127,35 @@ Decisiones tecnicas:
 - Los eventos proximos y metricas operativas principales excluyen contratos cancelados.
 - Los pendientes de eventos proximos sin costos consideran solo costos directos activos; costos eliminados logicamente no cierran el pendiente.
 - Inicio no reemplaza `/api/dashboard-financiero/` ni `/api/reportes/`; esos endpoints cubren analisis financiero y reportes historicos.
+
+### Dashboard financiero
+
+`GET /api/dashboard-financiero/?mes=MM&anio=YYYY` es el contrato backend-first para la pantalla `/dashboard-financiero`.
+
+Implementacion:
+
+- Servicio: `backend/financiero/services.py` -> `dashboard_financiero()`.
+- Vista: `backend/financiero/views.py` -> `DashboardFinancieroAPIView`.
+- Ruta: `backend/financiero/urls.py` -> `dashboard-financiero/`.
+- Consumo frontend: `frontend/src/services/resourceService.js` -> `dashboardFinancieroService.resumen()`.
+
+Payload principal:
+
+- `metricas` y `kpis`: ingresos, costos directos, utilidad bruta, margen bruto, gastos fijos, utilidad neta, margen neto, ticket promedio y contratos confirmados.
+- `comparacion_mes_anterior` y `comparativo_mes_anterior`: variaciones y categorias para comparar el periodo actual contra el mes anterior.
+- `desempeno_comercial`: paquete mas vendido, paquete mas rentable, tipo de evento mas frecuente y tipo de evento mas rentable.
+- `evolucion_mensual`, `rentabilidad_por_paquete`, `analisis_por_tipo_evento` y `top_eventos_rentables`: series listas para graficos.
+- `rentabilidad_eventos`: tabla de contratos confirmados con ingresos, costos, utilidad, margen y saldo.
+- `estado_pagos` / `estado_pagos_cobranza`: cobranza de contratos confirmados y control separado de cancelados.
+- `pendientes_financieros` e `interpretacion`.
+
+Decisiones tecnicas:
+
+- Los costos directos del dashboard se agrupan por `Contrato.fecha_evento`; `CostoDirecto.fecha` queda como trazabilidad administrativa.
+- Cotizaciones no se cuentan como ingresos.
+- Contratos cancelados no suman ingresos, utilidad, margen ni saldo pendiente principal. Solo aparecen separados como control visual de cobranza.
+- La rentabilidad de paquetes y tipos de evento usa margen ponderado sobre ingresos, con desempate por utilidad bruta y cantidad de contratos.
+- React renderiza el payload y los graficos; no recalcula las metricas financieras principales.
 
 Autenticacion:
 

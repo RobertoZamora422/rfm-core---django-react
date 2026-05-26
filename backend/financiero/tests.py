@@ -96,17 +96,28 @@ class FinancieroCleanDatabaseApiTests(APITestCase):
         self.assertEqual(response.data["ingresos_mes"], "0.00")
         self.assertEqual(response.data["costos_directos_mes"], "0.00")
         self.assertEqual(response.data["gastos_fijos_mes"], "0.00")
+        self.assertEqual(response.data["utilidad_bruta"], "0.00")
+        self.assertEqual(response.data["margen_bruto"], "0.00")
         self.assertEqual(response.data["utilidad_neta"], "0.00")
         self.assertEqual(response.data["margen_neto"], "0.00")
+        self.assertEqual(response.data["ticket_promedio"], "0.00")
         self.assertEqual(response.data["metricas"]["ingresos_mes"], "0.00")
+        self.assertEqual(response.data["metricas"]["utilidad_bruta"], "0.00")
+        self.assertEqual(response.data["metricas"]["ticket_promedio"], "0.00")
         self.assertEqual(response.data["rentabilidad_eventos"], [])
+        self.assertEqual(response.data["rentabilidad_por_paquete"], [])
+        self.assertEqual(response.data["analisis_por_tipo_evento"], [])
+        self.assertEqual(response.data["top_eventos_rentables"], [])
+        self.assertEqual(response.data["pendientes_financieros"]["total_contratos"], 0)
         self.assertEqual(response.data["estado_pagos"]["pendiente"], 0)
         self.assertEqual(response.data["estado_pagos"]["abonado"], 0)
         self.assertEqual(response.data["estado_pagos"]["pagado"], 0)
+        self.assertEqual(response.data["estado_pagos"]["cancelado"], 0)
         variacion_ingresos = response.data["comparacion_mes_anterior"]["variaciones"][
             "ingresos_mes"
         ]
         self.assertIsNone(variacion_ingresos["porcentaje"])
+        self.assertEqual(variacion_ingresos["direccion"], "sin_datos")
 
     def test_gastos_fijos_resumen_sin_gastos_devuelve_total_cero(self):
         response = self.client.get(
@@ -599,6 +610,16 @@ class FinancieroApiTests(APITestCase):
                 self.assertIn(field, response.data)
 
     def test_dashboard_financiero_calcula_metricas_desde_backend(self):
+        Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 12),
+            numero_invitados=120,
+            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("9999.00"),
+        )
         contrato_1 = self.crear_contrato(
             fecha_evento=date(2026, 8, 10),
             valor_final=Decimal("2000.00"),
@@ -625,7 +646,7 @@ class FinancieroApiTests(APITestCase):
             contrato=contrato_1,
             concepto="Catering",
             valor=Decimal("700.00"),
-            fecha=date(2026, 8, 10),
+            fecha=date(2026, 9, 1),
         )
         CostoDirecto.objects.create(
             contrato=contrato_2,
@@ -650,7 +671,7 @@ class FinancieroApiTests(APITestCase):
             contrato=contrato_anterior,
             concepto="Catering julio",
             valor=Decimal("500.00"),
-            fecha=date(2026, 7, 15),
+            fecha=date(2026, 8, 5),
         )
         GastoFijoMensual.objects.create(
             concepto="Arriendo",
@@ -687,12 +708,21 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.data["periodo"]["mes"], 8)
         self.assertEqual(response.data["metricas"]["ingresos_mes"], "3000.00")
         self.assertEqual(response.data["metricas"]["costos_directos_mes"], "900.00")
+        self.assertEqual(response.data["metricas"]["utilidad_bruta"], "2100.00")
+        self.assertEqual(response.data["metricas"]["margen_bruto"], "70.00")
         self.assertEqual(response.data["metricas"]["gastos_fijos_mes"], "400.00")
         self.assertEqual(response.data["metricas"]["utilidad_neta"], "1700.00")
         self.assertEqual(response.data["metricas"]["margen_neto"], "56.67")
+        self.assertEqual(response.data["metricas"]["ticket_promedio"], "1500.00")
         self.assertEqual(response.data["metricas"]["contratos_confirmados"], 2)
+        self.assertEqual(len(response.data["kpis"]), 6)
         self.assertEqual(response.data["estado_pagos"]["monto_abonado"], "1500.00")
         self.assertEqual(response.data["estado_pagos"]["saldo_pendiente"], "1500.00")
+        self.assertEqual(response.data["estado_pagos"]["cancelado"], 1)
+        self.assertEqual(
+            response.data["estado_pagos"]["cancelados"]["valor_total_control"],
+            "3000.00",
+        )
         self.assertEqual(
             {item["contrato_id"] for item in response.data["rentabilidad_eventos"]},
             {contrato_1.id, contrato_2.id},
@@ -708,6 +738,31 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(
             response.data["comparacion_mes_anterior"]["variaciones"]["ingresos_mes"]["porcentaje"],
             "100.00",
+        )
+        self.assertEqual(
+            response.data["comparacion_mes_anterior"]["variaciones"]["costos_directos_mes"]["delta"],
+            "400.00",
+        )
+        self.assertEqual(
+            response.data["desempeno_comercial"]["paquete_mas_vendido"]["nombre"],
+            "Alquiler",
+        )
+        self.assertEqual(
+            response.data["desempeno_comercial"]["paquete_mas_vendido"]["contratos"],
+            2,
+        )
+        self.assertEqual(
+            response.data["desempeno_comercial"]["tipo_evento_mas_frecuente"]["nombre"],
+            "Boda",
+        )
+        self.assertEqual(len(response.data["evolucion_mensual"]), 6)
+        self.assertEqual(
+            response.data["comparativo_mes_anterior"]["categorias"][0]["key"],
+            "ingresos_mes",
+        )
+        self.assertEqual(
+            response.data["pendientes_financieros"]["monto_total_pendiente"],
+            "1500.00",
         )
 
     def test_dashboard_financiero_maneja_periodo_sin_ingresos(self):

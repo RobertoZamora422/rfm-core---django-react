@@ -4,6 +4,8 @@ Fecha de cierre: 2026-05-18
 
 Nota de mantenimiento: este documento conserva la evidencia historica de Fase 17. La validacion actual posterior al deploy en Render se registra en `docs/07-consolidacion-pre-cotizacion-publica-y-deploy.md`.
 
+Nota dashboard financiero: la revision posterior del dashboard financiero backend-first fue validada localmente con `manage.py test financiero reportes`, `npm run lint` y `npm run build`. Esta revision agrega KPIs financieros completos, graficos con Recharts, costos directos imputados por `Contrato.fecha_evento`, cancelados separados en cobranza y estados vacios profesionales.
+
 ## Objetivo
 
 Validar el flujo completo de RFM Core antes de pasar a la documentacion final:

@@ -348,6 +348,16 @@ Entregables:
 - Pantalla `/dashboard-financiero` conectada al endpoint real con filtros de mes y anio.
 - KPI cards, comparacion mensual, tabla responsive de rentabilidad por evento, estado de pagos e interpretacion del periodo renderizados desde payload backend.
 
+Revision actual:
+
+- El dashboard financiero mantiene backend-first y ahora expone KPIs financieros principales: ingresos, costos directos, utilidad bruta/margen bruto, gastos fijos, utilidad neta/margen neto y ticket promedio.
+- Los costos directos se agrupan por el mes/anio de `Contrato.fecha_evento`; `CostoDirecto.fecha` permanece como trazabilidad administrativa del registro.
+- Cotizaciones y contratos cancelados no se cuentan como ingresos, utilidad, margen ni saldo pendiente principal.
+- Los contratos cancelados solo aparecen separados como control visual dentro de cobranza.
+- El desempeno comercial queda separado de los KPIs financieros e incluye paquete mas vendido, paquete mas rentable, tipo de evento mas frecuente y tipo de evento mas rentable.
+- La rentabilidad de paquetes y tipos de evento usa margen ponderado sobre ingresos, con desempate por utilidad bruta y cantidad de contratos.
+- La pantalla usa graficos con Recharts y estados vacios profesionales sin datos inventados.
+
 ## Fase 15 - Reportes
 
 Estado: Completada.

@@ -49,6 +49,8 @@ Revision actual: Inicio administrativo queda confirmado como pantalla operativa 
 
 La revision de Inicio mantiene la fuente backend-first y ajusta la pantalla a uso diario: bienvenida con fecha, cuatro KPIs operativos, acciones frecuentes separadas entre gestion comercial y finanzas/reportes, maximo 5 eventos proximos enlazados a contratos y pendientes calculados con reglas del backend.
 
+Revision actual del dashboard financiero: `/dashboard-financiero` queda como pantalla mensual ejecutiva conectada a `GET /api/dashboard-financiero/`. Los KPIs financieros, desempeno comercial, graficos, cobranza, pendientes e interpretacion salen del backend. Los costos directos se imputan al periodo por `Contrato.fecha_evento`, las cotizaciones no cuentan como ingresos y los contratos cancelados solo aparecen separados como control visual de cobranza.
+
 El flujo publico queda compuesto por cuatro pantallas:
 
 - `/pre-cotizacion`

@@ -28,7 +28,7 @@ La administracion de cotizaciones permite crear y editar oportunidades comercial
 
 Los eventos proximos salen de contratos confirmados no cancelados, maximo 5 en Inicio, con enlace al detalle del contrato. Los pendientes importantes priorizan cotizaciones nuevas sin gestionar, eventos proximos sin costos directos activos, eventos proximos con saldo pendiente y oportunidades avanzadas sin contrato.
 
-`/dashboard-financiero` es el tablero de analisis financiero mensual. Consume `GET /api/dashboard-financiero/` y muestra ingresos, costos, utilidad, margenes, estado de pagos y comparaciones.
+`/dashboard-financiero` es el tablero de analisis financiero mensual. Consume `GET /api/dashboard-financiero/` y muestra KPIs financieros, desempeno comercial, evolucion mensual, comparativo contra mes anterior, rentabilidad por paquete, analisis por tipo de evento, top de eventos rentables, cobranza, pendientes financieros e interpretacion del periodo. Los costos directos del dashboard se agrupan por `Contrato.fecha_evento`; `CostoDirecto.fecha` se mantiene como trazabilidad administrativa.
 
 `/reportes` concentra consultas historicas o exportables por periodo. Consume los endpoints bajo `/api/reportes/`.
 
@@ -103,6 +103,7 @@ Frontend:
 - React Router
 - Axios
 - lucide-react
+- Recharts
 - CSS tradicional del proyecto
 
 Deploy actual:
@@ -299,5 +300,7 @@ Si se ejecutan los comandos de seed del proyecto, revisar la salida de `seed_bas
 - Reportes pueden exportarse como CSV desde la respuesta backend ya calculada.
 - Una cotizacion no es ingreso real.
 - Solo un contrato confirmado representa ingreso real.
+- Los contratos cancelados no suman ingresos, utilidad, margen ni saldo pendiente principal; solo aparecen como control visual de cobranza cuando aplica.
+- En el dashboard financiero, los costos directos se imputan al periodo del evento del contrato confirmado, no al mes administrativo de registro del costo.
 - Los calculos comerciales y financieros se mantienen en backend.
 - Render es el entorno real de produccion; cualquier cambio debe validarse localmente antes de actualizar servicios.
