@@ -673,7 +673,7 @@ export function DashboardFinancieroPage() {
           </Select>
           <Input
             id="dashboard-anio"
-            label="Anio"
+            label="Año"
             min="2000"
             name="anio"
             onChange={handleFilterChange}
