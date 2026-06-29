@@ -4,11 +4,17 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, DecimalField, Q, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Count, Sum
 from django.utils import timezone
 
-from .models import Contrato, CostoDirecto, GastoFijoMensual
+from .models import Contrato
+from .selectors import (
+    contratos_cancelados_entre,
+    contratos_confirmados_con_rentabilidad_entre,
+    contratos_confirmados_entre,
+    costos_directos_activos_por_evento_entre,
+    gastos_fijos_activos_del_periodo,
+)
 
 
 ZERO = Decimal("0.00")
@@ -78,6 +84,27 @@ def _safe_percentage(numerator, denominator):
     return (numerator / denominator) * HUNDRED
 
 
+def cancelar_contrato(contrato):
+    contrato.estado_contrato = Contrato.EstadoContrato.CANCELADO
+    contrato.save(update_fields=["estado_contrato", "actualizado_en"])
+    return contrato
+
+
+def _eliminar_logicamente(instance):
+    instance.eliminado = True
+    instance.eliminado_en = timezone.now()
+    instance.save(update_fields=["eliminado", "eliminado_en", "actualizado_en"])
+    return instance
+
+
+def eliminar_logicamente_costo_directo(costo):
+    return _eliminar_logicamente(costo)
+
+
+def eliminar_logicamente_gasto_fijo(gasto):
+    return _eliminar_logicamente(gasto)
+
+
 def _variation(current, previous, has_previous_data=True):
     delta = current - previous
     if not has_previous_data or previous == 0:
@@ -102,28 +129,11 @@ def _variation(current, previous, has_previous_data=True):
     }
 
 
-def _confirmed_contracts_between(inicio, fin):
-    return Contrato.objects.filter(
-        estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
-        fecha_evento__gte=inicio,
-        fecha_evento__lte=fin,
-    )
-
-
 def _period_metrics(mes, anio):
     inicio, fin = _month_bounds(mes, anio)
-    contratos = _confirmed_contracts_between(inicio, fin)
-    costos_directos = CostoDirecto.objects.filter(
-        contrato__estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
-        contrato__fecha_evento__gte=inicio,
-        contrato__fecha_evento__lte=fin,
-        eliminado=False,
-    )
-    gastos_fijos = GastoFijoMensual.objects.filter(
-        eliminado=False,
-        mes=mes,
-        anio=anio,
-    )
+    contratos = contratos_confirmados_entre(inicio, fin)
+    costos_directos = costos_directos_activos_por_evento_entre(inicio, fin)
+    gastos_fijos = gastos_fijos_activos_del_periodo(mes, anio)
 
     ingresos = _sum(contratos, "valor_final")
     costos = _sum(costos_directos, "valor")
@@ -159,21 +169,7 @@ def _period_metrics(mes, anio):
 
 def _contract_profit_rows(mes, anio):
     inicio, fin = _month_bounds(mes, anio)
-    contratos = (
-        _confirmed_contracts_between(inicio, fin)
-        .select_related("cliente", "tipo_evento", "paquete")
-        .annotate(
-            costos_directos_total=Coalesce(
-                Sum(
-                    "costos_directos__valor",
-                    filter=Q(costos_directos__eliminado=False),
-                ),
-                Value(ZERO),
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            )
-        )
-        .order_by("-fecha_evento", "-id")
-    )
+    contratos = contratos_confirmados_con_rentabilidad_entre(inicio, fin)
 
     eventos = []
     for contrato in contratos:
@@ -215,12 +211,8 @@ def _event_profitability(mes, anio):
 
 def _payment_status(mes, anio):
     inicio, fin = _month_bounds(mes, anio)
-    contratos = _confirmed_contracts_between(inicio, fin)
-    cancelados = Contrato.objects.filter(
-        estado_contrato=Contrato.EstadoContrato.CANCELADO,
-        fecha_evento__gte=inicio,
-        fecha_evento__lte=fin,
-    )
+    contratos = contratos_confirmados_entre(inicio, fin)
+    cancelados = contratos_cancelados_entre(inicio, fin)
     totals = contratos.aggregate(
         total_valor=Sum("valor_final"),
         total_abonado=Sum("monto_abonado"),

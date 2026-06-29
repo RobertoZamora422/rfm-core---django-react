@@ -239,6 +239,46 @@ Administrativa protegida:
 
 El login devuelve `Authorization: Token <token>` para las solicitudes administrativas.
 
+## Aplicación de buenas prácticas: SOLID y patrones de diseño
+
+Se reviso el Core MVC/API de RFM Core y se detectaron dos oportunidades de mejora controladas: el dashboard financiero concentraba consultas ORM junto con calculos de negocio, y la pre-cotizacion seleccionaba su calculo mediante condicionales centrales por tipo de servicio.
+
+Principios SOLID aplicados:
+
+- `SRP - Single Responsibility Principle`: las consultas financieras reutilizables se separaron en selectors y las acciones de cancelacion/eliminacion logica se movieron desde views hacia services.
+- `OCP - Open/Closed Principle`: el calculo de pre-cotizacion se organiza por estrategias, permitiendo agregar nuevos tipos de calculo sin modificar el orquestador principal.
+
+Patrones de diseno aplicados:
+
+- `Repository / Selector Pattern`: `backend/financiero/selectors.py` centraliza consultas de contratos confirmados, contratos cancelados, costos directos activos y gastos fijos del periodo.
+- `Strategy Pattern`: `backend/comercial/pre_cotizacion_strategies.py` encapsula las estrategias de alquiler, servicio completo y comparacion/no seguro.
+- `Service Layer`: `backend/financiero/services.py` mantiene acciones de negocio como `cancelar_contrato`, `eliminar_logicamente_costo_directo` y `eliminar_logicamente_gasto_fijo`.
+
+Archivos modificados:
+
+- `backend/financiero/selectors.py`
+- `backend/financiero/services.py`
+- `backend/financiero/views.py`
+- `backend/comercial/services.py`
+- `backend/comercial/pre_cotizacion_strategies.py`
+- `README.md`
+
+Beneficios tecnicos:
+
+- Views mas delgadas y enfocadas en HTTP.
+- Consultas financieras reutilizables y consistentes.
+- Menor riesgo de duplicar filtros de contratos confirmados, cancelados o costos eliminados.
+- Calculos de pre-cotizacion extensibles sin cambiar el contrato publico de la API.
+- Sin cambios de modelos, migraciones, endpoints ni payloads consumidos por React.
+
+Comandos de prueba:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe manage.py test comercial financiero reportes
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+```
+
 ## Deploy manual en Render
 
 Render es el entorno real de produccion del proyecto. Para mantener o recrear el deploy, conservar las rutas, nombres de variables y comandos siguientes.

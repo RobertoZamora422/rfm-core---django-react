@@ -2,7 +2,6 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q, Sum
-from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -10,14 +9,19 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Contrato, CostoDirecto, GastoFijoMensual
+from .models import CostoDirecto, GastoFijoMensual
 from .serializers import (
     ContratoSerializer,
     CostoDirectoSerializer,
     GastoFijoMensualSerializer,
 )
 from .selectors import contratos_con_relaciones
-from .services import dashboard_financiero
+from .services import (
+    cancelar_contrato,
+    dashboard_financiero,
+    eliminar_logicamente_costo_directo,
+    eliminar_logicamente_gasto_fijo,
+)
 
 
 def _raise_api_validation_error(exc):
@@ -122,8 +126,7 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="cancelar")
     def cancelar(self, request, pk=None):
         contrato = self.get_object()
-        contrato.estado_contrato = Contrato.EstadoContrato.CANCELADO
-        contrato.save(update_fields=["estado_contrato", "actualizado_en"])
+        contrato = cancelar_contrato(contrato)
         return Response(ContratoSerializer(contrato).data, status=status.HTTP_200_OK)
 
 
@@ -183,9 +186,7 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_destroy(self, instance):
-        instance.eliminado = True
-        instance.eliminado_en = timezone.now()
-        instance.save(update_fields=["eliminado", "eliminado_en", "actualizado_en"])
+        eliminar_logicamente_costo_directo(instance)
 
 
 class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
@@ -224,9 +225,7 @@ class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
         return queryset
 
     def perform_destroy(self, instance):
-        instance.eliminado = True
-        instance.eliminado_en = timezone.now()
-        instance.save(update_fields=["eliminado", "eliminado_en", "actualizado_en"])
+        eliminar_logicamente_gasto_fijo(instance)
 
     @action(detail=False, methods=["get"], url_path="resumen")
     def resumen(self, request):

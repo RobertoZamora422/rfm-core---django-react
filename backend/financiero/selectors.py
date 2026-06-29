@@ -5,7 +5,10 @@ from decimal import Decimal
 from django.db.models import DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
-from .models import Contrato
+from .models import Contrato, CostoDirecto, GastoFijoMensual
+
+
+ZERO = Decimal("0.00")
 
 
 def contratos_con_relaciones():
@@ -20,7 +23,58 @@ def contratos_con_relaciones():
                 "costos_directos__valor",
                 filter=Q(costos_directos__eliminado=False),
             ),
-            Value(Decimal("0.00")),
+            Value(ZERO),
             output_field=DecimalField(max_digits=12, decimal_places=2),
         )
+    )
+
+
+def contratos_confirmados_entre(inicio, fin):
+    return Contrato.objects.filter(
+        estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        fecha_evento__gte=inicio,
+        fecha_evento__lte=fin,
+    )
+
+
+def contratos_cancelados_entre(inicio, fin):
+    return Contrato.objects.filter(
+        estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        fecha_evento__gte=inicio,
+        fecha_evento__lte=fin,
+    )
+
+
+def costos_directos_activos_por_evento_entre(inicio, fin):
+    return CostoDirecto.objects.filter(
+        contrato__estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        contrato__fecha_evento__gte=inicio,
+        contrato__fecha_evento__lte=fin,
+        eliminado=False,
+    )
+
+
+def gastos_fijos_activos_del_periodo(mes, anio):
+    return GastoFijoMensual.objects.filter(
+        eliminado=False,
+        mes=mes,
+        anio=anio,
+    )
+
+
+def contratos_confirmados_con_rentabilidad_entre(inicio, fin):
+    return (
+        contratos_confirmados_entre(inicio, fin)
+        .select_related("cliente", "tipo_evento", "paquete")
+        .annotate(
+            costos_directos_total=Coalesce(
+                Sum(
+                    "costos_directos__valor",
+                    filter=Q(costos_directos__eliminado=False),
+                ),
+                Value(ZERO),
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            )
+        )
+        .order_by("-fecha_evento", "-id")
     )
