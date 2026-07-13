@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { LogIn } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react'
+import ranchoLogo from '../assets/logotipo-rancho.svg'
 import { Button } from '../components/ui/Button'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import { Input } from '../components/ui/Input'
 import { useAuth } from '../hooks/useAuth'
 
 function resolveLoginError(error) {
@@ -17,7 +17,7 @@ function resolveLoginError(error) {
     return 'Revise las credenciales ingresadas.'
   }
 
-  return 'No se pudo iniciar sesion con el backend.'
+  return 'No se pudo iniciar sesión con el servidor.'
 }
 
 export function LoginPage() {
@@ -25,9 +25,12 @@ export function LoginPage() {
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const submissionInFlight = useRef(false)
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = location.state?.from?.pathname ?? '/inicio'
+  const currentYear = new Date().getFullYear()
 
   if (isAuthenticated) {
     return <Navigate replace to={redirectTo} />
@@ -42,6 +45,10 @@ export function LoginPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
+    if (submissionInFlight.current) return
+
+    submissionInFlight.current = true
     setError('')
     setIsSubmitting(true)
 
@@ -51,6 +58,7 @@ export function LoginPage() {
     } catch (loginError) {
       setError(resolveLoginError(loginError))
     } finally {
+      submissionInFlight.current = false
       setIsSubmitting(false)
     }
   }
@@ -58,37 +66,76 @@ export function LoginPage() {
   return (
     <main className="login-shell">
       <section className="login-panel" aria-labelledby="login-title">
-        <div className="login-panel__copy">
-          <span className="app-kicker">RFM Core</span>
+        <header className="login-panel__header">
+          <img className="login-logo" src={ranchoLogo} alt="Rancho Flor María" />
           <h1 id="login-title">Acceso administrativo</h1>
-          <p>Gestion comercial, contratos y rentabilidad desde un entorno centralizado.</p>
-        </div>
+          <div className="login-ornament" aria-hidden="true">
+            <span />
+            <i />
+            <span />
+          </div>
+        </header>
 
         <form className="login-form" onSubmit={handleSubmit}>
-          <Input
-            autoComplete="username"
-            id="username"
-            label="Usuario"
-            name="username"
-            onChange={handleChange}
-            required
-            value={form.username}
-          />
-          <Input
-            autoComplete="current-password"
-            id="password"
-            label="Contrasena"
-            name="password"
-            onChange={handleChange}
-            required
-            type="password"
-            value={form.password}
-          />
+          <div className="login-field">
+            <label className="login-field__label" htmlFor="username">
+              Usuario
+            </label>
+            <span className="login-field__control">
+              <UserRound aria-hidden="true" className="login-field__icon" size={19} />
+              <input
+                autoComplete="username"
+                id="username"
+                name="username"
+                onChange={handleChange}
+                placeholder="Ingresa tu usuario"
+                required
+                value={form.username}
+              />
+            </span>
+          </div>
+
+          <div className="login-field">
+            <label className="login-field__label" htmlFor="password">
+              Contraseña
+            </label>
+            <span className="login-field__control">
+              <LockKeyhole aria-hidden="true" className="login-field__icon" size={19} />
+              <input
+                autoComplete="current-password"
+                id="password"
+                name="password"
+                onChange={handleChange}
+                placeholder="Ingresa tu contraseña"
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={form.password}
+              />
+              <button
+                className="login-password-toggle"
+                type="button"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((isVisible) => !isVisible)}
+              >
+                {showPassword ? <EyeOff aria-hidden="true" size={19} /> : <Eye aria-hidden="true" size={19} />}
+              </button>
+            </span>
+          </div>
+
           <ErrorMessage>{error}</ErrorMessage>
-          <Button icon={LogIn} isLoading={isSubmitting} type="submit">
-            Ingresar
+
+          <Button
+            className="login-submit"
+            isLoading={isSubmitting}
+            loadingLabel="Iniciando sesión…"
+            type="submit"
+          >
+            Iniciar sesión
           </Button>
         </form>
+
+        <footer className="login-panel__footer">© {currentYear} Rancho Flor María</footer>
       </section>
     </main>
   )

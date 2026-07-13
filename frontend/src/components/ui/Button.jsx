@@ -3,6 +3,7 @@ export function Button({
   className = '',
   icon: Icon,
   isLoading = false,
+  loadingLabel = 'Procesando',
   type = 'button',
   variant = 'primary',
   ...props
@@ -12,7 +13,7 @@ export function Button({
   return (
     <button className={classes} type={type} {...props} disabled={isLoading || props.disabled}>
       {Icon ? <Icon aria-hidden="true" size={18} /> : null}
-      <span>{isLoading ? 'Procesando' : children}</span>
+      <span>{isLoading ? loadingLabel : children}</span>
     </button>
   )
 }
