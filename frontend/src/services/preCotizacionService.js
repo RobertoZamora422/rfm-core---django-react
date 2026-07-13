@@ -54,6 +54,11 @@ export function getPreCotizacionResult() {
   }
 }
 
+export function clearPreCotizacionResult() {
+  window.sessionStorage.removeItem(PREQUOTE_RESULT_KEY)
+  window.localStorage.removeItem(PREQUOTE_RESULT_KEY)
+}
+
 export function buildWhatsappUrl(message, whatsappNumeroUrl) {
   const number = String(whatsappNumeroUrl ?? '').replace(/[^\d]/g, '')
   if (!number) return ''
