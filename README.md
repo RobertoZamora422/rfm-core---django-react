@@ -38,12 +38,10 @@ React no calcula KPIs de Inicio cargando listas completas; el backend entrega el
 
 La pre-cotizacion publica no requiere login y no muestra Sidebar ni Topbar administrativo.
 
-Pantallas:
+Pantalla:
 
-- `/pre-cotizacion`: formulario inicial para cliente/interesado.
-- `/pre-cotizacion/alquiler`: resultado referencial de alquiler del local.
-- `/pre-cotizacion/servicio-completo`: paquetes activos con total referencial por paquete.
-- `/pre-cotizacion/comparacion`: comparacion entre alquiler y servicio completo.
+- `/pre-cotizacion`: formulario publico y resultado en la misma pantalla para alquiler,
+  servicio completo o comparacion de modalidades.
 
 El formulario publico solicita solo nombre, telefono/WhatsApp, tipo de evento, fecha tentativa, numero aproximado de invitados y tipo de servicio de interes. Al enviarlo, el backend registra una cotizacion en estado `nueva`, calcula valores referenciales y permite continuar por WhatsApp usando el numero configurado en Configuracion del negocio.
 
@@ -54,9 +52,6 @@ Rutas publicas:
 ```text
 /
 /pre-cotizacion
-/pre-cotizacion/alquiler
-/pre-cotizacion/servicio-completo
-/pre-cotizacion/comparacion
 /login
 ```
 

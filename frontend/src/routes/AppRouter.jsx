@@ -20,7 +20,6 @@ import { ReportesPage } from '../pages/finanzas/ReportesPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
 import { PreCotizacionPage } from '../pages/PreCotizacionPage'
-import { PreCotizacionResultPage } from '../pages/PreCotizacionResultPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
 export function AppRouter() {
@@ -30,18 +29,6 @@ export function AppRouter() {
       <Route element={<PublicLayout />}>
         <Route element={<Navigate replace to="/pre-cotizacion" />} index />
         <Route element={<PreCotizacionPage />} path="/pre-cotizacion" />
-        <Route
-          element={<PreCotizacionResultPage mode="alquiler" />}
-          path="/pre-cotizacion/alquiler"
-        />
-        <Route
-          element={<PreCotizacionResultPage mode="servicio_completo" />}
-          path="/pre-cotizacion/servicio-completo"
-        />
-        <Route
-          element={<PreCotizacionResultPage mode="comparacion" />}
-          path="/pre-cotizacion/comparacion"
-        />
       </Route>
       <Route element={<ProtectedRoute />}>
         <Route element={<AdminLayout />}>

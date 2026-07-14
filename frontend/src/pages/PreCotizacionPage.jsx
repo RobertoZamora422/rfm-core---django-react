@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useOutletContext } from 'react-router-dom'
 import {
   Building2,
   Calculator,
   CalendarDays,
-  HelpCircle,
-  Info,
+  ClipboardList,
+  PartyPopper,
+  Phone,
+  Scale,
+  ShieldCheck,
   Sparkles,
   UserRound,
+  UsersRound,
 } from 'lucide-react'
-import isotipoRancho from '../assets/isotipo-rancho.svg'
+import { useOutletContext } from 'react-router-dom'
+import { PreCotizacionSummary } from '../components/preCotizacion/PreCotizacionSummary'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
@@ -19,7 +23,6 @@ import { Select } from '../components/ui/Select'
 import {
   crearPreCotizacion,
   listarTiposEventoPublicos,
-  savePreCotizacionResult,
 } from '../services/preCotizacionService'
 import { getApiFieldErrors } from '../utils/apiErrors'
 
@@ -32,30 +35,24 @@ const initialForm = {
   tipo_servicio: 'alquiler',
 }
 
-const resultPaths = {
-  alquiler: '/pre-cotizacion/alquiler',
-  servicio_completo: '/pre-cotizacion/servicio-completo',
-  no_seguro: '/pre-cotizacion/comparacion',
-}
-
 const serviceOptions = [
   {
     value: 'alquiler',
-    label: 'Alquiler del local',
-    detail: 'Referencia para usar el espacio y coordinar servicios por separado.',
+    label: 'Alquiler',
+    detail: 'Estima el uso del espacio con la tarifa de alquiler configurada.',
     icon: Building2,
   },
   {
     value: 'servicio_completo',
     label: 'Servicio completo',
-    detail: 'Referencia por paquetes activos con valor calculado por invitado.',
+    detail: 'Calcula los paquetes activos según el número de invitados.',
     icon: Sparkles,
   },
   {
     value: 'no_seguro',
-    label: 'Aún no estoy seguro',
-    detail: 'Compara ambas modalidades antes de continuar con un asesor.',
-    icon: HelpCircle,
+    label: 'Comparar opciones',
+    detail: 'Muestra ambas modalidades y sus valores disponibles.',
+    icon: Scale,
   },
 ]
 
@@ -68,6 +65,32 @@ function buildPayload(form) {
     numero_invitados: Number(form.numero_invitados),
     tipo_servicio: form.tipo_servicio,
   }
+}
+
+function validateForm(form) {
+  const validationErrors = {}
+
+  if (!form.tipo_evento) {
+    validationErrors.tipo_evento = 'Selecciona el tipo de evento.'
+  }
+
+  if (!form.fecha_tentativa) {
+    validationErrors.fecha_tentativa = 'Selecciona una fecha tentativa.'
+  }
+
+  if (!form.numero_invitados || Number(form.numero_invitados) < 1) {
+    validationErrors.numero_invitados = 'Ingresa una cantidad de invitados mayor a cero.'
+  }
+
+  if (!form.nombre.trim()) {
+    validationErrors.nombre = 'Ingresa tu nombre completo.'
+  }
+
+  if (!form.telefono.trim()) {
+    validationErrors.telefono = 'Ingresa un teléfono de contacto.'
+  }
+
+  return validationErrors
 }
 
 function getPublicErrorMessage(error, context = 'submit') {
@@ -100,16 +123,21 @@ function getPublicErrorMessage(error, context = 'submit') {
   return 'No fue posible calcular la pre-cotización. Inténtalo nuevamente.'
 }
 
-function FormSectionHeading({ description, icon: Icon, id, title }) {
+function RequiredLabel({ children }) {
+  return (
+    <>
+      {children} <span className="field__required" aria-hidden="true">*</span>
+    </>
+  )
+}
+
+function FormSectionHeading({ description, id, number, title }) {
   return (
     <div className="public-form-section__heading">
-      <span className="public-form-section__icon" aria-hidden="true">
-        <Icon size={19} />
-      </span>
-      <div>
-        <h3 id={id}>{title}</h3>
-        {description ? <p>{description}</p> : null}
-      </div>
+      <h3 id={id}>
+        <span>{number}.</span> {title}
+      </h3>
+      {description ? <p>{description}</p> : null}
     </div>
   )
 }
@@ -124,49 +152,17 @@ function OrnamentalDivider() {
   )
 }
 
-function PreCotizacionSummary({ configError, isConfigLoading }) {
-  return (
-    <aside className="public-summary-column" aria-label="Resumen de pre-cotización">
-      <Card className="public-summary-card">
-        <div className="public-summary-card__heading">
-          <span className="public-summary-card__eyebrow">Tu estimación</span>
-          <h2>Resumen de pre-cotización</h2>
-        </div>
-
-        <div className="public-summary-empty" aria-live="polite">
-          <span className="public-summary-empty__mark" aria-hidden="true">
-            <img alt="" src={isotipoRancho} />
-          </span>
-          {isConfigLoading ? (
-            <LoadingState label="Cargando configuración del negocio" />
-          ) : configError ? (
-            <p>No fue posible obtener la configuración del negocio en este momento.</p>
-          ) : (
-            <p>Completa los datos del evento para visualizar aquí el valor estimado.</p>
-          )}
-        </div>
-
-        <div className="public-info-box">
-          <Info aria-hidden="true" size={18} />
-          <p>
-            Este valor será una estimación inicial. La disponibilidad de la fecha debe ser
-            confirmada por Rancho Flor María.
-          </p>
-        </div>
-      </Card>
-    </aside>
-  )
-}
-
 export function PreCotizacionPage() {
   const [tiposEvento, setTiposEvento] = useState([])
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
   const [pageError, setPageError] = useState('')
+  const [result, setResult] = useState(null)
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isSubmittingRef = useRef(false)
-  const navigate = useNavigate()
+  const formHeadingRef = useRef(null)
+  const summaryHeadingRef = useRef(null)
   const { configuracion, configError, isConfigLoading } = useOutletContext()
   const hasBusinessConfig = Boolean(configuracion && Object.keys(configuracion).length)
 
@@ -209,10 +205,18 @@ export function PreCotizacionPage() {
       ...current,
       [name]: value,
     }))
+    setResult(null)
+
+    const relatedErrorKeys = {
+      nombre: ['nombre', 'nombre_cliente'],
+      telefono: ['telefono', 'telefono_cliente'],
+    }
+    const keysToClear = relatedErrorKeys[name] ?? [name]
+
     setErrors((current) => {
-      if (!current[name]) return current
+      if (!keysToClear.some((key) => current[key])) return current
       const nextErrors = { ...current }
-      delete nextErrors[name]
+      keysToClear.forEach((key) => delete nextErrors[key])
       return nextErrors
     })
   }
@@ -221,16 +225,31 @@ export function PreCotizacionPage() {
     event.preventDefault()
 
     if (isSubmittingRef.current) return
+
+    const clientErrors = validateForm(form)
+    const firstInvalidField = Object.keys(clientErrors)[0]
+
+    if (firstInvalidField) {
+      const formElement = event.currentTarget
+      setErrors(clientErrors)
+      setPageError('Revisa los campos indicados antes de calcular la pre-cotización.')
+      window.requestAnimationFrame(() => {
+        formElement.elements.namedItem(firstInvalidField)?.focus()
+      })
+      return
+    }
+
     isSubmittingRef.current = true
     setErrors({})
     setPageError('')
+    setResult(null)
     setIsSubmitting(true)
 
     try {
       const response = await crearPreCotizacion(buildPayload(form))
-      savePreCotizacionResult(response)
-      navigate(resultPaths[response.cotizacion.tipo_servicio] ?? '/pre-cotizacion', {
-        state: { result: response },
+      setResult(response)
+      window.requestAnimationFrame(() => {
+        summaryHeadingRef.current?.focus()
       })
     } catch (error) {
       setErrors(getApiFieldErrors(error))
@@ -239,6 +258,16 @@ export function PreCotizacionPage() {
       isSubmittingRef.current = false
       setIsSubmitting(false)
     }
+  }
+
+  const handleReset = () => {
+    setForm({ ...initialForm })
+    setErrors({})
+    setPageError('')
+    setResult(null)
+    window.requestAnimationFrame(() => {
+      formHeadingRef.current?.focus()
+    })
   }
 
   const isSubmitDisabled =
@@ -261,10 +290,12 @@ export function PreCotizacionPage() {
         <Card className="public-form-card">
           <div className="public-card-heading">
             <span className="public-card-heading__icon" aria-hidden="true">
-              <CalendarDays size={22} />
+              <ClipboardList size={21} />
             </span>
             <div>
-              <h2>Datos de tu evento</h2>
+              <h2 ref={formHeadingRef} tabIndex="-1">
+                Datos de tu evento
+              </h2>
               <p>Ingresa la información necesaria para calcular una estimación.</p>
             </div>
           </div>
@@ -276,62 +307,33 @@ export function PreCotizacionPage() {
               <span className="public-loading-panel__line public-loading-panel__line--short" />
             </div>
           ) : (
-            <form aria-busy={isSubmitting} className="public-form" onSubmit={handleSubmit}>
+            <form
+              aria-busy={isSubmitting}
+              className="public-form"
+              noValidate
+              onSubmit={handleSubmit}
+            >
               <ErrorMessage>{pageError}</ErrorMessage>
-
-              <section className="public-form-section" aria-labelledby="contact-section-title">
-                <FormSectionHeading
-                  description="Datos para identificar tu solicitud y poder orientarte."
-                  icon={UserRound}
-                  id="contact-section-title"
-                  title="Datos de contacto"
-                />
-                <div className="public-form-grid">
-                  <Input
-                    autoComplete="name"
-                    error={errors.nombre || errors.nombre_cliente}
-                    id="public-nombre"
-                    label="Nombre"
-                    name="nombre"
-                    onChange={handleChange}
-                    placeholder="Ingresa tu nombre"
-                    required
-                    value={form.nombre}
-                  />
-                  <Input
-                    autoComplete="tel"
-                    error={errors.telefono || errors.telefono_cliente}
-                    id="public-telefono"
-                    label="Teléfono / WhatsApp"
-                    name="telefono"
-                    onChange={handleChange}
-                    placeholder="Ingresa tu número de contacto"
-                    required
-                    type="tel"
-                    value={form.telefono}
-                  />
-                </div>
-              </section>
 
               <section className="public-form-section" aria-labelledby="event-section-title">
                 <FormSectionHeading
-                  description="Cuéntanos los datos principales del evento que estás planificando."
-                  icon={CalendarDays}
                   id="event-section-title"
+                  number="1"
                   title="Información del evento"
                 />
                 <div className="public-form-grid">
                   <Select
                     disabled={!tiposEvento.length}
                     error={errors.tipo_evento}
+                    icon={PartyPopper}
                     id="public-tipo-evento"
-                    label="Tipo de evento"
+                    label={<RequiredLabel>Tipo de evento</RequiredLabel>}
                     name="tipo_evento"
                     onChange={handleChange}
                     required
                     value={form.tipo_evento}
                   >
-                    <option value="">Selecciona un tipo de evento</option>
+                    <option value="">Selecciona el tipo de evento</option>
                     {tiposEvento.map((tipo) => (
                       <option key={tipo.id} value={tipo.id}>
                         {tipo.nombre}
@@ -340,8 +342,9 @@ export function PreCotizacionPage() {
                   </Select>
                   <Input
                     error={errors.fecha_tentativa}
+                    icon={CalendarDays}
                     id="public-fecha"
-                    label="Fecha tentativa"
+                    label={<RequiredLabel>Fecha tentativa</RequiredLabel>}
                     name="fecha_tentativa"
                     onChange={handleChange}
                     required
@@ -350,12 +353,13 @@ export function PreCotizacionPage() {
                   />
                   <Input
                     error={errors.numero_invitados}
+                    icon={UsersRound}
                     id="public-invitados"
-                    label="Número aproximado de invitados"
+                    label={<RequiredLabel>Número de invitados</RequiredLabel>}
                     min="1"
                     name="numero_invitados"
                     onChange={handleChange}
-                    placeholder="Ej. 120"
+                    placeholder="Ej. 100"
                     required
                     type="number"
                     value={form.numero_invitados}
@@ -364,9 +368,12 @@ export function PreCotizacionPage() {
               </section>
 
               <fieldset className="service-choice">
-                <legend>Modalidad de interés</legend>
+                <legend>
+                  <span>2.</span> Modalidad o servicio{' '}
+                  <span className="field__required" aria-hidden="true">*</span>
+                </legend>
                 <p className="service-choice__help" id="service-choice-help">
-                  Selecciona una opción para calcularla o comparar las alternativas disponibles.
+                  Selecciona la opción que mejor se adapte a tu evento.
                 </p>
                 <div className="service-options" aria-describedby="service-choice-help">
                   {serviceOptions.map((option) => (
@@ -386,7 +393,7 @@ export function PreCotizacionPage() {
                         value={option.value}
                       />
                       <span className="service-option__icon" aria-hidden="true">
-                        <option.icon size={20} />
+                        <option.icon size={21} />
                       </span>
                       <span className="service-option__copy">
                         <strong>{option.label}</strong>
@@ -405,6 +412,38 @@ export function PreCotizacionPage() {
                 ) : null}
               </fieldset>
 
+              <section className="public-form-section" aria-labelledby="contact-section-title">
+                <FormSectionHeading id="contact-section-title" number="3" title="Datos de contacto" />
+                <div className="public-form-grid">
+                  <Input
+                    autoComplete="name"
+                    error={errors.nombre || errors.nombre_cliente}
+                    icon={UserRound}
+                    id="public-nombre"
+                    label={<RequiredLabel>Nombre completo</RequiredLabel>}
+                    name="nombre"
+                    onChange={handleChange}
+                    placeholder="Ingresa tu nombre completo"
+                    required
+                    value={form.nombre}
+                  />
+                  <Input
+                    autoComplete="tel"
+                    error={errors.telefono || errors.telefono_cliente}
+                    helpText="Ingresa el número donde deseas recibir información."
+                    icon={Phone}
+                    id="public-telefono"
+                    label={<RequiredLabel>Teléfono / WhatsApp</RequiredLabel>}
+                    name="telefono"
+                    onChange={handleChange}
+                    placeholder="Ingresa tu número de contacto"
+                    required
+                    type="tel"
+                    value={form.telefono}
+                  />
+                </div>
+              </section>
+
               {!isConfigLoading && (!hasBusinessConfig || configError) ? (
                 <ErrorMessage>
                   La configuración del negocio no está disponible. Inténtalo nuevamente más tarde.
@@ -422,12 +461,24 @@ export function PreCotizacionPage() {
                 >
                   Calcular pre-cotización
                 </Button>
+                <p className="public-form-privacy">
+                  <ShieldCheck aria-hidden="true" size={14} />
+                  <span>Usaremos estos datos únicamente para identificar y atender esta solicitud.</span>
+                </p>
               </div>
             </form>
           )}
         </Card>
 
-        <PreCotizacionSummary configError={configError} isConfigLoading={isConfigLoading} />
+        <PreCotizacionSummary
+          configuracion={configuracion}
+          configError={configError}
+          headingRef={summaryHeadingRef}
+          isConfigLoading={isConfigLoading}
+          isSubmitting={isSubmitting}
+          onReset={handleReset}
+          result={result}
+        />
       </div>
     </section>
   )

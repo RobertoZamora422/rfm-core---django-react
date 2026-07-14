@@ -36,12 +36,7 @@ export function PublicLayout() {
           <Link aria-label="Rancho Flor María, ir a pre-cotización" className="public-brand" to="/pre-cotizacion">
             <img alt="Rancho Flor María" src={logotipoRancho} />
           </Link>
-          <div className="public-header__actions">
-            <span className="public-header__badge">Pre-cotización en línea</span>
-            <Link className="public-header__admin-link" to="/login">
-              Acceso administrativo
-            </Link>
-          </div>
+          <span className="public-header__badge">Pre-cotización en línea</span>
         </div>
       </header>
       <main className="public-main" id="main-content">
