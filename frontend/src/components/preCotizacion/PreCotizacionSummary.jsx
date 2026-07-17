@@ -409,20 +409,15 @@ export function PreCotizacionSummary({
     : ''
 
   return (
-    <aside className="public-summary-column" aria-label="Resumen de pre-cotización">
+    <aside className="public-summary-column" aria-label="Estimación de tu evento">
       <Card className="public-summary-card" aria-busy={isSubmitting}>
         <div className="public-summary-card__heading">
           <span className="public-card-heading__icon" aria-hidden="true">
             <ClipboardList size={21} />
           </span>
-          <div>
-            <span className="public-summary-card__eyebrow">
-              {result ? 'Resultado generado' : 'Tu estimación'}
-            </span>
-            <h2 ref={headingRef} tabIndex="-1">
-              Resumen de pre-cotización
-            </h2>
-          </div>
+          <h2 className="public-summary-card__title" ref={headingRef} tabIndex="-1">
+            {result ? 'Resultado generado' : 'Tu estimación'}
+          </h2>
         </div>
 
         <div className="public-summary-card__body" aria-live="polite">
