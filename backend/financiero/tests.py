@@ -803,6 +803,75 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.data["estado_pagos"]["total_contratos"], 0)
         self.assertEqual(response.data["interpretacion"]["nivel"], "neutral")
 
+    def test_pendientes_financieros_son_globales_y_ordenados_por_fecha(self):
+        pendiente_anterior = self.crear_contrato(
+            fecha_evento=date(2026, 6, 5),
+            valor_final=Decimal("1000.00"),
+            monto_abonado=Decimal("200.00"),
+        )
+        pendiente_periodo = self.crear_contrato(
+            fecha_evento=date(2026, 8, 20),
+            valor_final=Decimal("2000.00"),
+            monto_abonado=Decimal("500.00"),
+        )
+        pendiente_futuro = self.crear_contrato(
+            fecha_evento=date(2026, 10, 2),
+            valor_final=Decimal("1200.00"),
+            monto_abonado=Decimal("0.00"),
+        )
+        pagado = self.crear_contrato(
+            fecha_evento=date(2026, 7, 1),
+            valor_final=Decimal("900.00"),
+            monto_abonado=Decimal("900.00"),
+        )
+        cancelado = self.crear_contrato(
+            fecha_evento=date(2026, 5, 1),
+            valor_final=Decimal("1300.00"),
+            monto_abonado=Decimal("0.00"),
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+
+        response = self.client.get(
+            "/api/dashboard-financiero/",
+            {"mes": 8, "anio": 2026},
+        )
+        otro_periodo = self.client.get(
+            "/api/dashboard-financiero/",
+            {"mes": 1, "anio": 2027},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(otro_periodo.status_code, 200)
+        pendientes = response.data["pendientes_financieros"]
+        ids_esperados = [
+            pendiente_anterior.id,
+            pendiente_periodo.id,
+            pendiente_futuro.id,
+        ]
+        self.assertEqual(
+            [item["contrato_id"] for item in pendientes["contratos"]],
+            ids_esperados,
+        )
+        self.assertEqual(
+            [
+                item["contrato_id"]
+                for item in otro_periodo.data["pendientes_financieros"]["contratos"]
+            ],
+            ids_esperados,
+        )
+        self.assertEqual(pendientes["total_contratos"], 3)
+        self.assertEqual(pendientes["monto_total_pendiente"], "3500.00")
+        self.assertNotIn(
+            pagado.id,
+            [item["contrato_id"] for item in pendientes["contratos"]],
+        )
+        self.assertNotIn(
+            cancelado.id,
+            [item["contrato_id"] for item in pendientes["contratos"]],
+        )
+        self.assertEqual(response.data["estado_pagos"]["total_contratos"], 1)
+        self.assertEqual(response.data["estado_pagos"]["saldo_pendiente"], "1500.00")
+
     def test_dashboard_financiero_rechaza_mes_invalido(self):
         response = self.client.get(
             "/api/dashboard-financiero/",

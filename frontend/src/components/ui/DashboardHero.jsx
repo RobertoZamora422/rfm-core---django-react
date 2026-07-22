@@ -27,7 +27,10 @@ export function DashboardHero({
               <span className="dashboard-hero__eyebrow">
                 {eyebrow}
                 {eyebrowDetail ? (
-                  <strong className="dashboard-hero__eyebrow-detail">{eyebrowDetail}</strong>
+                  <>
+                    {' '}
+                    <strong className="dashboard-hero__eyebrow-detail">{eyebrowDetail}</strong>
+                  </>
                 ) : null}
               </span>
             ) : null}

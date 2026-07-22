@@ -11,6 +11,7 @@ from .models import Contrato
 from .selectors import (
     contratos_cancelados_entre,
     contratos_confirmados_con_rentabilidad_entre,
+    contratos_confirmados_con_saldo_pendiente,
     contratos_confirmados_entre,
     costos_directos_activos_por_evento_entre,
     gastos_fijos_activos_del_periodo,
@@ -167,37 +168,34 @@ def _period_metrics(mes, anio):
     }
 
 
+def _serialize_contract_profitability(contrato):
+    total_costos = contrato.costos_directos_total or ZERO
+    utilidad = contrato.valor_final - total_costos
+    margen = _safe_percentage(utilidad, contrato.valor_final)
+    return {
+        "id": contrato.id,
+        "contrato_id": contrato.id,
+        "cliente_nombre": contrato.cliente.nombre,
+        "cliente_telefono": contrato.cliente.telefono,
+        "tipo_evento_id": contrato.tipo_evento_id,
+        "tipo_evento_nombre": contrato.tipo_evento.nombre,
+        "paquete_id": contrato.paquete_id,
+        "paquete_nombre": contrato.paquete.nombre if contrato.paquete else "",
+        "fecha_evento": contrato.fecha_evento.isoformat(),
+        "numero_invitados": contrato.numero_invitados,
+        "valor_final": _money(contrato.valor_final),
+        "costos_directos": _money(total_costos),
+        "utilidad_bruta": _money(utilidad),
+        "margen_bruto": _percent(margen),
+        "estado_pago": contrato.estado_pago,
+        "saldo_pendiente": _money(contrato.saldo_pendiente),
+    }
+
+
 def _contract_profit_rows(mes, anio):
     inicio, fin = _month_bounds(mes, anio)
     contratos = contratos_confirmados_con_rentabilidad_entre(inicio, fin)
-
-    eventos = []
-    for contrato in contratos:
-        total_costos = contrato.costos_directos_total or ZERO
-        utilidad = contrato.valor_final - total_costos
-        margen = _safe_percentage(utilidad, contrato.valor_final)
-        eventos.append(
-            {
-                "id": contrato.id,
-                "contrato_id": contrato.id,
-                "cliente_nombre": contrato.cliente.nombre,
-                "cliente_telefono": contrato.cliente.telefono,
-                "tipo_evento_id": contrato.tipo_evento_id,
-                "tipo_evento_nombre": contrato.tipo_evento.nombre,
-                "paquete_id": contrato.paquete_id,
-                "paquete_nombre": contrato.paquete.nombre if contrato.paquete else "",
-                "fecha_evento": contrato.fecha_evento.isoformat(),
-                "numero_invitados": contrato.numero_invitados,
-                "valor_final": _money(contrato.valor_final),
-                "costos_directos": _money(total_costos),
-                "utilidad_bruta": _money(utilidad),
-                "margen_bruto": _percent(margen),
-                "estado_pago": contrato.estado_pago,
-                "saldo_pendiente": _money(contrato.saldo_pendiente),
-            }
-        )
-
-    return eventos
+    return [_serialize_contract_profitability(contrato) for contrato in contratos]
 
 
 def _event_profitability(mes, anio):
@@ -418,17 +416,11 @@ def _current_vs_previous(current, previous):
     ]
 
 
-def _pending_financials(rows):
+def _pending_financials():
     pending_rows = [
-        row
-        for row in rows
-        if Decimal(row["saldo_pendiente"]) > ZERO
+        _serialize_contract_profitability(contrato)
+        for contrato in contratos_confirmados_con_saldo_pendiente()
     ]
-    pending_rows = sorted(
-        pending_rows,
-        key=lambda item: Decimal(item["saldo_pendiente"]),
-        reverse=True,
-    )
     total_pending = sum(
         (Decimal(row["saldo_pendiente"]) for row in pending_rows),
         ZERO,
@@ -437,8 +429,8 @@ def _pending_financials(rows):
     return {
         "total_contratos": len(pending_rows),
         "monto_total_pendiente": _money(total_pending),
-        "contratos": pending_rows[:8],
-        "mensaje_vacio": "No hay contratos confirmados con saldo pendiente en este periodo.",
+        "contratos": pending_rows,
+        "mensaje_vacio": "No hay contratos confirmados con saldo pendiente.",
     }
 
 
@@ -656,7 +648,7 @@ def dashboard_financiero(mes=None, anio=None):
         "Sin tipo de evento",
     )
     estado_pagos = _payment_status(mes, anio)
-    pendientes = _pending_financials(event_rows)
+    pendientes = _pending_financials()
     has_previous_activity = (
         previous["contratos_confirmados"] > 0
         or previous["costos_directos_registrados"] > 0

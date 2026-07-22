@@ -245,7 +245,7 @@ export function InicioPage() {
           </>
         }
         description="Resumen operativo y accesos rápidos para la gestión diaria."
-        eyebrow="Inicio · Lo importante de hoy"
+        eyebrow="Inicio ·"
         eyebrowDetail={headerDate}
         iconImage={isotipoRancho}
         title="Bienvenido"
@@ -259,8 +259,8 @@ export function InicioPage() {
             {isLoading && !summary
               ? 'Preparando tu resumen…'
               : eventsThisWeek === 1
-                ? '1 evento confirmado esta semana'
-                : `${eventsThisWeek} eventos confirmados esta semana`}
+                ? '1 evento esta semana'
+                : `${eventsThisWeek} eventos esta semana`}
           </strong>
           <p>
             {eventsThisMonth === 1
@@ -305,7 +305,6 @@ export function InicioPage() {
           <section aria-labelledby="resumen-operativo-title" className="dashboard-section">
             <DashboardSectionHeader
               eyebrow="Pulso comercial"
-              subtitle="Indicadores operativos; no incluyen cálculos de rentabilidad."
               title="Resumen operativo"
               titleId="resumen-operativo-title"
             />
@@ -329,7 +328,6 @@ export function InicioPage() {
           <section aria-labelledby="acciones-rapidas-title" className="dashboard-section">
             <DashboardSectionHeader
               eyebrow="Atajos"
-              subtitle="Acciones frecuentes para continuar sin recorrer el menú."
               title="¿Qué necesitas hacer?"
               titleId="acciones-rapidas-title"
             />
@@ -351,7 +349,6 @@ export function InicioPage() {
                   ) : null
                 }
                 eyebrow="Agenda"
-                subtitle="Contratos confirmados ordenados por la fecha más cercana."
                 title="Próximos eventos"
               />
               {events.length ? (
@@ -384,7 +381,6 @@ export function InicioPage() {
             <Card className="home-panel home-panel--priority">
               <DashboardSectionHeader
                 eyebrow="Prioridades"
-                subtitle="Frentes ordenados por la atención que requieren."
                 title="Pendientes relevantes"
               />
               {pending.length ? (

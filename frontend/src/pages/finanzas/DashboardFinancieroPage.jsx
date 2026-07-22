@@ -194,11 +194,12 @@ function FinancialKpiCard({ kpi, previousPeriod }) {
   const visual = kpiVisuals[kpi.key] ?? {}
   const value = kpi.format === 'percent' ? formatPercent(kpi.value) : formatCurrency(kpi.value)
   const deltaText = formatDeltaText(kpi.comparison, previousPeriod, kpi.format)
+  const highlightsMargin = ['utilidad_bruta', 'utilidad_neta'].includes(kpi.key)
 
   return (
     <MetricCard
       className={kpi.featured ? 'metric-card--featured' : ''}
-      detail={kpi.detail}
+      detail={highlightsMargin ? null : kpi.detail}
       footer={
         <div className={`metric-trend ${getTrendClass(kpi)}`}>
           <span>
@@ -208,6 +209,7 @@ function FinancialKpiCard({ kpi, previousPeriod }) {
           {deltaText ? <small>{deltaText}</small> : null}
         </div>
       }
+      highlight={highlightsMargin ? kpi.detail : null}
       icon={visual.icon}
       label={kpi.label}
       tone={visual.tone}
@@ -352,7 +354,6 @@ function ProfitabilityChart({ emptyDescription, rows, title }) {
       accessibleSummary={accessibleSummary}
       emptyDescription={emptyDescription}
       hasData={Boolean(data.length)}
-      subtitle="Ordenado por utilidad; compara ingresos y utilidad bruta."
       title={title}
     >
       <ResponsiveContainer height={330} width="100%">
@@ -430,7 +431,6 @@ function CommercialPerformance({ performance }) {
     <section aria-labelledby="desempeno-comercial-title" className="dashboard-section">
       <DashboardSectionHeader
         eyebrow="Lectura comercial"
-        subtitle="Servicios y tipos de evento que destacaron entre los contratos confirmados del periodo."
         title="Desempeño comercial"
         titleId="desempeno-comercial-title"
       />
@@ -478,7 +478,6 @@ function PaymentStatusPanel({ estadoPagos }) {
           </Link>
         }
         eyebrow="Cobranza"
-        subtitle="Los cancelados se muestran solo como control y no suman al saldo principal."
         title="Estado de pagos"
       />
 
@@ -493,16 +492,22 @@ function PaymentStatusPanel({ estadoPagos }) {
 
       <div className="payment-states" aria-label="Contratos por estado de pago">
         {estados.map((estado) => (
-          <article className="payment-state" key={estado.key}>
+          <article
+            aria-label={`${estado.label}: ${estado.cantidad} ${estado.cantidad === 1 ? 'contrato' : 'contratos'}`}
+            className="payment-state"
+            key={estado.key}
+          >
             <PaymentBadge value={estado.key} />
             <strong>{estado.cantidad}</strong>
-            <span>{formatCurrency(estado.saldo_pendiente)} por cobrar</span>
           </article>
         ))}
-        <article className="payment-state payment-state--cancelled">
+        <article
+          aria-label={`Cancelados: ${cancelados?.cantidad ?? 0} ${(cancelados?.cantidad ?? 0) === 1 ? 'contrato' : 'contratos'}`}
+          className="payment-state payment-state--cancelled"
+        >
           <span className="status-badge status-badge--neutral-dark">Cancelados</span>
           <strong>{cancelados?.cantidad ?? 0}</strong>
-          <span>Excluidos de las métricas</span>
+          <span className="payment-state__description">Excluidos de las métricas</span>
         </article>
       </div>
     </Card>
@@ -551,13 +556,13 @@ function PendingFinancials({ pendientes }) {
           </div>
         }
         eyebrow="Seguimiento"
-        subtitle="Contratos confirmados del periodo que todavía tienen valores por cobrar."
+        subtitle="Contratos confirmados que todavía tienen valores por cobrar."
         title="Pendientes financieros"
       />
       <DataTable
         caption="Contratos confirmados con saldo pendiente"
         columns={columns}
-        emptyMessage={pendientes?.mensaje_vacio ?? 'No hay contratos con saldo pendiente en este periodo.'}
+        emptyMessage={pendientes?.mensaje_vacio ?? 'No hay contratos confirmados con saldo pendiente.'}
         mobileTitle={(row) => `Contrato #${row.contrato_id}`}
         rows={rows}
       />
@@ -604,7 +609,7 @@ function EventProfitabilityTable({ events, periodLabel }) {
           </Link>
         }
         eyebrow="Detalle verificable"
-        subtitle={`Contratos confirmados de ${periodLabel}, ordenados por utilidad. Los cancelados están excluidos.`}
+        subtitle={`Contratos confirmados de ${periodLabel}, ordenados por rentabilidad.`}
         title="Rentabilidad por evento"
       />
       <DataTable
@@ -677,7 +682,7 @@ export function DashboardFinancieroPage() {
             </Link>
           </>
         }
-        description="Analiza ingresos confirmados, costos, utilidad, cobranza y rentabilidad sin mezclar cotizaciones ni contratos cancelados."
+        description="Análisis del desempeño comercial y financiero."
         eyebrow="Dashboard financiero"
         eyebrowDetail={`· ${periodLabel}`}
         icon={BarChart3}
@@ -697,7 +702,6 @@ export function DashboardFinancieroPage() {
         <div className="period-toolbar__intro">
           <span>Periodo de análisis</span>
           <strong aria-live="polite">{selectedPeriodLabel}</strong>
-          <small>La información cambia automáticamente al elegir otro mes.</small>
         </div>
         <div className="period-toolbar__navigation" aria-label="Cambiar periodo de análisis">
           <Input
@@ -715,11 +719,11 @@ export function DashboardFinancieroPage() {
             <Button aria-label="Ver mes anterior" icon={ChevronLeft} onClick={() => handlePeriodStep(-1)} variant="ghost">
               Anterior
             </Button>
-            <Button aria-label="Ver mes siguiente" icon={ChevronRight} onClick={() => handlePeriodStep(1)} variant="ghost">
-              Siguiente
-            </Button>
             <Button icon={CalendarDays} onClick={handleCurrentPeriod} variant="secondary">
               Mes actual
+            </Button>
+            <Button aria-label="Ver mes siguiente" icon={ChevronRight} onClick={() => handlePeriodStep(1)} variant="ghost">
+              Siguiente
             </Button>
           </div>
         </div>
@@ -752,7 +756,6 @@ export function DashboardFinancieroPage() {
           <section className="dashboard-section">
             <DashboardSectionHeader
               eyebrow="Resultado del periodo"
-              subtitle="Todos los valores provienen del backend y usan únicamente contratos confirmados."
               title="Indicadores financieros"
             />
             <div className="metric-grid metric-grid--financial">
@@ -769,7 +772,6 @@ export function DashboardFinancieroPage() {
           <section className="dashboard-section">
             <DashboardSectionHeader
               eyebrow="Tendencia"
-              subtitle="Observa el comportamiento en el tiempo y la variación respecto al periodo anterior."
               title="Evolución y comparación"
             />
             <div className="analytics-grid">
@@ -781,7 +783,7 @@ export function DashboardFinancieroPage() {
           <section className="dashboard-section">
             <DashboardSectionHeader
               eyebrow="Composición de la rentabilidad"
-              subtitle="Identifica qué servicios y tipos de evento aportan más ingresos y utilidad."
+              subtitle="Compara ingresos, utilidad bruta y margen."
               title="¿Qué está generando resultados?"
             />
             <div className="analytics-grid">
@@ -803,7 +805,6 @@ export function DashboardFinancieroPage() {
           <section className="dashboard-section">
             <DashboardSectionHeader
               eyebrow="Liquidez"
-              subtitle="Separa el rendimiento del evento del seguimiento de valores por cobrar."
               title="Cobranza y pendientes"
             />
             <div className="collection-grid">

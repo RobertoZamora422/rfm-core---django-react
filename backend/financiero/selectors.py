@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from django.db.models import DecimalField, Q, Sum, Value
+from django.db.models import DecimalField, F, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
 from .models import Contrato, CostoDirecto, GastoFijoMensual
@@ -62,9 +62,11 @@ def gastos_fijos_activos_del_periodo(mes, anio):
     )
 
 
-def contratos_confirmados_con_rentabilidad_entre(inicio, fin):
+def contratos_confirmados_con_rentabilidad():
     return (
-        contratos_confirmados_entre(inicio, fin)
+        Contrato.objects.filter(
+            estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        )
         .select_related("cliente", "tipo_evento", "paquete")
         .annotate(
             costos_directos_total=Coalesce(
@@ -76,5 +78,17 @@ def contratos_confirmados_con_rentabilidad_entre(inicio, fin):
                 output_field=DecimalField(max_digits=12, decimal_places=2),
             )
         )
-        .order_by("-fecha_evento", "-id")
     )
+
+
+def contratos_confirmados_con_rentabilidad_entre(inicio, fin):
+    return contratos_confirmados_con_rentabilidad().filter(
+        fecha_evento__gte=inicio,
+        fecha_evento__lte=fin,
+    ).order_by("-fecha_evento", "-id")
+
+
+def contratos_confirmados_con_saldo_pendiente():
+    return contratos_confirmados_con_rentabilidad().filter(
+        monto_abonado__lt=F("valor_final"),
+    ).order_by("fecha_evento", "id")
