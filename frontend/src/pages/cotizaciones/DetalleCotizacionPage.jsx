@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Edit3, FilePlus2, RefreshCw, Save } from 'lucide-react'
+import { ArrowLeft, Edit3, FilePlus2, Save } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
@@ -9,6 +9,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Textarea } from '../../components/ui/Textarea'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { cotizacionesService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 import { formatCurrency, formatDate } from '../../utils/formatters'
@@ -63,6 +64,8 @@ export function DetalleCotizacionPage() {
       window.clearTimeout(timeoutId)
     }
   }, [loadCotizacion])
+
+  useAutoRefresh(loadCotizacion, { refreshOnMutation: false })
 
   const handleSaveState = async (event) => {
     event.preventDefault()
@@ -141,9 +144,6 @@ export function DetalleCotizacionPage() {
               <ArrowLeft aria-hidden="true" size={18} />
               <span>Volver</span>
             </Link>
-            <Button icon={RefreshCw} onClick={loadCotizacion} variant="secondary">
-              Actualizar
-            </Button>
             <Link className="button button--secondary" to={`/cotizaciones/${cotizacion.id}/editar`}>
               <Edit3 aria-hidden="true" size={18} />
               <span>Editar</span>

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { Input } from '../../components/ui/Input'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { configuracionNegocioService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 
@@ -156,6 +156,8 @@ export function ConfiguracionPage() {
     return () => window.clearTimeout(timeoutId)
   }, [loadConfiguracion])
 
+  useAutoRefresh(loadConfiguracion, { refreshOnMutation: false })
+
   const handleSubmit = async (payload) => {
     setIsSaving(true)
     setFieldErrors({})
@@ -187,11 +189,6 @@ export function ConfiguracionPage() {
   return (
     <div className="page-stack">
       <PageHeader
-        actions={
-          <Button icon={RefreshCw} onClick={loadConfiguracion} variant="secondary">
-            Actualizar
-          </Button>
-        }
         description="Edita los parametros activos que usa el backend para los calculos comerciales."
         title="Configuracion"
       />

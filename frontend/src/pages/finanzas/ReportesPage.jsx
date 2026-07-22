@@ -7,7 +7,6 @@ import {
   FileText,
   FilterX,
   Package,
-  RefreshCw,
   Search,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
@@ -20,6 +19,7 @@ import { KpiCard } from '../../components/ui/KpiCard'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { reportesService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
@@ -667,6 +667,8 @@ export function ReportesPage() {
     return () => window.clearTimeout(timeoutId)
   }, [loadReport])
 
+  useAutoRefresh(loadReport)
+
   const activeLabel = useMemo(
     () => reportOptions.find((report) => report.key === activeReport)?.label ?? 'Reporte',
     [activeReport],
@@ -726,9 +728,6 @@ export function ReportesPage() {
       <PageHeader
         actions={
           <>
-            <Button disabled={isLoading} icon={RefreshCw} onClick={loadReport} variant="secondary">
-              Actualizar
-            </Button>
             <Button
               disabled={isLoading || !reportData}
               icon={Download}

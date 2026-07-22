@@ -755,6 +755,14 @@ class FinancieroApiTests(APITestCase):
             response.data["desempeno_comercial"]["tipo_evento_mas_frecuente"]["nombre"],
             "Boda",
         )
+        self.assertEqual(
+            response.data["desempeno_comercial"]["paquete_mas_rentable"]["nombre"],
+            "Alquiler",
+        )
+        self.assertEqual(
+            response.data["desempeno_comercial"]["tipo_evento_mas_rentable"]["nombre"],
+            "Boda",
+        )
         self.assertEqual(len(response.data["evolucion_mensual"]), 6)
         self.assertEqual(
             response.data["comparativo_mes_anterior"]["categorias"][0]["key"],
@@ -783,6 +791,15 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.data["metricas"]["utilidad_neta"], "-250.00")
         self.assertEqual(response.data["metricas"]["margen_neto"], "0.00")
         self.assertEqual(response.data["rentabilidad_eventos"], [])
+        self.assertEqual(
+            response.data["desempeno_comercial"],
+            {
+                "paquete_mas_vendido": None,
+                "paquete_mas_rentable": None,
+                "tipo_evento_mas_frecuente": None,
+                "tipo_evento_mas_rentable": None,
+            },
+        )
         self.assertEqual(response.data["estado_pagos"]["total_contratos"], 0)
         self.assertEqual(response.data["interpretacion"]["nivel"], "neutral")
 

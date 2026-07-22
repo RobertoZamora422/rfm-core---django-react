@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowDownRight,
@@ -14,8 +14,6 @@ import {
   FileBarChart,
   Minus,
   Receipt,
-  RefreshCw,
-  Search,
   Sparkles,
   WalletCards,
 } from 'lucide-react'
@@ -41,7 +39,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { Input } from '../../components/ui/Input'
 import { MetricCard } from '../../components/ui/MetricCard'
-import { Select } from '../../components/ui/Select'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { dashboardFinancieroService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
@@ -49,6 +47,7 @@ import { formatCurrency, formatDate, formatPercent } from '../../utils/formatter
 const currentDate = new Date()
 const currentMonth = String(currentDate.getMonth() + 1)
 const currentYear = String(currentDate.getFullYear())
+const currentPeriodValue = `${currentYear}-${currentMonth.padStart(2, '0')}`
 
 const monthOptions = [
   { value: '1', label: 'Enero' },
@@ -64,11 +63,6 @@ const monthOptions = [
   { value: '11', label: 'Noviembre' },
   { value: '12', label: 'Diciembre' },
 ]
-
-const initialFilters = {
-  mes: currentMonth,
-  anio: currentYear,
-}
 
 const paymentLabels = {
   pendiente: 'Pendiente',
@@ -101,14 +95,6 @@ const kpiVisuals = {
   ticket_promedio: { icon: BadgeDollarSign, tone: 'sage' },
 }
 
-function buildQueryParams(filters) {
-  return Object.fromEntries(
-    Object.entries(filters).filter(
-      ([, value]) => value !== null && value !== undefined && value !== '',
-    ),
-  )
-}
-
 function getMonthLabel(value) {
   return monthOptions.find((month) => month.value === String(value))?.label ?? value
 }
@@ -118,11 +104,20 @@ function getPeriodLabel(periodo) {
   return periodo.label ?? `${getMonthLabel(periodo.mes)} ${periodo.anio}`
 }
 
-function shiftPeriod(filters, delta) {
+function periodToFilters(periodValue) {
+  if (!/^\d{4}-\d{2}$/.test(periodValue)) {
+    return { mes: currentMonth, anio: currentYear }
+  }
+  const [anio, mes] = periodValue.split('-')
+  return { mes: String(Number(mes)), anio }
+}
+
+function shiftPeriod(periodValue, delta) {
+  const filters = periodToFilters(periodValue)
   const totalMonths = Number(filters.anio) * 12 + Number(filters.mes) - 1 + delta
   const nextYear = Math.floor(totalMonths / 12)
   const nextMonth = (totalMonths % 12) + 1
-  return { mes: String(nextMonth), anio: String(nextYear) }
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
 }
 
 function toNumber(value) {
@@ -399,6 +394,76 @@ function InterpretationPanel({ interpretation }) {
   )
 }
 
+const commercialPerformanceConfig = [
+  {
+    key: 'paquete_mas_vendido',
+    label: 'Paquete más vendido',
+    icon: BadgeDollarSign,
+    getDetail: (item) =>
+      `${item.contratos} ${item.contratos === 1 ? 'contrato' : 'contratos'} · ${formatCurrency(item.ingresos)} en ingresos`,
+  },
+  {
+    key: 'paquete_mas_rentable',
+    label: 'Paquete más rentable',
+    icon: ChartNoAxesCombined,
+    getDetail: (item) =>
+      `${formatCurrency(item.utilidad_bruta)} de utilidad · ${formatPercent(item.margen_ponderado)} de margen`,
+  },
+  {
+    key: 'tipo_evento_mas_frecuente',
+    label: 'Tipo de evento más frecuente',
+    icon: CalendarDays,
+    getDetail: (item) =>
+      `${item.contratos} ${item.contratos === 1 ? 'contrato' : 'contratos'} · ${formatCurrency(item.ingresos)} en ingresos`,
+  },
+  {
+    key: 'tipo_evento_mas_rentable',
+    label: 'Tipo de evento más rentable',
+    icon: Sparkles,
+    getDetail: (item) =>
+      `${formatCurrency(item.utilidad_bruta)} de utilidad · ${formatPercent(item.margen_ponderado)} de margen`,
+  },
+]
+
+function CommercialPerformance({ performance }) {
+  return (
+    <section aria-labelledby="desempeno-comercial-title" className="dashboard-section">
+      <DashboardSectionHeader
+        eyebrow="Lectura comercial"
+        subtitle="Servicios y tipos de evento que destacaron entre los contratos confirmados del periodo."
+        title="Desempeño comercial"
+        titleId="desempeno-comercial-title"
+      />
+      <div className="commercial-performance-grid">
+        {commercialPerformanceConfig.map((config) => {
+          const item = performance?.[config.key]
+          const Icon = config.icon
+
+          return (
+            <article
+              className={`commercial-performance-card ${item ? '' : 'commercial-performance-card--empty'}`}
+              key={config.key}
+            >
+              <div className="commercial-performance-card__header">
+                <span>{config.label}</span>
+                <span className="commercial-performance-card__icon" aria-hidden="true">
+                  <Icon size={19} />
+                </span>
+              </div>
+              <strong>{item?.nombre ?? 'Sin datos del periodo'}</strong>
+              <p>
+                {item
+                  ? config.getDetail(item)
+                  : 'Se mostrará cuando existan contratos confirmados en este mes.'}
+              </p>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
 function PaymentStatusPanel({ estadoPagos }) {
   const estados = estadoPagos?.estados ?? []
   const cancelados = estadoPagos?.cancelados
@@ -555,58 +620,50 @@ function EventProfitabilityTable({ events, periodLabel }) {
 
 export function DashboardFinancieroPage() {
   const [summary, setSummary] = useState(null)
-  const [filters, setFilters] = useState(initialFilters)
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters)
+  const [selectedPeriod, setSelectedPeriod] = useState(currentPeriodValue)
   const [pageError, setPageError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const requestIdRef = useRef(0)
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
+  const loadDashboard = useCallback(async ({ silent = false } = {}) => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    if (!silent) setIsLoading(true)
+    if (!silent) setPageError('')
 
     try {
-      const data = await dashboardFinancieroService.resumen(buildQueryParams(appliedFilters))
-      setSummary(data)
+      const data = await dashboardFinancieroService.resumen(periodToFilters(selectedPeriod))
+      if (requestId === requestIdRef.current) {
+        setSummary(data)
+        setPageError('')
+      }
     } catch (error) {
-      setPageError(getApiErrorMessage(error))
+      if (requestId === requestIdRef.current) setPageError(getApiErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [appliedFilters])
+  }, [selectedPeriod])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadDashboard, 0)
     return () => window.clearTimeout(timeoutId)
   }, [loadDashboard])
 
+  useAutoRefresh(loadDashboard, { intervalMs: 90000 })
+
   const previousPeriod = summary?.comparacion_mes_anterior?.periodo
   const kpis = summary?.kpis ?? []
   const events = summary?.rentabilidad_eventos ?? []
   const periodLabel = getPeriodLabel(summary?.periodo)
-  const hasPendingFilters =
-    filters.mes !== appliedFilters.mes || filters.anio !== appliedFilters.anio
-
-  const handleFilterChange = (event) => {
-    const { name, value } = event.target
-    setFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleApplyFilters = (event) => {
-    event.preventDefault()
-    setAppliedFilters(filters)
-  }
-
-  const applyPeriod = (nextFilters) => {
-    setFilters(nextFilters)
-    setAppliedFilters(nextFilters)
-  }
+  const selectedPeriodFilters = periodToFilters(selectedPeriod)
+  const selectedPeriodLabel = `${getMonthLabel(selectedPeriodFilters.mes)} ${selectedPeriodFilters.anio}`
 
   const handlePeriodStep = (delta) => {
-    applyPeriod(shiftPeriod(appliedFilters, delta))
+    setSelectedPeriod((current) => shiftPeriod(current, delta))
   }
 
   const handleCurrentPeriod = () => {
-    applyPeriod(initialFilters)
+    setSelectedPeriod(currentPeriodValue)
   }
 
   return (
@@ -618,19 +675,11 @@ export function DashboardFinancieroPage() {
               <FileBarChart aria-hidden="true" size={18} />
               <span>Ver reportes</span>
             </Link>
-            <Button
-              icon={RefreshCw}
-              isLoading={isLoading && Boolean(summary)}
-              loadingLabel="Actualizando…"
-              onClick={loadDashboard}
-              variant="ghost"
-            >
-              Actualizar
-            </Button>
           </>
         }
         description="Analiza ingresos confirmados, costos, utilidad, cobranza y rentabilidad sin mezclar cotizaciones ni contratos cancelados."
-        eyebrow={`Finanzas · ${periodLabel}`}
+        eyebrow="Dashboard financiero"
+        eyebrowDetail={`· ${periodLabel}`}
         icon={BarChart3}
         title="Rentabilidad del negocio"
       >
@@ -647,33 +696,33 @@ export function DashboardFinancieroPage() {
       <Card className="period-toolbar">
         <div className="period-toolbar__intro">
           <span>Periodo de análisis</span>
-          <strong>{getMonthLabel(filters.mes)} {filters.anio}</strong>
-          <small>{hasPendingFilters ? 'Hay cambios pendientes de aplicar.' : 'Datos del periodo aplicado.'}</small>
+          <strong aria-live="polite">{selectedPeriodLabel}</strong>
+          <small>La información cambia automáticamente al elegir otro mes.</small>
         </div>
-        <div className="period-toolbar__navigation" aria-label="Cambiar periodo rápidamente">
-          <Button aria-label="Ver mes anterior" icon={ChevronLeft} onClick={() => handlePeriodStep(-1)} variant="ghost">
-            Anterior
-          </Button>
-          <Button icon={CalendarDays} onClick={handleCurrentPeriod} variant="secondary">
-            Mes actual
-          </Button>
-          <Button aria-label="Ver mes siguiente" icon={ChevronRight} onClick={() => handlePeriodStep(1)} variant="ghost">
-            Siguiente
-          </Button>
+        <div className="period-toolbar__navigation" aria-label="Cambiar periodo de análisis">
+          <Input
+            icon={CalendarDays}
+            id="dashboard-periodo"
+            label="Mes y año"
+            onChange={(event) => {
+              if (event.target.value) setSelectedPeriod(event.target.value)
+            }}
+            required
+            type="month"
+            value={selectedPeriod}
+          />
+          <div className="period-toolbar__steps">
+            <Button aria-label="Ver mes anterior" icon={ChevronLeft} onClick={() => handlePeriodStep(-1)} variant="ghost">
+              Anterior
+            </Button>
+            <Button aria-label="Ver mes siguiente" icon={ChevronRight} onClick={() => handlePeriodStep(1)} variant="ghost">
+              Siguiente
+            </Button>
+            <Button icon={CalendarDays} onClick={handleCurrentPeriod} variant="secondary">
+              Mes actual
+            </Button>
+          </div>
         </div>
-        <form className="period-toolbar__form" onSubmit={handleApplyFilters}>
-          <Select id="dashboard-mes" label="Mes" name="mes" onChange={handleFilterChange} value={filters.mes}>
-            {monthOptions.map((month) => (
-              <option key={month.value} value={month.value}>
-                {month.label}
-              </option>
-            ))}
-          </Select>
-          <Input id="dashboard-anio" label="Año" min="2000" name="anio" onChange={handleFilterChange} required type="number" value={filters.anio} />
-          <Button disabled={!hasPendingFilters || isLoading} icon={Search} type="submit">
-            Aplicar periodo
-          </Button>
-        </form>
       </Card>
 
       <ErrorMessage>{pageError}</ErrorMessage>
@@ -688,7 +737,7 @@ export function DashboardFinancieroPage() {
         <Card>
           <EmptyState
             action={
-              <Button icon={RefreshCw} onClick={loadDashboard} variant="secondary">
+              <Button onClick={loadDashboard} variant="secondary">
                 Intentar nuevamente
               </Button>
             }
@@ -714,6 +763,8 @@ export function DashboardFinancieroPage() {
           </section>
 
           <InterpretationPanel interpretation={summary.interpretacion} />
+
+          <CommercialPerformance performance={summary.desempeno_comercial} />
 
           <section className="dashboard-section">
             <DashboardSectionHeader

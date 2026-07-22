@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Edit3, FilterX, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Edit3, FilterX, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { gastosFijosService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 import { formatCurrency } from '../../utils/formatters'
@@ -208,6 +209,8 @@ export function GastosFijosPage() {
     return () => window.clearTimeout(timeoutId)
   }, [loadGastos])
 
+  useAutoRefresh(loadGastos, { refreshOnMutation: false })
+
   const handleFilterChange = (event) => {
     const { name, value } = event.target
     setFilters((current) => ({ ...current, [name]: value }))
@@ -325,14 +328,9 @@ export function GastosFijosPage() {
     <div className="page-stack">
       <PageHeader
         actions={
-          <>
-            <Button icon={RefreshCw} onClick={loadGastos} variant="secondary">
-              Actualizar
-            </Button>
-            <Button icon={Plus} onClick={openCreate}>
-              Nuevo gasto fijo
-            </Button>
-          </>
+          <Button icon={Plus} onClick={openCreate}>
+            Nuevo gasto fijo
+          </Button>
         }
         description="Registra gastos operativos mensuales del negocio."
         title="Gastos fijos"

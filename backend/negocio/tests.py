@@ -185,6 +185,8 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(
             response.data["resumen_operativo"],
             {
+                "eventos_confirmados_semana": 0,
+                "eventos_programados_mes": 0,
                 "eventos_hoy": 0,
                 "eventos_proximos_7_dias": 0,
                 "frentes_con_atencion": 0,
@@ -458,6 +460,8 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(
             response.data["resumen_operativo"],
             {
+                "eventos_confirmados_semana": 1,
+                "eventos_programados_mes": 1,
                 "eventos_hoy": 1,
                 "eventos_proximos_7_dias": 1,
                 "frentes_con_atencion": 4,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Ban, Eye, FilterX, Plus, RefreshCw, Search } from 'lucide-react'
+import { Ban, Eye, FilterX, Plus, Search } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { contratosService, tiposEventoService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { formatCurrency, formatDate } from '../../utils/formatters'
@@ -105,6 +106,8 @@ export function ContratosPage() {
       window.clearTimeout(timeoutId)
     }
   }, [loadContratos])
+
+  useAutoRefresh(loadContratos, { refreshOnMutation: false })
 
   const counters = useMemo(
     () => ({
@@ -235,9 +238,6 @@ export function ContratosPage() {
               <Plus aria-hidden="true" size={18} />
               <span>Nuevo contrato</span>
             </Link>
-            <Button icon={RefreshCw} onClick={loadContratos} variant="secondary">
-              Actualizar
-            </Button>
           </>
         }
         description="Administra las ventas reales del negocio y su estado de pago."

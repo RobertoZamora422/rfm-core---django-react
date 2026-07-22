@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ClipboardList, Edit3, Plus, RefreshCw } from 'lucide-react'
-import { Button } from '../../components/ui/Button'
+import { ArrowLeft, ClipboardList, Edit3, Plus } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { contratosService, costosDirectosService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
@@ -57,6 +57,8 @@ export function DetalleContratoPage() {
       window.clearTimeout(timeoutId)
     }
   }, [loadContrato])
+
+  useAutoRefresh(loadContrato, { refreshOnMutation: false })
 
   if (isLoading) {
     return (
@@ -111,9 +113,6 @@ export function DetalleContratoPage() {
               <ArrowLeft aria-hidden="true" size={18} />
               <span>Volver</span>
             </Link>
-            <Button icon={RefreshCw} onClick={loadContrato} variant="secondary">
-              Actualizar
-            </Button>
             <Link className="button button--primary" to={`/contratos/${contrato.id}/editar`}>
               <Edit3 aria-hidden="true" size={18} />
               <span>Editar contrato</span>

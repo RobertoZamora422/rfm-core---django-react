@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getApiErrorMessage, getApiFieldErrors } from '../utils/apiErrors'
+import { useAutoRefresh } from './useAutoRefresh'
 
 export function useResource(service) {
   const [items, setItems] = useState([])
@@ -30,6 +31,8 @@ export function useResource(service) {
       window.clearTimeout(timeoutId)
     }
   }, [load])
+
+  useAutoRefresh(load, { refreshOnMutation: false })
 
   const save = useCallback(
     async ({ id, payload }) => {
@@ -82,7 +85,6 @@ export function useResource(service) {
     isLoading,
     isSaving,
     items,
-    load,
     remove,
     save,
     setError,

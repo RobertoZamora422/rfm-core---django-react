@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Edit3, FilterX, Plus, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Edit3, FilterX, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
@@ -10,6 +10,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { Textarea } from '../../components/ui/Textarea'
 import { contratosService, costosDirectosService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
@@ -235,6 +236,8 @@ export function CostosDirectosPage() {
     return () => window.clearTimeout(timeoutId)
   }, [loadContratos])
 
+  useAutoRefresh(loadCostos, { refreshOnMutation: false })
+
   const handleFilterChange = (event) => {
     const { name, value } = event.target
     setFilters((current) => ({ ...current, [name]: value }))
@@ -369,14 +372,9 @@ export function CostosDirectosPage() {
     <div className="page-stack">
       <PageHeader
         actions={
-          <>
-            <Button icon={RefreshCw} onClick={loadCostos} variant="secondary">
-              Actualizar
-            </Button>
-            <Button icon={Plus} onClick={openCreate}>
-              Nuevo costo directo
-            </Button>
-          </>
+          <Button icon={Plus} onClick={openCreate}>
+            Nuevo costo directo
+          </Button>
         }
         description="Registra costos asociados directamente a contratos."
         title="Costos directos"

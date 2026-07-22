@@ -8,7 +8,6 @@ import {
   FilterX,
   PhoneCall,
   Plus,
-  RefreshCw,
   Search,
   XCircle,
 } from 'lucide-react'
@@ -22,6 +21,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { cotizacionesService, tiposEventoService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 import { formatCurrency, formatDate } from '../../utils/formatters'
@@ -129,6 +129,8 @@ export function CotizacionesPage() {
       window.clearTimeout(timeoutId)
     }
   }, [loadCotizaciones])
+
+  useAutoRefresh(loadCotizaciones, { refreshOnMutation: false })
 
   const counters = useMemo(
     () => ({
@@ -295,9 +297,6 @@ export function CotizacionesPage() {
       <PageHeader
         actions={
           <>
-            <Button icon={RefreshCw} onClick={loadCotizaciones} variant="secondary">
-              Actualizar
-            </Button>
             <Link className="button button--primary" to="/cotizaciones/nueva">
               <Plus aria-hidden="true" size={18} />
               <span>Nueva cotizacion</span>

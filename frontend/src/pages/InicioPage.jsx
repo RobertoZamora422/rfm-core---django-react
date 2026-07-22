@@ -13,9 +13,9 @@ import {
   FileText,
   Plus,
   Receipt,
-  RefreshCw,
   Sparkles,
 } from 'lucide-react'
+import isotipoRancho from '../assets/isotipo-rancho.svg'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { DashboardHero } from '../components/ui/DashboardHero'
@@ -25,6 +25,7 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { MetricCard } from '../components/ui/MetricCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { inicioService } from '../services/resourceService'
 import { getApiErrorMessage } from '../utils/apiErrors'
 import { formatCurrency } from '../utils/formatters'
@@ -191,17 +192,18 @@ export function InicioPage() {
   const [pageError, setPageError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
 
-  const loadSummary = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
+  const loadSummary = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true)
+    if (!silent) setPageError('')
 
     try {
       const data = await inicioService.resumen()
       setSummary(data)
+      setPageError('')
     } catch (error) {
       setPageError(getApiErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (!silent) setIsLoading(false)
     }
   }, [])
 
@@ -209,6 +211,8 @@ export function InicioPage() {
     const timeoutId = window.setTimeout(loadSummary, 0)
     return () => window.clearTimeout(timeoutId)
   }, [loadSummary])
+
+  useAutoRefresh(loadSummary, { intervalMs: 90000 })
 
   const kpis = summary?.kpis ?? []
   const events = summary?.eventos_proximos ?? []
@@ -221,8 +225,8 @@ export function InicioPage() {
     ? `/contratos?estado_contrato=confirmado&desde=${summary.fecha_referencia}`
     : '/contratos'
   const headerDate = formatLongDate(summary?.fecha_referencia ?? new Date())
-  const eventsToday = Number(pulse.eventos_hoy ?? 0)
-  const eventsNextWeek = Number(pulse.eventos_proximos_7_dias ?? 0)
+  const eventsThisWeek = Number(pulse.eventos_confirmados_semana ?? 0)
+  const eventsThisMonth = Number(pulse.eventos_programados_mes ?? 0)
   const attentionAreas = Number(pulse.frentes_con_atencion ?? pending.length)
 
   return (
@@ -238,21 +242,13 @@ export function InicioPage() {
               <BriefcaseBusiness aria-hidden="true" size={18} />
               <span>Nuevo contrato</span>
             </Link>
-            <Button
-              icon={RefreshCw}
-              isLoading={isLoading && Boolean(summary)}
-              loadingLabel="Actualizando…"
-              onClick={loadSummary}
-              variant="ghost"
-            >
-              Actualizar
-            </Button>
           </>
         }
-        description={`${headerDate}. Revisa la agenda, atiende pendientes y continúa con las acciones más frecuentes.`}
-        eyebrow="Rancho Flor María · Operación"
-        icon={Sparkles}
-        title="Lo importante de hoy"
+        description="Resumen operativo y accesos rápidos para la gestión diaria."
+        eyebrow="Inicio · Lo importante de hoy"
+        eyebrowDetail={headerDate}
+        iconImage={isotipoRancho}
+        title="Bienvenido"
       >
         <div className="operational-pulse" aria-live="polite">
           <span className="operational-pulse__label">
@@ -262,14 +258,14 @@ export function InicioPage() {
           <strong>
             {isLoading && !summary
               ? 'Preparando tu resumen…'
-              : eventsToday === 1
-                ? '1 evento confirmado hoy'
-                : `${eventsToday} eventos confirmados hoy`}
+              : eventsThisWeek === 1
+                ? '1 evento confirmado esta semana'
+                : `${eventsThisWeek} eventos confirmados esta semana`}
           </strong>
           <p>
-            {eventsNextWeek === 1
-              ? '1 evento programado en los próximos 7 días.'
-              : `${eventsNextWeek} eventos programados en los próximos 7 días.`}
+            {eventsThisMonth === 1
+              ? '1 evento programado en el mes.'
+              : `${eventsThisMonth} eventos programados en el mes.`}
           </p>
           <span className={`operational-pulse__attention ${attentionAreas ? 'is-active' : ''}`}>
             {attentionAreas ? <CircleAlert aria-hidden="true" size={16} /> : <BadgeCheck aria-hidden="true" size={16} />}
@@ -294,7 +290,7 @@ export function InicioPage() {
         <Card>
           <EmptyState
             action={
-              <Button icon={RefreshCw} onClick={loadSummary} variant="secondary">
+              <Button onClick={loadSummary} variant="secondary">
                 Intentar nuevamente
               </Button>
             }

@@ -9,6 +9,9 @@ if (import.meta.env.PROD && !envApiBaseUrl) {
 const API_BASE_URL = envApiBaseUrl ?? 'http://127.0.0.1:8000/api'
 const AUTH_TOKEN_KEY = 'rfm_core_auth_token'
 const AUTH_USER_KEY = 'rfm_core_auth_user'
+export const DATA_CHANGED_EVENT = 'rfm:data-changed'
+
+const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -51,4 +54,26 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Token ${token}`
   }
   return config
+})
+
+apiClient.interceptors.response.use((response) => {
+  const method = response.config.method?.toLowerCase()
+
+  if (MUTATION_METHODS.has(method)) {
+    const detail = {
+      method,
+      url: response.config.url ?? '',
+      timestamp: Date.now(),
+    }
+
+    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail }))
+
+    if ('BroadcastChannel' in window) {
+      const channel = new BroadcastChannel(DATA_CHANGED_EVENT)
+      channel.postMessage(detail)
+      channel.close()
+    }
+  }
+
+  return response
 })

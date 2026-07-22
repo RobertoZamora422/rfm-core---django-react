@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Edit3, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Edit3, Plus, Trash2 } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { DataTable } from '../ui/DataTable'
@@ -31,7 +31,6 @@ export function ResourcePage({
     isLoading,
     isSaving,
     items,
-    load,
     remove,
     save,
     setError,
@@ -92,14 +91,9 @@ export function ResourcePage({
     <div className="page-stack">
       <PageHeader
         actions={
-          <>
-            <Button icon={RefreshCw} onClick={load} variant="secondary">
-              Actualizar
-            </Button>
-            <Button icon={Plus} onClick={openCreate}>
-              {createLabel}
-            </Button>
-          </>
+          <Button icon={Plus} onClick={openCreate}>
+            {createLabel}
+          </Button>
         }
         description={description}
         title={title}

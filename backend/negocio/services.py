@@ -72,6 +72,13 @@ def inicio_resumen(fecha_referencia=None):
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         fecha_evento__gte=fecha,
     )
+    inicio_semana = fecha - timedelta(days=fecha.weekday())
+    fin_semana = inicio_semana + timedelta(days=6)
+    eventos_confirmados_semana = Contrato.objects.filter(
+        estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+        fecha_evento__gte=inicio_semana,
+        fecha_evento__lte=fin_semana,
+    ).count()
     eventos_hoy = contratos_confirmados_futuros.filter(fecha_evento=fecha).count()
     eventos_proximos_7_dias = contratos_confirmados_futuros.filter(
         fecha_evento__lte=fecha + timedelta(days=6),
@@ -157,6 +164,8 @@ def inicio_resumen(fecha_referencia=None):
             "anio": fecha.year,
         },
         "resumen_operativo": {
+            "eventos_confirmados_semana": eventos_confirmados_semana,
+            "eventos_programados_mes": eventos_mes,
             "eventos_hoy": eventos_hoy,
             "eventos_proximos_7_dias": eventos_proximos_7_dias,
             "frentes_con_atencion": len(pendientes),
