@@ -1,6 +1,6 @@
 import { EmptyState } from './EmptyState'
 
-export function DataTable({ columns, emptyMessage, mobileTitle, rows }) {
+export function DataTable({ caption, columns, emptyMessage, mobileTitle, rows }) {
   if (!rows?.length) {
     return <EmptyState description={emptyMessage} title="Sin registros" />
   }
@@ -9,10 +9,13 @@ export function DataTable({ columns, emptyMessage, mobileTitle, rows }) {
     <>
       <div className="table-wrap">
         <table className="data-table">
+          {caption ? <caption className="sr-only">{caption}</caption> : null}
           <thead>
             <tr>
               {columns.map((column) => (
-                <th key={column.key}>{column.header}</th>
+                <th key={column.key} scope="col">
+                  {column.header}
+                </th>
               ))}
             </tr>
           </thead>

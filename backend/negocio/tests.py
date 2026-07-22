@@ -182,6 +182,14 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(kpis["cotizaciones_mes"], 0)
         self.assertEqual(kpis["eventos_mes"], 0)
         self.assertEqual(kpis["eventos_proximos"], 0)
+        self.assertEqual(
+            response.data["resumen_operativo"],
+            {
+                "eventos_hoy": 0,
+                "eventos_proximos_7_dias": 0,
+                "frentes_con_atencion": 0,
+            },
+        )
         self.assertEqual(response.data["eventos_proximos"], [])
         self.assertEqual(response.data["pendientes_importantes"], [])
 
@@ -447,6 +455,14 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(kpis["cotizaciones_mes"], 2)
         self.assertEqual(kpis["eventos_mes"], 1)
         self.assertEqual(kpis["eventos_proximos"], 1)
+        self.assertEqual(
+            response.data["resumen_operativo"],
+            {
+                "eventos_hoy": 1,
+                "eventos_proximos_7_dias": 1,
+                "frentes_con_atencion": 4,
+            },
+        )
         self.assertEqual(
             kpi_details["cotizaciones_mes"],
             "Registradas en el mes actual",

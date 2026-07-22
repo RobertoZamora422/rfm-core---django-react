@@ -456,45 +456,49 @@ def _interpretation(metrics, previous_metrics, commercial_performance, pending_f
     ):
         return {
             "nivel": "neutral",
-            "titulo": "Aun no hay informacion suficiente",
-            "detalle": "Aun no hay informacion suficiente para generar una interpretacion financiera.",
+            "titulo": "Aún no hay información suficiente",
+            "detalle": "Aún no hay información suficiente para generar una interpretación financiera.",
             "puntos": [],
         }
     if ingresos == 0:
         return {
             "nivel": "neutral",
             "titulo": "Periodo sin ingresos reales",
-            "detalle": "Aun no hay contratos confirmados para este mes; los gastos registrados se muestran sin dividir por ingresos.",
+            "detalle": "Aún no hay contratos confirmados para este mes; los gastos registrados se muestran sin dividir por ingresos.",
             "puntos": [
-                "No hay ingresos confirmados para calcular margenes del periodo.",
+                "No hay ingresos confirmados para calcular márgenes del periodo.",
             ],
         }
 
     puntos = []
     if previous_metrics["contratos_confirmados"] == 0 and previous_metrics["gastos_fijos_registrados"] == 0:
-        puntos.append("No hay suficiente informacion para comparar con el mes anterior.")
+        puntos.append("No hay suficiente información para comparar con el mes anterior.")
     elif utilidad > previous_metrics["utilidad_neta"]:
         puntos.append("La utilidad neta mejora frente al mes anterior.")
     elif utilidad < previous_metrics["utilidad_neta"]:
         puntos.append("La utilidad neta cae frente al mes anterior.")
     else:
-        puntos.append("La utilidad neta se mantiene sin variacion frente al mes anterior.")
+        puntos.append("La utilidad neta se mantiene sin variación frente al mes anterior.")
 
     if commercial_performance["paquete_mas_vendido"]:
         paquete = commercial_performance["paquete_mas_vendido"]
         puntos.append(
-            f"{paquete['nombre']} lidera por volumen con {paquete['contratos']} contrato(s)."
+            f"{paquete['nombre']} lidera por volumen con "
+            f"{paquete['contratos']} "
+            f"{'contrato' if paquete['contratos'] == 1 else 'contratos'}."
         )
 
     if pending_financials["total_contratos"]:
         puntos.append(
-            f"Hay {pending_financials['total_contratos']} contrato(s) con saldo pendiente actual."
+            f"Hay {pending_financials['total_contratos']} "
+            f"{'contrato' if pending_financials['total_contratos'] == 1 else 'contratos'} "
+            "con saldo pendiente actual."
         )
 
     if utilidad < 0:
         return {
             "nivel": "warning",
-            "titulo": "Periodo con perdida neta",
+            "titulo": "Periodo con pérdida neta",
             "detalle": "Los costos directos y gastos fijos superan los ingresos confirmados del mes.",
             "puntos": puntos,
         }
@@ -549,9 +553,10 @@ def _kpi_payload(current, previous):
             "label": "Ingresos del mes",
             "value": _money(current["ingresos_mes"]),
             "detail": (
-                f"{current['contratos_confirmados']} contrato(s) confirmado(s)"
+                f"{current['contratos_confirmados']} "
+                f"{'contrato confirmado' if current['contratos_confirmados'] == 1 else 'contratos confirmados'}"
                 if current["contratos_confirmados"]
-                else "Aun no hay contratos confirmados para este mes."
+                else "Aún no hay contratos confirmados para este mes."
             ),
             "format": "currency",
             "comparison": comparison(
@@ -566,7 +571,7 @@ def _kpi_payload(current, previous):
             "detail": (
                 f"{_percent(costos_ratio)}% de los ingresos del mes"
                 if ingresos
-                else "No hay ingresos para calcular proporcion"
+                else "No hay ingresos para calcular proporción"
             ),
             "format": "currency",
             "comparison": comparison(
@@ -592,7 +597,7 @@ def _kpi_payload(current, previous):
             "detail": (
                 f"{_percent(gastos_ratio)}% de los ingresos del mes"
                 if ingresos
-                else "No hay ingresos para calcular proporcion"
+                else "No hay ingresos para calcular proporción"
             ),
             "format": "currency",
             "comparison": comparison(
@@ -729,7 +734,7 @@ def dashboard_financiero(mes=None, anio=None):
             "periodo_anterior": previous["periodo"],
             "categorias": comparativo_mes_anterior,
             "tiene_comparacion": has_previous_activity,
-            "mensaje_vacio": "No hay suficiente informacion para comparar con el mes anterior.",
+            "mensaje_vacio": "No hay suficiente información para comparar con el mes anterior.",
         },
         "rentabilidad_por_paquete": rentabilidad_paquetes,
         "analisis_por_tipo_evento": rentabilidad_tipos_evento,
@@ -740,10 +745,10 @@ def dashboard_financiero(mes=None, anio=None):
         "pendientes_financieros": pendientes,
         "interpretacion": interpretacion,
         "estados_vacios": {
-            "contratos_confirmados": "Aun no hay contratos confirmados para este mes.",
+            "contratos_confirmados": "Aún no hay contratos confirmados para este mes.",
             "costos_directos": "No hay costos registrados en este periodo.",
             "gastos_fijos": "No hay gastos fijos registrados para este mes.",
-            "comparacion": "No hay suficiente informacion para comparar con el mes anterior.",
-            "interpretacion": "Aun no hay informacion suficiente para generar una interpretacion financiera.",
+            "comparacion": "No hay suficiente información para comparar con el mes anterior.",
+            "interpretacion": "Aún no hay información suficiente para generar una interpretación financiera.",
         },
     }

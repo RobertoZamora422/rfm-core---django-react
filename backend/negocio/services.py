@@ -72,6 +72,10 @@ def inicio_resumen(fecha_referencia=None):
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         fecha_evento__gte=fecha,
     )
+    eventos_hoy = contratos_confirmados_futuros.filter(fecha_evento=fecha).count()
+    eventos_proximos_7_dias = contratos_confirmados_futuros.filter(
+        fecha_evento__lte=fecha + timedelta(days=6),
+    ).count()
     eventos_proximos = list(
         contratos_confirmados_futuros.select_related(
             "cliente",
@@ -107,7 +111,7 @@ def inicio_resumen(fecha_referencia=None):
         pendientes.append(
             _pending_item(
                 "eventos_sin_costos",
-                "Eventos proximos sin costos directos registrados",
+                "Eventos próximos sin costos directos registrados",
                 "Falta registrar costos asociados a contratos confirmados futuros.",
                 eventos_sin_costos,
                 "media",
@@ -122,8 +126,8 @@ def inicio_resumen(fecha_referencia=None):
         pendientes.append(
             _pending_item(
                 "eventos_con_saldo",
-                "Eventos proximos con saldo pendiente",
-                "Contratos confirmados futuros aun tienen valores por cobrar.",
+                "Eventos próximos con saldo pendiente",
+                "Contratos confirmados futuros aún tienen valores por cobrar.",
                 eventos_con_saldo,
                 "alta",
                 "/contratos",
@@ -139,7 +143,7 @@ def inicio_resumen(fecha_referencia=None):
             _pending_item(
                 "cotizaciones_sin_contrato",
                 "Cotizaciones activas sin contrato",
-                "Hay oportunidades avanzadas que aun no tienen contrato asociado.",
+                "Hay oportunidades avanzadas que aún no tienen contrato asociado.",
                 cotizaciones_sin_contrato,
                 "media",
                 "/cotizaciones",
@@ -152,12 +156,17 @@ def inicio_resumen(fecha_referencia=None):
             "mes": fecha.month,
             "anio": fecha.year,
         },
+        "resumen_operativo": {
+            "eventos_hoy": eventos_hoy,
+            "eventos_proximos_7_dias": eventos_proximos_7_dias,
+            "frentes_con_atencion": len(pendientes),
+        },
         "kpis": [
             {
                 "key": "cotizaciones_nuevas",
                 "label": "Cotizaciones nuevas",
                 "value": cotizaciones_nuevas,
-                "detail": "Pendientes de gestion",
+                "detail": "Pendientes de gestión",
             },
             {
                 "key": "cotizaciones_mes",
@@ -173,7 +182,7 @@ def inicio_resumen(fecha_referencia=None):
             },
             {
                 "key": "eventos_proximos",
-                "label": "Eventos proximos",
+                "label": "Eventos próximos",
                 "value": contratos_confirmados_futuros.count(),
                 "detail": "Contratos confirmados futuros",
             },

@@ -1,97 +1,79 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  ArrowRight,
+  BadgeCheck,
   BarChart3,
   BriefcaseBusiness,
+  CalendarCheck2,
   CalendarDays,
   ChevronRight,
+  CircleAlert,
   ClipboardList,
-  FileBarChart,
   FileText,
-  Package,
-  PlusCircle,
+  Plus,
   Receipt,
   RefreshCw,
-  WalletCards,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
+import { DashboardHero } from '../components/ui/DashboardHero'
+import { DashboardSectionHeader } from '../components/ui/DashboardSectionHeader'
+import { DashboardSkeleton } from '../components/ui/DashboardSkeleton'
 import { EmptyState } from '../components/ui/EmptyState'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import { LoadingState } from '../components/ui/LoadingState'
-import { PageHeader } from '../components/ui/PageHeader'
+import { MetricCard } from '../components/ui/MetricCard'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { inicioService } from '../services/resourceService'
 import { getApiErrorMessage } from '../utils/apiErrors'
-import { formatCurrency, formatDate } from '../utils/formatters'
+import { formatCurrency } from '../utils/formatters'
 import { getEstadoPagoLabel } from './contratos/contractConstants'
 
-const quickActionGroups = [
+const quickActions = [
   {
-    title: 'Gestión comercial',
-    actions: [
-      {
-        label: 'Pre-cotización pública',
-        description: 'Abrir el formulario que usa el cliente.',
-        path: '/pre-cotizacion',
-        icon: PlusCircle,
-      },
-      {
-        label: 'Gestionar cotizaciones',
-        description: 'Ver y registrar cotizaciones.',
-        path: '/cotizaciones',
-        icon: ClipboardList,
-      },
-      {
-        label: 'Gestionar contratos',
-        description: 'Ver y registrar contratos.',
-        path: '/contratos',
-        icon: BriefcaseBusiness,
-      },
-      {
-        label: 'Gestionar paquetes',
-        description: 'Ver y crear paquetes.',
-        path: '/paquetes',
-        icon: Package,
-      },
-    ],
+    label: 'Nueva cotización',
+    description: 'Registrar una oportunidad comercial.',
+    path: '/cotizaciones/nueva',
+    icon: ClipboardList,
   },
   {
-    title: 'Finanzas y reportes',
-    actions: [
-      {
-        label: 'Costos directos',
-        description: 'Ver y añadir costos asociados a un evento.',
-        path: '/costos-directos',
-        icon: Receipt,
-      },
-      {
-        label: 'Gastos fijos',
-        description: 'Ver y añadir gastos mensuales del negocio.',
-        path: '/gastos-fijos',
-        icon: WalletCards,
-      },
-      {
-        label: 'Dashboard financiero',
-        description: 'Revisar ingresos, costos, utilidad y margen mensual.',
-        path: '/dashboard-financiero',
-        icon: BarChart3,
-      },
-      {
-        label: 'Reportes',
-        description: 'Consultar información comercial y financiera por periodo.',
-        path: '/reportes',
-        icon: FileBarChart,
-      },
-    ],
+    label: 'Nuevo contrato',
+    description: 'Confirmar un evento del negocio.',
+    path: '/contratos/nuevo',
+    icon: BriefcaseBusiness,
+  },
+  {
+    label: 'Seguimiento comercial',
+    description: 'Revisar cotizaciones y sus estados.',
+    path: '/cotizaciones',
+    icon: FileText,
+  },
+  {
+    label: 'Registrar costos',
+    description: 'Completar costos directos de eventos.',
+    path: '/costos-directos',
+    icon: Receipt,
+  },
+  {
+    label: 'Analizar rentabilidad',
+    description: 'Abrir el Dashboard financiero.',
+    path: '/dashboard-financiero',
+    icon: BarChart3,
+  },
+  {
+    label: 'Pre-cotización pública',
+    description: 'Abrir la experiencia para clientes.',
+    path: '/pre-cotizacion',
+    icon: Sparkles,
   },
 ]
 
-const kpiIcons = {
-  cotizaciones_nuevas: ClipboardList,
-  cotizaciones_mes: FileText,
-  eventos_mes: BriefcaseBusiness,
-  eventos_proximos: CalendarDays,
+const kpiConfig = {
+  cotizaciones_nuevas: { icon: ClipboardList, tone: 'rose' },
+  cotizaciones_mes: { icon: FileText, tone: 'gold' },
+  eventos_mes: { icon: BriefcaseBusiness, tone: 'sage' },
+  eventos_proximos: { icon: CalendarDays, tone: 'forest' },
 }
 
 const priorityLabels = {
@@ -105,13 +87,16 @@ function capitalize(value) {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`
 }
 
-function formatLongDate(value) {
-  if (!value) return ''
+function parseLocalDate(value) {
+  if (!value) return null
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00`)
+    : new Date(value)
+}
 
-  const date =
-    typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-      ? new Date(`${value}T00:00:00`)
-      : new Date(value)
+function formatLongDate(value) {
+  const date = parseLocalDate(value)
+  if (!date) return ''
 
   return capitalize(
     new Intl.DateTimeFormat('es-EC', {
@@ -123,87 +108,80 @@ function formatLongDate(value) {
   )
 }
 
-function KpiCard({ detail, icon: Icon, label, value }) {
-  return (
-    <article className="kpi-card">
-      <div className="kpi-card__top">
-        <span className="kpi-card__label">{label}</span>
-        {Icon ? (
-          <span className="kpi-card__icon" aria-hidden="true">
-            <Icon size={18} />
-          </span>
-        ) : null}
-      </div>
-      <strong className="kpi-card__value">{value}</strong>
-      <span className="kpi-card__detail">{detail}</span>
-    </article>
-  )
+function formatEventDate(value) {
+  const date = parseLocalDate(value)
+  if (!date) return { day: '—', month: '' }
+
+  return {
+    day: new Intl.DateTimeFormat('es-EC', { day: '2-digit' }).format(date),
+    month: new Intl.DateTimeFormat('es-EC', { month: 'short' })
+      .format(date)
+      .replace('.', '')
+      .toUpperCase(),
+  }
 }
 
-function QuickActionGroup({ group }) {
+function QuickAction({ action }) {
+  const Icon = action.icon
+
   return (
-    <div className="quick-action-group">
-      <div className="quick-action-section__header">
-        <h3>{group.title}</h3>
-      </div>
-      <div className="quick-actions">
-        {group.actions.map((action) => (
-          <Link className="quick-action" key={action.path} to={action.path}>
-            <span className="quick-action__icon" aria-hidden="true">
-              <action.icon size={20} />
-            </span>
-            <span className="quick-action__content">
-              <strong>{action.label}</strong>
-              <span>{action.description}</span>
-            </span>
-            <ChevronRight aria-hidden="true" size={18} />
-          </Link>
-        ))}
-      </div>
-    </div>
+    <Link className="quick-action" to={action.path}>
+      <span className="quick-action__icon" aria-hidden="true">
+        <Icon size={20} />
+      </span>
+      <span className="quick-action__content">
+        <strong>{action.label}</strong>
+        <span>{action.description}</span>
+      </span>
+      <ArrowRight aria-hidden="true" size={18} />
+    </Link>
   )
 }
 
 function UpcomingEventItem({ event }) {
+  const eventDate = formatEventDate(event.fecha_evento)
+
   return (
-    <Link className="home-list__item home-list__item--event home-list__item--link" to={`/contratos/${event.contrato_id}`}>
-      <div className="home-list__icon" aria-hidden="true">
-        <CalendarDays size={18} />
-      </div>
-      <div className="home-list__content">
-        <strong>{event.cliente_nombre}</strong>
-        <div className="home-event__meta">
-          <span>Tipo: {event.tipo_evento_nombre}</span>
-          {event.paquete_nombre ? <span>Paquete: {event.paquete_nombre}</span> : null}
-          <span>Fecha: {formatDate(event.fecha_evento)}</span>
-          <span className="home-event__payment">
-            Estado de pago:{' '}
-            <StatusBadge status={event.estado_pago}>
-              {getEstadoPagoLabel(event.estado_pago)}
-            </StatusBadge>
-          </span>
-          <span>Saldo pendiente: {formatCurrency(event.saldo_pendiente)}</span>
-        </div>
-      </div>
-      <ChevronRight aria-hidden="true" size={18} />
+    <Link className="home-event" to={`/contratos/${event.contrato_id}`}>
+      <time className="home-event__date" dateTime={event.fecha_evento}>
+        <strong>{eventDate.day}</strong>
+        <span>{eventDate.month}</span>
+      </time>
+      <span className="home-event__content">
+        <span className="home-event__title-row">
+          <strong>{event.tipo_evento_nombre}</strong>
+          <StatusBadge status={event.estado_pago}>
+            {getEstadoPagoLabel(event.estado_pago)}
+          </StatusBadge>
+        </span>
+        <span className="home-event__client">{event.cliente_nombre}</span>
+        <span className="home-event__meta">
+          <span>{event.paquete_nombre || 'Sin paquete asignado'}</span>
+          <span>Saldo: {formatCurrency(event.saldo_pendiente)}</span>
+        </span>
+      </span>
+      <ChevronRight aria-hidden="true" size={19} />
     </Link>
   )
 }
 
 function PendingItem({ item }) {
   return (
-    <Link className="home-list__item home-list__item--link" to={item.enlace || '/inicio'}>
-      <div className="home-list__content">
-        <div className="home-list__title-row">
+    <Link className="home-pending" to={item.enlace || '/inicio'}>
+      <span className={`home-pending__icon home-pending__icon--${item.prioridad}`} aria-hidden="true">
+        <CircleAlert size={19} />
+      </span>
+      <span className="home-pending__content">
+        <span className="home-pending__title-row">
           <strong>{item.titulo}</strong>
           <span className={`priority-badge priority-badge--${item.prioridad}`}>
             {priorityLabels[item.prioridad] || item.prioridad}
           </span>
-        </div>
+        </span>
         <span>{item.descripcion}</span>
-        <span>{item.cantidad} pendiente(s)</span>
-      </div>
-      <ChevronRight aria-hidden="true" size={18} />
+        <small>{item.cantidad} por revisar</small>
+      </span>
+      <ChevronRight aria-hidden="true" size={19} />
     </Link>
   )
 }
@@ -229,14 +207,13 @@ export function InicioPage() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadSummary, 0)
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    return () => window.clearTimeout(timeoutId)
   }, [loadSummary])
 
   const kpis = summary?.kpis ?? []
   const events = summary?.eventos_proximos ?? []
   const pending = summary?.pendientes_importantes ?? []
+  const pulse = summary?.resumen_operativo ?? {}
   const totalUpcomingEvents =
     kpis.find((kpi) => kpi.key === 'eventos_proximos')?.value ?? events.length
   const hasMoreUpcomingEvents = Number(totalUpcomingEvents) > events.length
@@ -244,118 +221,192 @@ export function InicioPage() {
     ? `/contratos?estado_contrato=confirmado&desde=${summary.fecha_referencia}`
     : '/contratos'
   const headerDate = formatLongDate(summary?.fecha_referencia ?? new Date())
+  const eventsToday = Number(pulse.eventos_hoy ?? 0)
+  const eventsNextWeek = Number(pulse.eventos_proximos_7_dias ?? 0)
+  const attentionAreas = Number(pulse.frentes_con_atencion ?? pending.length)
 
   return (
-    <div className="page-stack">
-      <PageHeader
+    <div className="page-stack page-stack--dashboard">
+      <DashboardHero
         actions={
-          <Button disabled={isLoading} icon={RefreshCw} onClick={loadSummary} variant="secondary">
-            Actualizar
-          </Button>
+          <>
+            <Link className="button button--primary" to="/cotizaciones/nueva">
+              <Plus aria-hidden="true" size={18} />
+              <span>Nueva cotización</span>
+            </Link>
+            <Link className="button button--secondary" to="/contratos/nuevo">
+              <BriefcaseBusiness aria-hidden="true" size={18} />
+              <span>Nuevo contrato</span>
+            </Link>
+            <Button
+              icon={RefreshCw}
+              isLoading={isLoading && Boolean(summary)}
+              loadingLabel="Actualizando…"
+              onClick={loadSummary}
+              variant="ghost"
+            >
+              Actualizar
+            </Button>
+          </>
         }
-        description="Resumen operativo y accesos rápidos para la gestión diaria."
-        eyebrow={headerDate}
-        title="Bienvenido"
-      />
+        description={`${headerDate}. Revisa la agenda, atiende pendientes y continúa con las acciones más frecuentes.`}
+        eyebrow="Rancho Flor María · Operación"
+        icon={Sparkles}
+        title="Lo importante de hoy"
+      >
+        <div className="operational-pulse" aria-live="polite">
+          <span className="operational-pulse__label">
+            <CalendarCheck2 aria-hidden="true" size={17} />
+            Agenda inmediata
+          </span>
+          <strong>
+            {isLoading && !summary
+              ? 'Preparando tu resumen…'
+              : eventsToday === 1
+                ? '1 evento confirmado hoy'
+                : `${eventsToday} eventos confirmados hoy`}
+          </strong>
+          <p>
+            {eventsNextWeek === 1
+              ? '1 evento programado en los próximos 7 días.'
+              : `${eventsNextWeek} eventos programados en los próximos 7 días.`}
+          </p>
+          <span className={`operational-pulse__attention ${attentionAreas ? 'is-active' : ''}`}>
+            {attentionAreas ? <CircleAlert aria-hidden="true" size={16} /> : <BadgeCheck aria-hidden="true" size={16} />}
+            {attentionAreas === 1
+              ? '1 frente requiere atención'
+              : attentionAreas
+                ? `${attentionAreas} frentes requieren atención`
+                : 'Sin frentes críticos pendientes'}
+          </span>
+        </div>
+      </DashboardHero>
 
       <ErrorMessage>{pageError}</ErrorMessage>
 
       {isLoading && !summary ? (
-        <Card>
-          <LoadingState label="Cargando resumen administrativo" />
+        <Card className="dashboard-loading-card">
+          <DashboardSkeleton label="Cargando resumen operativo" variant="home" />
         </Card>
       ) : null}
 
       {!isLoading && !summary && !pageError ? (
         <Card>
           <EmptyState
-            description="No hay informacion operativa disponible para mostrar."
+            action={
+              <Button icon={RefreshCw} onClick={loadSummary} variant="secondary">
+                Intentar nuevamente
+              </Button>
+            }
+            description="No hay información operativa disponible para mostrar."
             title="Sin resumen administrativo"
           />
         </Card>
       ) : null}
 
       {summary ? (
-        <>
-          <section className="kpi-grid" aria-label="Indicadores operativos">
-            {kpis.map((kpi) => (
-              <KpiCard
-                detail={kpi.detail}
-                icon={kpiIcons[kpi.key]}
-                key={kpi.key}
-                label={kpi.label}
-                value={kpi.value}
-              />
-            ))}
+        <div className={`dashboard-content ${isLoading ? 'dashboard-content--refreshing' : ''}`} aria-busy={isLoading}>
+          <section aria-labelledby="resumen-operativo-title" className="dashboard-section">
+            <DashboardSectionHeader
+              eyebrow="Pulso comercial"
+              subtitle="Indicadores operativos; no incluyen cálculos de rentabilidad."
+              title="Resumen operativo"
+              titleId="resumen-operativo-title"
+            />
+            <div className="metric-grid metric-grid--home">
+              {kpis.map((kpi) => {
+                const config = kpiConfig[kpi.key] ?? {}
+                return (
+                  <MetricCard
+                    detail={kpi.detail}
+                    icon={config.icon}
+                    key={kpi.key}
+                    label={kpi.label}
+                    tone={config.tone}
+                    value={kpi.value}
+                  />
+                )
+              })}
+            </div>
           </section>
 
-          <section className="quick-actions-shell" aria-label="Acciones rápidas">
-            <div className="quick-action-groups">
-              {quickActionGroups.map((group) => (
-                <QuickActionGroup group={group} key={group.title} />
+          <section aria-labelledby="acciones-rapidas-title" className="dashboard-section">
+            <DashboardSectionHeader
+              eyebrow="Atajos"
+              subtitle="Acciones frecuentes para continuar sin recorrer el menú."
+              title="¿Qué necesitas hacer?"
+              titleId="acciones-rapidas-title"
+            />
+            <div className="quick-actions">
+              {quickActions.map((action) => (
+                <QuickAction action={action} key={action.path} />
               ))}
             </div>
           </section>
 
-          <div className="home-grid">
-            <Card>
-              <div className="detail-section">
-                <div className="detail-section__header">
-                  <div>
-                    <h2>Eventos próximos</h2>
-                    <p className="muted-text">
-                      Contratos confirmados con fecha cercana.
-                    </p>
-                  </div>
-                </div>
-                {events.length ? (
-                  <>
-                    <div className="home-list">
-                      {events.map((event) => (
-                        <UpcomingEventItem event={event} key={event.id} />
-                      ))}
-                    </div>
-                    {hasMoreUpcomingEvents ? (
-                      <Link className="detail-link" to={upcomingContractsPath}>
-                        Ver todos los contratos próximos
-                      </Link>
-                    ) : null}
-                  </>
-                ) : (
-                  <EmptyState
-                    description="No hay contratos confirmados futuros para mostrar."
-                    title="Sin eventos próximos"
-                  />
-                )}
-              </div>
-            </Card>
-
-            <Card>
-              <div className="detail-section">
-                <div className="detail-section__header">
-                  <div>
-                    <h2>Pendientes importantes</h2>
-                    <p className="muted-text">
-                      Elementos que requieren revisión.
-                    </p>
-                  </div>
-                </div>
-                {pending.length ? (
-                  <div className="home-list">
-                    {pending.map((item) => (
-                      <PendingItem item={item} key={item.tipo} />
+          <div className="home-workspace-grid">
+            <Card className="home-panel">
+              <DashboardSectionHeader
+                action={
+                  events.length ? (
+                    <Link className="detail-link" to={upcomingContractsPath}>
+                      Ver agenda completa <ArrowRight aria-hidden="true" size={16} />
+                    </Link>
+                  ) : null
+                }
+                eyebrow="Agenda"
+                subtitle="Contratos confirmados ordenados por la fecha más cercana."
+                title="Próximos eventos"
+              />
+              {events.length ? (
+                <>
+                  <div className="home-event-list">
+                    {events.map((event) => (
+                      <UpcomingEventItem event={event} key={event.id} />
                     ))}
                   </div>
-                ) : (
-                  <EmptyState
-                    description="No hay pendientes importantes con los datos actuales."
-                    title="Sin pendientes"
-                  />
-                )}
-              </div>
+                  {hasMoreUpcomingEvents ? (
+                    <Link className="detail-link detail-link--footer" to={upcomingContractsPath}>
+                      Ver los {totalUpcomingEvents} eventos próximos
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState
+                  action={
+                    <Link className="button button--secondary" to="/contratos/nuevo">
+                      Registrar contrato
+                    </Link>
+                  }
+                  description="No hay contratos confirmados con fecha futura."
+                  icon={CalendarDays}
+                  title="La agenda está libre"
+                />
+              )}
+            </Card>
+
+            <Card className="home-panel home-panel--priority">
+              <DashboardSectionHeader
+                eyebrow="Prioridades"
+                subtitle="Frentes ordenados por la atención que requieren."
+                title="Pendientes relevantes"
+              />
+              {pending.length ? (
+                <div className="home-pending-list">
+                  {pending.map((item) => (
+                    <PendingItem item={item} key={item.tipo} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  description="No se detectaron pendientes importantes con los datos actuales."
+                  icon={BadgeCheck}
+                  title="Todo al día"
+                />
+              )}
             </Card>
           </div>
-        </>
+        </div>
       ) : null}
     </div>
   )
