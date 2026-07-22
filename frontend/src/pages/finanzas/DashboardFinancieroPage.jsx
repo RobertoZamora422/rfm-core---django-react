@@ -8,8 +8,6 @@ import {
   BarChart3,
   CalendarDays,
   ChartNoAxesCombined,
-  ChevronLeft,
-  ChevronRight,
   CircleDollarSign,
   FileBarChart,
   Minus,
@@ -37,32 +35,15 @@ import { DashboardSkeleton } from '../../components/ui/DashboardSkeleton'
 import { DataTable } from '../../components/ui/DataTable'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
-import { Input } from '../../components/ui/Input'
 import { MetricCard } from '../../components/ui/MetricCard'
+import { PeriodToolbar } from '../../components/ui/PeriodToolbar'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { dashboardFinancieroService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
+import { getCurrentPeriodValue, getMonthLabel, periodToFilters } from '../../utils/periods'
 
-const currentDate = new Date()
-const currentMonth = String(currentDate.getMonth() + 1)
-const currentYear = String(currentDate.getFullYear())
-const currentPeriodValue = `${currentYear}-${currentMonth.padStart(2, '0')}`
-
-const monthOptions = [
-  { value: '1', label: 'Enero' },
-  { value: '2', label: 'Febrero' },
-  { value: '3', label: 'Marzo' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Mayo' },
-  { value: '6', label: 'Junio' },
-  { value: '7', label: 'Julio' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Septiembre' },
-  { value: '10', label: 'Octubre' },
-  { value: '11', label: 'Noviembre' },
-  { value: '12', label: 'Diciembre' },
-]
+const currentPeriodValue = getCurrentPeriodValue()
 
 const paymentLabels = {
   pendiente: 'Pendiente',
@@ -95,29 +76,9 @@ const kpiVisuals = {
   ticket_promedio: { icon: BadgeDollarSign, tone: 'sage' },
 }
 
-function getMonthLabel(value) {
-  return monthOptions.find((month) => month.value === String(value))?.label ?? value
-}
-
 function getPeriodLabel(periodo) {
   if (!periodo) return 'Periodo no disponible'
   return periodo.label ?? `${getMonthLabel(periodo.mes)} ${periodo.anio}`
-}
-
-function periodToFilters(periodValue) {
-  if (!/^\d{4}-\d{2}$/.test(periodValue)) {
-    return { mes: currentMonth, anio: currentYear }
-  }
-  const [anio, mes] = periodValue.split('-')
-  return { mes: String(Number(mes)), anio }
-}
-
-function shiftPeriod(periodValue, delta) {
-  const filters = periodToFilters(periodValue)
-  const totalMonths = Number(filters.anio) * 12 + Number(filters.mes) - 1 + delta
-  const nextYear = Math.floor(totalMonths / 12)
-  const nextMonth = (totalMonths % 12) + 1
-  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`
 }
 
 function toNumber(value) {
@@ -660,16 +621,6 @@ export function DashboardFinancieroPage() {
   const kpis = summary?.kpis ?? []
   const events = summary?.rentabilidad_eventos ?? []
   const periodLabel = getPeriodLabel(summary?.periodo)
-  const selectedPeriodFilters = periodToFilters(selectedPeriod)
-  const selectedPeriodLabel = `${getMonthLabel(selectedPeriodFilters.mes)} ${selectedPeriodFilters.anio}`
-
-  const handlePeriodStep = (delta) => {
-    setSelectedPeriod((current) => shiftPeriod(current, delta))
-  }
-
-  const handleCurrentPeriod = () => {
-    setSelectedPeriod(currentPeriodValue)
-  }
 
   return (
     <div className="page-stack page-stack--dashboard">
@@ -698,36 +649,12 @@ export function DashboardFinancieroPage() {
         </div>
       </DashboardHero>
 
-      <Card className="period-toolbar">
-        <div className="period-toolbar__intro">
-          <span>Periodo de análisis</span>
-          <strong aria-live="polite">{selectedPeriodLabel}</strong>
-        </div>
-        <div className="period-toolbar__navigation" aria-label="Cambiar periodo de análisis">
-          <Input
-            icon={CalendarDays}
-            id="dashboard-periodo"
-            label="Mes y año"
-            onChange={(event) => {
-              if (event.target.value) setSelectedPeriod(event.target.value)
-            }}
-            required
-            type="month"
-            value={selectedPeriod}
-          />
-          <div className="period-toolbar__steps">
-            <Button aria-label="Ver mes anterior" icon={ChevronLeft} onClick={() => handlePeriodStep(-1)} variant="ghost">
-              Anterior
-            </Button>
-            <Button icon={CalendarDays} onClick={handleCurrentPeriod} variant="secondary">
-              Mes actual
-            </Button>
-            <Button aria-label="Ver mes siguiente" icon={ChevronRight} onClick={() => handlePeriodStep(1)} variant="ghost">
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <PeriodToolbar
+        id="dashboard-periodo"
+        label="Periodo de análisis"
+        onChange={setSelectedPeriod}
+        value={selectedPeriod}
+      />
 
       <ErrorMessage>{pageError}</ErrorMessage>
 

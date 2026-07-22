@@ -1,7 +1,8 @@
-export function Select({ children, error, icon: Icon, id, label, ...props }) {
+export function Select({ children, error, helpText, icon: Icon, id, label, ...props }) {
+  const describedBy = error ? `${id}-error` : helpText ? `${id}-help` : undefined
   const control = (
     <select
-      aria-describedby={error ? `${id}-error` : undefined}
+      aria-describedby={describedBy}
       aria-invalid={Boolean(error)}
       className={Icon ? 'field__control field__control--with-leading-icon' : 'field__control'}
       id={id}
@@ -25,6 +26,11 @@ export function Select({ children, error, icon: Icon, id, label, ...props }) {
       ) : (
         control
       )}
+      {helpText && !error ? (
+        <span className="field__help" id={`${id}-help`}>
+          {helpText}
+        </span>
+      ) : null}
       {error ? (
         <span className="field__error" id={`${id}-error`} role="alert">
           {error}

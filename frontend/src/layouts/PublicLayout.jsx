@@ -1,33 +1,38 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import logotipoRancho from '../assets/logotipo-rancho.svg'
+import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { obtenerConfiguracionPublica } from '../services/preCotizacionService'
 
 export function PublicLayout() {
   const [configuracion, setConfiguracion] = useState(null)
   const [configError, setConfigError] = useState(false)
+  const requestIdRef = useRef(0)
 
-  useEffect(() => {
-    let isMounted = true
+  const loadConfiguracion = useCallback(async () => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
 
-    obtenerConfiguracionPublica()
-      .then((data) => {
-        if (isMounted) {
-          setConfiguracion(data ?? {})
-          setConfigError(false)
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setConfiguracion({})
-          setConfigError(true)
-        }
-      })
-
-    return () => {
-      isMounted = false
+    try {
+      const data = await obtenerConfiguracionPublica()
+      if (requestId === requestIdRef.current) {
+        setConfiguracion(data ?? {})
+        setConfigError(false)
+      }
+    } catch {
+      if (requestId === requestIdRef.current) {
+        setConfiguracion({})
+        setConfigError(true)
+      }
     }
   }, [])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(loadConfiguracion, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadConfiguracion])
+
+  useAutoRefresh(loadConfiguracion)
 
   return (
     <div className="public-shell">

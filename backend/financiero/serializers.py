@@ -140,6 +140,10 @@ class ContratoSerializer(serializers.ModelSerializer):
 class CostoDirectoSerializer(serializers.ModelSerializer):
     contrato_label = serializers.SerializerMethodField()
     contrato_descripcion = serializers.SerializerMethodField()
+    contrato_estado = serializers.CharField(
+        source="contrato.estado_contrato",
+        read_only=True,
+    )
     cliente_nombre = serializers.CharField(
         source="contrato.cliente.nombre",
         read_only=True,
@@ -152,6 +156,7 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
         source="contrato.tipo_evento.nombre",
         read_only=True,
     )
+    fecha_evento = serializers.DateField(source="contrato.fecha_evento", read_only=True)
     valor = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -165,9 +170,11 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
             "contrato",
             "contrato_label",
             "contrato_descripcion",
+            "contrato_estado",
             "cliente_nombre",
             "cliente_telefono",
             "tipo_evento_nombre",
+            "fecha_evento",
             "concepto",
             "valor",
             "fecha",
@@ -201,6 +208,9 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
         if value is None:
             raise serializers.ValidationError("El contrato es obligatorio.")
         if value.estado_contrato != Contrato.EstadoContrato.CONFIRMADO:
+            current_contract_id = getattr(self.instance, "contrato_id", None)
+            if self.instance is not None and value.id == current_contract_id:
+                return value
             raise serializers.ValidationError(
                 "Solo se pueden registrar costos directos en contratos confirmados."
             )

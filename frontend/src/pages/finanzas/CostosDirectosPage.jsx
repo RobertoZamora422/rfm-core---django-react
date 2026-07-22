@@ -1,20 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Edit3, FilterX, Plus, Search, Trash2 } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
+import { FiltersToolbar } from '../../components/ui/FiltersToolbar'
 import { Input } from '../../components/ui/Input'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Select } from '../../components/ui/Select'
-import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import { StatusBadge } from '../../components/ui/StatusBadge'
+import { SummaryStrip } from '../../components/ui/SummaryStrip'
 import { Textarea } from '../../components/ui/Textarea'
+import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 import { contratosService, costosDirectosService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
-import { formatCurrency, formatDate } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatPhone, toDateInputValue } from '../../utils/formatters'
 
 const initialFilters = {
   buscar: '',
@@ -23,12 +28,21 @@ const initialFilters = {
   hasta: '',
 }
 
-const emptyForm = {
-  contrato: '',
-  concepto: '',
-  valor: '',
-  fecha: new Date().toISOString().slice(0, 10),
-  observaciones: '',
+const initialSummary = {
+  cantidad: 0,
+  total_registrado: '0.00',
+  total_financiero: '0.00',
+  historicos_cancelados: 0,
+}
+
+function getEmptyForm(contrato = '') {
+  return {
+    contrato,
+    concepto: '',
+    valor: '',
+    fecha: toDateInputValue(),
+    observaciones: '',
+  }
 }
 
 function toArray(data) {
@@ -36,18 +50,15 @@ function toArray(data) {
 }
 
 function buildQueryParams(filters) {
-  return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''),
-  )
+  return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== ''))
 }
 
 function buildContractLabel(contrato) {
   if (contrato.contrato_descripcion) return contrato.contrato_descripcion
-  if (contrato.contrato_label && !contrato.cliente_nombre) return contrato.contrato_label
 
-  return `Contrato #${contrato.id} - ${contrato.cliente_nombre} - ${contrato.tipo_evento_nombre} (${formatDate(
+  return `Contrato #${contrato.id} · ${contrato.cliente_nombre} · ${contrato.tipo_evento_nombre} · ${formatDate(
     contrato.fecha_evento,
-  )})`
+  )}`
 }
 
 function buildContractOptions(contratos, initialValues) {
@@ -56,26 +67,24 @@ function buildContractOptions(contratos, initialValues) {
     return contratos
   }
 
-  const fallbackLabel = initialValues.contrato_label || `Contrato #${initialValues.contrato}`
-
   return [
     ...contratos,
     {
       id: initialValues.contrato,
       contrato_descripcion:
-        initialValues.contrato_descripcion || `${fallbackLabel} (actual no confirmado)`,
+        initialValues.contrato_descripcion || `Contrato #${initialValues.contrato} · registro histórico`,
     },
   ]
 }
 
 function buildInitialForm(item) {
-  if (!item) return emptyForm
+  if (!item) return getEmptyForm()
 
   return {
     contrato: item.contrato ?? '',
     concepto: item.concepto ?? '',
     valor: item.valor ?? '',
-    fecha: item.fecha ?? emptyForm.fecha,
+    fecha: item.fecha ?? toDateInputValue(),
     observaciones: item.observaciones ?? '',
   }
 }
@@ -91,6 +100,8 @@ function CostoDirectoForm({
 }) {
   const [form, setForm] = useState(() => buildInitialForm(initialValues))
   const contractOptions = buildContractOptions(contratos, initialValues)
+  const isHistoricalContract = initialValues?.contrato_estado === 'cancelado'
+  useFocusFirstError(errors)
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -108,8 +119,13 @@ function CostoDirectoForm({
   return (
     <form className="resource-form" onSubmit={handleSubmit}>
       <Select
-        disabled={isLoadingContracts}
+        disabled={isLoadingContracts || isHistoricalContract}
         error={errors.contrato}
+        helpText={
+          isHistoricalContract
+            ? 'El contrato está cancelado. Puedes corregir este registro histórico, pero no reasignarlo.'
+            : 'Identifica el contrato por cliente, evento y fecha.'
+        }
         id="costo-directo-contrato"
         label="Contrato"
         name="contrato"
@@ -117,27 +133,30 @@ function CostoDirectoForm({
         required
         value={form.contrato}
       >
-        <option value="">Seleccione un contrato</option>
+        <option value="">Seleccione un contrato confirmado</option>
         {contractOptions.map((contrato) => (
           <option key={contrato.id} value={contrato.id}>
             {buildContractLabel(contrato)}
           </option>
         ))}
       </Select>
-      <div className="form-grid">
+      <div className="form-grid form-grid--three">
         <Input
           error={errors.concepto}
           id="costo-directo-concepto"
           label="Concepto"
+          maxLength={150}
           name="concepto"
           onChange={handleChange}
+          placeholder="Ej. Catering, decoración o transporte"
           required
           value={form.concepto}
         />
         <Input
           error={errors.valor}
           id="costo-directo-valor"
-          label="Valor"
+          inputMode="decimal"
+          label="Valor (USD)"
           min="0"
           name="valor"
           onChange={handleChange}
@@ -148,8 +167,9 @@ function CostoDirectoForm({
         />
         <Input
           error={errors.fecha}
+          helpText="Fecha en la que se registró o comprobó el costo."
           id="costo-directo-fecha"
-          label="Fecha"
+          label="Fecha de registro"
           name="fecha"
           onChange={handleChange}
           required
@@ -160,17 +180,17 @@ function CostoDirectoForm({
       <Textarea
         error={errors.observaciones}
         id="costo-directo-observaciones"
-        label="Observaciones"
+        label="Observaciones (opcional)"
         name="observaciones"
         onChange={handleChange}
         value={form.observaciones}
       />
       <div className="form-actions">
-        <Button onClick={onCancel} variant="secondary">
+        <Button disabled={isSubmitting} onClick={onCancel} variant="secondary">
           Cancelar
         </Button>
-        <Button isLoading={isSubmitting} type="submit">
-          Guardar costo directo
+        <Button isLoading={isSubmitting} loadingLabel="Guardando costo" type="submit">
+          {initialValues?.id ? 'Guardar cambios' : 'Registrar costo'}
         </Button>
       </div>
     </form>
@@ -178,19 +198,31 @@ function CostoDirectoForm({
 }
 
 export function CostosDirectosPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const contratoParam = searchParams.get('contrato') ?? ''
   const shouldOpenCreateFromQuery = searchParams.get('nuevo') === '1'
   const [costos, setCostos] = useState([])
   const [contratos, setContratos] = useState([])
-  const [filters, setFilters] = useState(() => ({ ...initialFilters, contrato: contratoParam }))
-  const [appliedFilters, setAppliedFilters] = useState(() => ({ ...initialFilters, contrato: contratoParam }))
+  const [filters, setFilters] = useState(() => ({
+    ...initialFilters,
+    buscar: searchParams.get('buscar') ?? '',
+    contrato: contratoParam,
+    desde: searchParams.get('desde') ?? '',
+    hasta: searchParams.get('hasta') ?? '',
+  }))
+  const debouncedSearch = useDebouncedValue(filters.buscar, 350)
+  const appliedFilters = useMemo(
+    () => ({ ...filters, buscar: debouncedSearch }),
+    [debouncedSearch, filters],
+  )
+  const queryParams = useMemo(() => buildQueryParams(appliedFilters), [appliedFilters])
+  const [summary, setSummary] = useState(initialSummary)
   const [fieldErrors, setFieldErrors] = useState({})
   const [pageError, setPageError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [editingItem, setEditingItem] = useState(null)
   const [newItemInitialValues, setNewItemInitialValues] = useState(() =>
-    shouldOpenCreateFromQuery ? { ...emptyForm, contrato: contratoParam } : null,
+    shouldOpenCreateFromQuery ? getEmptyForm(contratoParam) : null,
   )
   const [deletingItem, setDeletingItem] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(shouldOpenCreateFromQuery)
@@ -198,24 +230,35 @@ export function CostosDirectosPage() {
   const [isLoadingContracts, setIsLoadingContracts] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [formTrigger, setFormTrigger] = useState(null)
+  const requestIdRef = useRef(0)
+  const hasFilters = Object.values(appliedFilters).some(Boolean)
 
-  const loadCostos = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
+  const loadCostos = useCallback(async ({ silent = false } = {}) => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    if (!silent) setIsLoading(true)
+    if (!silent) setPageError('')
 
     try {
-      const data = await costosDirectosService.list(buildQueryParams(appliedFilters))
-      setCostos(toArray(data))
+      const [data, summaryData] = await Promise.all([
+        costosDirectosService.list(queryParams),
+        costosDirectosService.resumen(queryParams),
+      ])
+      if (requestId === requestIdRef.current) {
+        setCostos(toArray(data))
+        setSummary(summaryData)
+        setPageError('')
+      }
     } catch (error) {
-      setPageError(getApiErrorMessage(error))
+      if (requestId === requestIdRef.current) setPageError(getApiErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [appliedFilters])
+  }, [queryParams])
 
   const loadContratos = useCallback(async () => {
     setIsLoadingContracts(true)
-
     try {
       const data = await contratosService.list({ estado_contrato: 'confirmado' })
       setContratos(toArray(data))
@@ -225,6 +268,10 @@ export function CostosDirectosPage() {
       setIsLoadingContracts(false)
     }
   }, [])
+
+  useEffect(() => {
+    setSearchParams(queryParams, { replace: true })
+  }, [queryParams, setSearchParams])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadCostos, 0)
@@ -241,43 +288,43 @@ export function CostosDirectosPage() {
   const handleFilterChange = (event) => {
     const { name, value } = event.target
     setFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleApplyFilters = (event) => {
-    event.preventDefault()
     setActionMessage('')
-    setAppliedFilters(filters)
   }
 
   const handleClearFilters = () => {
     setFilters(initialFilters)
-    setAppliedFilters(initialFilters)
     setActionMessage('')
   }
 
-  const openCreate = () => {
+  const openCreate = (event) => {
+    setFormTrigger(event?.currentTarget ?? null)
     setEditingItem(null)
-    setNewItemInitialValues(null)
+    setNewItemInitialValues(getEmptyForm(filters.contrato || contratoParam))
     setFieldErrors({})
     setPageError('')
+    setActionMessage('')
     setIsFormOpen(true)
   }
 
-  const openEdit = (item) => {
+  const openEdit = (item, event) => {
+    setFormTrigger(event?.currentTarget ?? null)
     setEditingItem(item)
     setNewItemInitialValues(null)
     setFieldErrors({})
     setPageError('')
+    setActionMessage('')
     setIsFormOpen(true)
   }
 
   const closeForm = () => {
+    if (isSaving) return
     setEditingItem(null)
     setNewItemInitialValues(null)
     setIsFormOpen(false)
   }
 
   const handleSubmit = async (payload) => {
+    if (isSaving) return
     setIsSaving(true)
     setFieldErrors({})
     setPageError('')
@@ -286,33 +333,36 @@ export function CostosDirectosPage() {
     try {
       if (editingItem) {
         await costosDirectosService.update(editingItem.id, payload)
-        setActionMessage(`Costo directo #${editingItem.id} actualizado.`)
+        setActionMessage(`El costo “${payload.concepto}” se actualizó correctamente.`)
       } else {
-        const created = await costosDirectosService.create(payload)
-        setActionMessage(`Costo directo #${created.id} registrado.`)
+        await costosDirectosService.create(payload)
+        setActionMessage(`El costo “${payload.concepto}” se registró correctamente.`)
       }
-      closeForm()
-      await loadCostos()
+      setEditingItem(null)
+      setNewItemInitialValues(null)
+      setIsFormOpen(false)
+      await loadCostos({ silent: true })
     } catch (error) {
-      setFieldErrors(getApiFieldErrors(error))
-      setPageError(getApiErrorMessage(error))
+      const errors = getApiFieldErrors(error)
+      setFieldErrors(errors)
+      if (!Object.keys(errors).length) setPageError(getApiErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!deletingItem) return
-
+    if (!deletingItem || isDeleting) return
     setIsDeleting(true)
     setPageError('')
     setActionMessage('')
 
     try {
+      const deletedConcept = deletingItem.concepto
       await costosDirectosService.remove(deletingItem.id)
-      setActionMessage(`Costo directo #${deletingItem.id} eliminado.`)
       setDeletingItem(null)
-      await loadCostos()
+      setActionMessage(`El costo “${deletedConcept}” se eliminó del registro activo.`)
+      await loadCostos({ silent: true })
     } catch (error) {
       setPageError(getApiErrorMessage(error))
     } finally {
@@ -325,9 +375,14 @@ export function CostosDirectosPage() {
       key: 'contrato',
       header: 'Contrato',
       render: (item) => (
-        <Link className="text-link" to={`/contratos/${item.contrato}`}>
-          {item.contrato_label || `Contrato #${item.contrato}`}
-        </Link>
+        <div className="stacked-cell">
+          <Link className="text-link" to={`/contratos/${item.contrato}`}>
+            Contrato #{item.contrato}
+          </Link>
+          <StatusBadge status={item.contrato_estado}>
+            {item.contrato_estado === 'cancelado' ? 'Cancelado' : 'Confirmado'}
+          </StatusBadge>
+        </div>
       ),
     },
     {
@@ -336,28 +391,38 @@ export function CostosDirectosPage() {
       render: (item) => (
         <div className="stacked-cell">
           <strong>{item.cliente_nombre}</strong>
-          <span>{item.cliente_telefono || '-'}</span>
+          <span>{formatPhone(item.cliente_telefono)}</span>
         </div>
       ),
     },
-    { key: 'tipo_evento_nombre', header: 'Evento' },
+    {
+      key: 'evento',
+      header: 'Evento',
+      render: (item) => (
+        <div className="stacked-cell">
+          <strong>{item.tipo_evento_nombre}</strong>
+          <span>{formatDate(item.fecha_evento)}</span>
+        </div>
+      ),
+    },
     { key: 'concepto', header: 'Concepto' },
     {
       key: 'valor',
       header: 'Valor',
+      align: 'right',
       render: (item) => formatCurrency(item.valor),
     },
     {
       key: 'fecha',
-      header: 'Fecha',
+      header: 'Registrado',
       render: (item) => formatDate(item.fecha),
     },
     {
       key: 'acciones',
       header: 'Acciones',
       render: (item) => (
-        <div className="table-actions">
-          <Button icon={Edit3} onClick={() => openEdit(item)} variant="secondary">
+        <div className="table-actions table-actions--compact">
+          <Button icon={Edit3} onClick={(event) => openEdit(item, event)} variant="secondary">
             Editar
           </Button>
           <Button icon={Trash2} onClick={() => setDeletingItem(item)} variant="ghost">
@@ -369,80 +434,117 @@ export function CostosDirectosPage() {
   ]
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--workspace">
       <PageHeader
         actions={
           <Button icon={Plus} onClick={openCreate}>
-            Nuevo costo directo
+            Nuevo costo
           </Button>
         }
-        description="Registra costos asociados directamente a contratos."
+        description="Registra y consulta los costos vinculados a cada evento contratado."
+        eyebrow="Finanzas"
         title="Costos directos"
       />
 
-      <ErrorMessage>{pageError}</ErrorMessage>
-      {actionMessage ? <div className="success-message">{actionMessage}</div> : null}
+      <ErrorMessage
+        action={pageError ? <Button onClick={() => loadCostos()} variant="secondary">Reintentar</Button> : null}
+      >
+        {pageError}
+      </ErrorMessage>
+      {actionMessage ? <div className="success-message" role="status">{actionMessage}</div> : null}
 
-      <Card>
-        <form className="filters-grid filters-grid--costs" onSubmit={handleApplyFilters}>
-          <Input
-            id="costos-buscar"
-            label="Buscar"
-            name="buscar"
-            onChange={handleFilterChange}
-            placeholder="Cliente, telefono o concepto"
-            value={filters.buscar}
-          />
-          <Select
-            disabled={isLoadingContracts}
-            id="costos-contrato"
-            label="Contrato"
-            name="contrato"
-            onChange={handleFilterChange}
-            value={filters.contrato}
-          >
-            <option value="">Todos los contratos</option>
-            {contratos.map((contrato) => (
-              <option key={contrato.id} value={contrato.id}>
-                {buildContractLabel(contrato)}
-              </option>
-            ))}
-          </Select>
-          <Input
-            id="costos-desde"
-            label="Fecha desde"
-            name="desde"
-            onChange={handleFilterChange}
-            type="date"
-            value={filters.desde}
-          />
-          <Input
-            id="costos-hasta"
-            label="Fecha hasta"
-            name="hasta"
-            onChange={handleFilterChange}
-            type="date"
-            value={filters.hasta}
-          />
-          <div className="filters-actions">
-            <Button icon={Search} type="submit">
-              Filtrar
-            </Button>
-            <Button icon={FilterX} onClick={handleClearFilters} variant="secondary">
-              Limpiar
-            </Button>
-          </div>
-        </form>
-      </Card>
+      <SummaryStrip
+        groups={[
+          {
+            label: hasFilters ? 'Resultados filtrados' : 'Costos registrados',
+            items: [
+              { label: summary.cantidad === 1 ? 'registro' : 'registros', value: summary.cantidad },
+              { label: 'Total registrado', value: formatCurrency(summary.total_registrado), tone: 'notice' },
+            ],
+          },
+          {
+            label: 'Lectura financiera',
+            items: [
+              { label: 'En contratos confirmados', value: formatCurrency(summary.total_financiero), tone: 'success' },
+              ...(summary.historicos_cancelados
+                ? [{ label: 'históricos cancelados', value: summary.historicos_cancelados, tone: 'muted' }]
+                : []),
+            ],
+          },
+        ]}
+      />
 
-      <Card>
+      <FiltersToolbar
+        hasFilters={hasFilters}
+        isLoading={isLoading}
+        onClear={handleClearFilters}
+        resultCount={summary.cantidad}
+      >
+        <Input
+          icon={Search}
+          id="costos-buscar"
+          label="Buscar"
+          name="buscar"
+          onChange={handleFilterChange}
+          placeholder="Cliente, teléfono o concepto"
+          type="search"
+          value={filters.buscar}
+        />
+        <Select
+          disabled={isLoadingContracts}
+          id="costos-contrato"
+          label="Contrato"
+          name="contrato"
+          onChange={handleFilterChange}
+          value={filters.contrato}
+        >
+          <option value="">Todos los contratos confirmados</option>
+          {contratos.map((contrato) => (
+            <option key={contrato.id} value={contrato.id}>
+              {buildContractLabel(contrato)}
+            </option>
+          ))}
+        </Select>
+        <Input
+          id="costos-desde"
+          label="Registro desde"
+          name="desde"
+          onChange={handleFilterChange}
+          type="date"
+          value={filters.desde}
+        />
+        <Input
+          id="costos-hasta"
+          label="Registro hasta"
+          name="hasta"
+          onChange={handleFilterChange}
+          type="date"
+          value={filters.hasta}
+        />
+      </FiltersToolbar>
+
+      <Card className="commercial-list-card">
         {isLoading ? (
           <LoadingState label="Cargando costos directos" />
         ) : (
           <DataTable
+            caption="Costos directos asociados a contratos"
             columns={columns}
-            emptyMessage="No hay costos directos para los filtros aplicados."
-            mobileTitle={(item) => `${item.concepto} - ${item.contrato_label}`}
+            emptyAction={
+              hasFilters ? (
+                <Button onClick={handleClearFilters} variant="secondary">Limpiar filtros</Button>
+              ) : (
+                <Button icon={Plus} onClick={openCreate}>Registrar primer costo</Button>
+              )
+            }
+            emptyMessage={
+              hasFilters
+                ? 'No hay costos que coincidan con la búsqueda o los filtros actuales.'
+                : 'Registra un costo cuando exista un gasto directamente relacionado con un contrato.'
+            }
+            emptyTitle={hasFilters ? 'Sin coincidencias' : 'Aún no hay costos directos'}
+            getRowClassName={(item) => item.contrato_estado === 'cancelado' ? 'data-table__row--cancelled' : ''}
+            mobileTitle={(item) => `${item.concepto} · ${formatCurrency(item.valor)}`}
             rows={costos}
           />
         )}
@@ -451,7 +553,8 @@ export function CostosDirectosPage() {
       <Modal
         isOpen={isFormOpen}
         onClose={closeForm}
-        title={editingItem ? `Editar costo directo #${editingItem.id}` : 'Nuevo costo directo'}
+        returnFocusElement={formTrigger}
+        title={editingItem ? `Editar costo #${editingItem.id}` : 'Registrar costo directo'}
       >
         <CostoDirectoForm
           contratos={contratos}
@@ -467,20 +570,22 @@ export function CostosDirectosPage() {
 
       <Modal
         isOpen={Boolean(deletingItem)}
-        onClose={() => setDeletingItem(null)}
+        onClose={() => {
+          if (!isDeleting) setDeletingItem(null)
+        }}
         title="Eliminar costo directo"
       >
         <div className="confirm-dialog">
           <p>
-            Se marcara como eliminado el costo directo #{deletingItem?.id}. No se borrara
-            fisicamente, pero dejara de contar en rentabilidad, dashboard y reportes.
+            Se eliminará “{deletingItem?.concepto}” por {formatCurrency(deletingItem?.valor)} del registro activo.
+            Se conservará en el historial, pero dejará de contar en rentabilidad, dashboard y reportes.
           </p>
           <div className="form-actions">
-            <Button onClick={() => setDeletingItem(null)} variant="secondary">
-              Cancelar
+            <Button disabled={isDeleting} onClick={() => setDeletingItem(null)} variant="secondary">
+              Mantener costo
             </Button>
-            <Button icon={Trash2} isLoading={isDeleting} onClick={handleDelete}>
-              Eliminar
+            <Button icon={Trash2} isLoading={isDeleting} loadingLabel="Eliminando" onClick={handleDelete}>
+              Eliminar costo
             </Button>
           </div>
         </div>

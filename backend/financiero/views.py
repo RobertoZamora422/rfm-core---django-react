@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from config.pagination import OptionalPageNumberPagination
 
-from .models import CostoDirecto, GastoFijoMensual
+from .models import Contrato, CostoDirecto, GastoFijoMensual
 from .serializers import (
     ContratoSerializer,
     CostoDirectoSerializer,
@@ -213,6 +213,33 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         eliminar_logicamente_costo_directo(instance)
+
+    @action(detail=False, methods=["get"], url_path="resumen")
+    def resumen(self, request):
+        summary = self.get_queryset().aggregate(
+            cantidad=Count("id"),
+            total_registrado=Sum("valor"),
+            total_financiero=Sum(
+                "valor",
+                filter=Q(
+                    contrato__estado_contrato=Contrato.EstadoContrato.CONFIRMADO
+                ),
+            ),
+            historicos_cancelados=Count(
+                "id",
+                filter=Q(
+                    contrato__estado_contrato=Contrato.EstadoContrato.CANCELADO
+                ),
+            ),
+        )
+        return Response(
+            {
+                "cantidad": summary["cantidad"],
+                "total_registrado": _serialize_decimal(summary["total_registrado"]),
+                "total_financiero": _serialize_decimal(summary["total_financiero"]),
+                "historicos_cancelados": summary["historicos_cancelados"],
+            }
+        )
 
 
 class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):

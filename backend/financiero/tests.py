@@ -128,6 +128,20 @@ class FinancieroCleanDatabaseApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["total_periodo"], "0.00")
 
+    def test_costos_directos_resumen_sin_costos_devuelve_ceros(self):
+        response = self.client.get("/api/costos-directos/resumen/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data,
+            {
+                "cantidad": 0,
+                "total_registrado": "0.00",
+                "total_financiero": "0.00",
+                "historicos_cancelados": 0,
+            },
+        )
+
     def test_listados_financieros_sin_registros_devuelven_lista_vacia(self):
         endpoints = [
             "/api/contratos/",
@@ -534,7 +548,48 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.data[0]["cliente_nombre"], "Cliente API")
         self.assertEqual(response.data[0]["cliente_telefono"], "+593 999999111")
         self.assertEqual(response.data[0]["tipo_evento_nombre"], "Boda")
+        self.assertEqual(
+            response.data[0]["contrato_estado"],
+            Contrato.EstadoContrato.CONFIRMADO,
+        )
         self.assertIn("Contrato #", response.data[0]["contrato_descripcion"])
+
+    def test_resumen_costos_respeta_filtros_y_separa_cancelados(self):
+        contrato_confirmado = self.crear_contrato()
+        contrato_cancelado = self.crear_contrato(
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+            fecha_evento=date(2026, 8, 2),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_confirmado,
+            concepto="Catering",
+            valor=Decimal("700.00"),
+            fecha=date(2026, 8, 1),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_cancelado,
+            concepto="Catering cancelado",
+            valor=Decimal("250.00"),
+            fecha=date(2026, 8, 2),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato_confirmado,
+            concepto="Costo eliminado",
+            valor=Decimal("999.00"),
+            fecha=date(2026, 8, 3),
+            eliminado=True,
+        )
+
+        response = self.client.get(
+            "/api/costos-directos/resumen/",
+            {"buscar": "catering", "desde": "2026-08-01", "hasta": "2026-08-31"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["cantidad"], 2)
+        self.assertEqual(response.data["total_registrado"], "950.00")
+        self.assertEqual(response.data["total_financiero"], "700.00")
+        self.assertEqual(response.data["historicos_cancelados"], 1)
 
     def test_filtra_costos_directos_por_telefono_y_rechaza_rango_invertido(self):
         contrato = self.crear_contrato()
@@ -607,6 +662,32 @@ class FinancieroApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("contrato", response.data)
+
+    def test_permite_corregir_costo_historico_sin_reasignar_contrato_cancelado(self):
+        contrato = self.crear_contrato(
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+        costo = CostoDirecto.objects.create(
+            contrato=contrato,
+            concepto="Costo historico",
+            valor=Decimal("100.00"),
+            fecha=date(2026, 8, 1),
+        )
+
+        response = self.client.patch(
+            f"/api/costos-directos/{costo.id}/",
+            {
+                "contrato": contrato.id,
+                "concepto": "Costo historico corregido",
+                "valor": "125.00",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        costo.refresh_from_db()
+        self.assertEqual(costo.valor, Decimal("125.00"))
+        self.assertEqual(costo.contrato_id, contrato.id)
 
     def test_filtra_gastos_fijos_y_devuelve_resumen_del_periodo(self):
         GastoFijoMensual.objects.create(

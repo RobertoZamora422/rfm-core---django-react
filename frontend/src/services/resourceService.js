@@ -75,7 +75,14 @@ export const contratosService = {
   },
 }
 
-export const costosDirectosService = createResourceService('/costos-directos/')
+export const costosDirectosService = {
+  ...createResourceService('/costos-directos/'),
+
+  async resumen(params) {
+    const { data } = await apiClient.get('/costos-directos/resumen/', { params })
+    return data
+  },
+}
 
 export const gastosFijosService = {
   ...createResourceService('/gastos-fijos/'),

@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   BarChart3,
   CalendarDays,
   Download,
   FileText,
-  FilterX,
   Package,
-  Search,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -18,32 +16,17 @@ import { Input } from '../../components/ui/Input'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { Select } from '../../components/ui/Select'
+import { PeriodToolbar } from '../../components/ui/PeriodToolbar'
+import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { reportesService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
-import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatPercent, toDateInputValue } from '../../utils/formatters'
+import { getCurrentPeriodValue, periodToFilters } from '../../utils/periods'
 
 const today = new Date()
-const currentMonth = String(today.getMonth() + 1)
-const currentYear = String(today.getFullYear())
-const todayValue = today.toISOString().slice(0, 10)
-const firstDayValue = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10)
-
-const monthOptions = [
-  { value: '1', label: 'Enero' },
-  { value: '2', label: 'Febrero' },
-  { value: '3', label: 'Marzo' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Mayo' },
-  { value: '6', label: 'Junio' },
-  { value: '7', label: 'Julio' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Septiembre' },
-  { value: '10', label: 'Octubre' },
-  { value: '11', label: 'Noviembre' },
-  { value: '12', label: 'Diciembre' },
-]
+const todayValue = toDateInputValue(today)
+const firstDayValue = toDateInputValue(new Date(today.getFullYear(), today.getMonth(), 1))
 
 const reportOptions = [
   { key: 'comercial', label: 'Comercial', icon: FileText },
@@ -57,10 +40,7 @@ const initialRangeFilters = {
   hasta: todayValue,
 }
 
-const initialFinancialFilters = {
-  mes: currentMonth,
-  anio: currentYear,
-}
+const initialFinancialPeriod = getCurrentPeriodValue(today)
 
 const quoteStatusLabels = {
   nueva: 'Nueva',
@@ -81,19 +61,6 @@ const paymentLabels = {
   pagado: 'Pagado',
 }
 
-const statusClasses = {
-  nueva: 'status-badge--info',
-  contactada: 'status-badge--notice',
-  confirmada: 'status-badge--success',
-  convertida: 'status-badge--strong-success',
-  descartada: 'status-badge--neutral',
-  confirmado: 'status-badge--success',
-  cancelado: 'status-badge--neutral-dark',
-  pendiente: 'status-badge--warning',
-  abonado: 'status-badge--notice',
-  pagado: 'status-badge--success',
-}
-
 function buildQueryParams(filters) {
   return Object.fromEntries(
     Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''),
@@ -104,11 +71,11 @@ function getStatusLabel(value, labels) {
   return labels[value] || value
 }
 
-function StatusBadge({ labels, value }) {
+function ReportStatusBadge({ labels, value }) {
   return (
-    <span className={`status-badge ${statusClasses[value] || 'status-badge--neutral'}`}>
+    <StatusBadge status={value}>
       {getStatusLabel(value, labels)}
-    </span>
+    </StatusBadge>
   )
 }
 
@@ -130,8 +97,8 @@ function downloadCsv(filename, rows) {
   const csv = [
     headers.map(csvEscape).join(','),
     ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(',')),
-  ].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  ].join('\r\n')
+  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -147,59 +114,66 @@ function buildExportRows(activeReport, data) {
 
   if (activeReport === 'comercial') {
     return (data.cotizaciones ?? []).map((row) => ({
-      cotizacion: row.id,
-      cliente: row.cliente_nombre,
-      telefono: row.cliente_telefono,
-      evento: row.tipo_evento_nombre,
-      fecha_tentativa: row.fecha_tentativa,
-      estado: getStatusLabel(row.estado, quoteStatusLabels),
-      total_estimado: row.total_estimado,
-      contrato_id: row.contrato_id ?? '',
+      'Cotización': row.id,
+      'Cliente': row.cliente_nombre,
+      'Teléfono': row.cliente_telefono,
+      'Tipo de evento': row.tipo_evento_nombre,
+      'Fecha tentativa': formatDate(row.fecha_tentativa),
+      'Estado comercial': getStatusLabel(row.estado, quoteStatusLabels),
+      'Estimado referencial (USD)': row.total_estimado,
+      'Contrato asociado': row.contrato_id ?? '',
     }))
   }
 
   if (activeReport === 'financiero') {
     return (data.rentabilidad_eventos ?? []).map((row) => ({
-      contrato: row.contrato_id,
-      cliente: row.cliente_nombre,
-      evento: row.tipo_evento_nombre,
-      fecha_evento: row.fecha_evento,
-      valor_final: row.valor_final,
-      costos_directos: row.costos_directos,
-      utilidad_bruta: row.utilidad_bruta,
-      margen_bruto: row.margen_bruto,
-      estado_pago: getStatusLabel(row.estado_pago, paymentLabels),
-      saldo_pendiente: row.saldo_pendiente,
+      'Contrato': row.contrato_id,
+      'Cliente': row.cliente_nombre,
+      'Tipo de evento': row.tipo_evento_nombre,
+      'Fecha del evento': formatDate(row.fecha_evento),
+      'Ingresos confirmados (USD)': row.valor_final,
+      'Costos directos (USD)': row.costos_directos,
+      'Utilidad bruta (USD)': row.utilidad_bruta,
+      'Margen bruto (%)': row.margen_bruto,
+      'Estado de pago': getStatusLabel(row.estado_pago, paymentLabels),
+      'Saldo pendiente (USD)': row.saldo_pendiente,
     }))
   }
 
   if (activeReport === 'eventos') {
     return (data.eventos ?? []).map((row) => ({
-      contrato: row.contrato_id,
-      cliente: row.cliente_nombre,
-      telefono: row.cliente_telefono,
-      evento: row.tipo_evento_nombre,
-      fecha_evento: row.fecha_evento,
-      invitados: row.numero_invitados,
-      estado_contrato: getStatusLabel(row.estado_contrato, contractStatusLabels),
-      estado_pago: getStatusLabel(row.estado_pago, paymentLabels),
-      valor_final: row.valor_final,
-      monto_abonado: row.monto_abonado,
-      saldo_pendiente: row.saldo_pendiente,
+      'Contrato': row.contrato_id,
+      'Cliente': row.cliente_nombre,
+      'Teléfono': row.cliente_telefono,
+      'Tipo de evento': row.tipo_evento_nombre,
+      'Fecha del evento': formatDate(row.fecha_evento),
+      'Invitados': row.numero_invitados,
+      'Estado del contrato': getStatusLabel(row.estado_contrato, contractStatusLabels),
+      'Estado de pago': getStatusLabel(row.estado_pago, paymentLabels),
+      'Valor final (USD)': row.valor_final,
+      'Monto abonado (USD)': row.monto_abonado,
+      'Saldo pendiente (USD)': row.saldo_pendiente,
     }))
   }
 
   return (data.paquetes ?? []).map((row) => ({
-    paquete: row.paquete_nombre,
-    tipo_servicio: row.tipo_servicio,
-    cotizaciones: row.cotizaciones,
-    cotizaciones_convertidas: row.cotizaciones_convertidas,
-    contratos_confirmados: row.contratos_confirmados,
-    ingresos_confirmados: row.ingresos_confirmados,
-    costos_directos: row.costos_directos,
-    utilidad_bruta: row.utilidad_bruta,
-    margen_bruto: row.margen_bruto,
+    'Paquete': row.paquete_nombre,
+    'Tipo de servicio': row.tipo_servicio,
+    'Cotizaciones': row.cotizaciones,
+    'Cotizaciones convertidas': row.cotizaciones_convertidas,
+    'Contratos confirmados': row.contratos_confirmados,
+    'Ingresos confirmados (USD)': row.ingresos_confirmados,
+    'Costos directos (USD)': row.costos_directos,
+    'Utilidad bruta (USD)': row.utilidad_bruta,
+    'Margen bruto (%)': row.margen_bruto,
   }))
+}
+
+function getExportPeriodSlug(data) {
+  const period = data?.periodo
+  if (!period) return toDateInputValue()
+  if (period.mes && period.anio) return `${period.anio}-${String(period.mes).padStart(2, '0')}`
+  return `${period.desde}-a-${period.hasta}`
 }
 
 function ReportSelector({ activeReport, onChange }) {
@@ -207,8 +181,10 @@ function ReportSelector({ activeReport, onChange }) {
     <div className="report-selector" role="tablist" aria-label="Tipos de reporte">
       {reportOptions.map((option) => (
         <button
+          aria-controls="reporte-panel"
           aria-selected={activeReport === option.key}
           className={`report-selector__item ${activeReport === option.key ? 'report-selector__item--active' : ''}`}
+          id={`reporte-tab-${option.key}`}
           key={option.key}
           onClick={() => onChange(option.key)}
           role="tab"
@@ -224,73 +200,58 @@ function ReportSelector({ activeReport, onChange }) {
 
 function ReportFilters({
   activeReport,
+  errors,
   filters,
-  financialFilters,
-  isLoading,
-  onClear,
+  financialPeriod,
   onFilterChange,
-  onFinancialFilterChange,
-  onSubmit,
+  onFinancialPeriodChange,
+  onResetRange,
 }) {
-  const isFinancial = activeReport === 'financiero'
+  if (activeReport === 'financiero') {
+    return (
+      <PeriodToolbar
+        id="reporte-periodo-financiero"
+        label="Periodo del reporte financiero"
+        onChange={onFinancialPeriodChange}
+        value={financialPeriod}
+      />
+    )
+  }
 
   return (
-    <Card>
-      <form className="filters-grid filters-grid--reports" onSubmit={onSubmit}>
-        {isFinancial ? (
-          <>
-            <Select
-              id="reporte-mes"
-              label="Mes"
-              name="mes"
-              onChange={onFinancialFilterChange}
-              value={financialFilters.mes}
-            >
-              {monthOptions.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </Select>
-            <Input
-              id="reporte-anio"
-              label="Anio"
-              min="2000"
-              name="anio"
-              onChange={onFinancialFilterChange}
-              type="number"
-              value={financialFilters.anio}
-            />
-          </>
-        ) : (
-          <>
-            <Input
-              id="reporte-desde"
-              label="Desde"
-              name="desde"
-              onChange={onFilterChange}
-              type="date"
-              value={filters.desde}
-            />
-            <Input
-              id="reporte-hasta"
-              label="Hasta"
-              name="hasta"
-              onChange={onFilterChange}
-              type="date"
-              value={filters.hasta}
-            />
-          </>
-        )}
-        <div className="filters-actions">
-          <Button disabled={isLoading} icon={Search} type="submit">
-            Consultar
-          </Button>
-          <Button disabled={isLoading} icon={FilterX} onClick={onClear} variant="secondary">
-            Limpiar
-          </Button>
+    <Card className="report-period-card">
+      <div className="report-period-card__heading">
+        <div>
+          <span>Periodo consultado</span>
+          <strong>Rango de fechas</strong>
         </div>
-      </form>
+        <div className="report-period-card__actions">
+          <small>Los resultados cambian automáticamente.</small>
+          <Button onClick={onResetRange} variant="secondary">Mes actual</Button>
+        </div>
+      </div>
+      <div className="report-period-card__fields">
+        <Input
+          error={errors.desde}
+          id="reporte-desde"
+          label="Desde"
+          name="desde"
+          onChange={onFilterChange}
+          required
+          type="date"
+          value={filters.desde}
+        />
+        <Input
+          error={errors.hasta}
+          id="reporte-hasta"
+          label="Hasta"
+          name="hasta"
+          onChange={onFilterChange}
+          required
+          type="date"
+          value={filters.hasta}
+        />
+      </div>
     </Card>
   )
 }
@@ -318,8 +279,13 @@ function BreakdownList({ items, title }) {
           {items.map((item) => (
             <article className="report-breakdown__item" key={item.key || item.tipo_evento_nombre}>
               <strong>{item.label || item.tipo_evento_nombre}</strong>
-              <span>{item.cantidad ?? item.total} registro(s)</span>
-              {item.confirmados !== undefined ? <small>{item.confirmados} confirmado(s)</small> : null}
+              <span>
+                {item.cantidad ?? item.total}{' '}
+                {(item.cantidad ?? item.total) === 1 ? 'registro' : 'registros'}
+              </span>
+              {item.confirmados !== undefined ? (
+                <small>{item.confirmados} {item.confirmados === 1 ? 'confirmado' : 'confirmados'}</small>
+              ) : null}
             </article>
           ))}
         </div>
@@ -359,11 +325,12 @@ function CommercialReport({ data }) {
     {
       key: 'estado',
       header: 'Estado',
-      render: (row) => <StatusBadge labels={quoteStatusLabels} value={row.estado} />,
+      render: (row) => <ReportStatusBadge labels={quoteStatusLabels} value={row.estado} />,
     },
     {
       key: 'total_estimado',
       header: 'Estimado',
+      align: 'right',
       render: (row) => formatCurrency(row.total_estimado),
     },
   ]
@@ -401,6 +368,7 @@ function CommercialReport({ data }) {
       <BreakdownList items={data.por_estado} title="Cotizaciones por estado" />
       <Card>
         <DataTable
+          caption="Cotizaciones comerciales del periodo"
           columns={columns}
           emptyMessage="No hay cotizaciones en el periodo seleccionado."
           mobileTitle={(row) => `Cotizacion #${row.id}`}
@@ -423,7 +391,16 @@ function FinancialReport({ data }) {
         </Link>
       ),
     },
-    { key: 'cliente_nombre', header: 'Cliente' },
+    {
+      key: 'cliente_nombre',
+      header: 'Cliente / evento',
+      render: (row) => (
+        <div className="stacked-cell">
+          <strong>{row.cliente_nombre}</strong>
+          <span>{row.tipo_evento_nombre}</span>
+        </div>
+      ),
+    },
     {
       key: 'fecha_evento',
       header: 'Fecha',
@@ -432,17 +409,30 @@ function FinancialReport({ data }) {
     {
       key: 'valor_final',
       header: 'Ingresos',
+      align: 'right',
       render: (row) => formatCurrency(row.valor_final),
     },
     {
+      key: 'costos_directos',
+      header: 'Costos directos',
+      align: 'right',
+      render: (row) => formatCurrency(row.costos_directos),
+    },
+    {
       key: 'utilidad_bruta',
-      header: 'Utilidad',
+      header: 'Utilidad bruta',
+      align: 'right',
       render: (row) => formatCurrency(row.utilidad_bruta),
     },
     {
-      key: 'margen_bruto',
-      header: 'Margen',
-      render: (row) => formatPercent(row.margen_bruto),
+      key: 'pago',
+      header: 'Pago / saldo',
+      render: (row) => (
+        <div className="stacked-cell">
+          <ReportStatusBadge labels={paymentLabels} value={row.estado_pago} />
+          <span>{formatCurrency(row.saldo_pendiente)} pendiente</span>
+        </div>
+      ),
     },
   ]
 
@@ -465,6 +455,7 @@ function FinancialReport({ data }) {
       </Card>
       <Card>
         <DataTable
+          caption="Rentabilidad de contratos confirmados del periodo"
           columns={columns}
           emptyMessage="No hay contratos confirmados para el periodo financiero."
           mobileTitle={(row) => `Contrato #${row.contrato_id}`}
@@ -506,16 +497,17 @@ function EventsReport({ data }) {
     {
       key: 'estado_contrato',
       header: 'Contrato',
-      render: (row) => <StatusBadge labels={contractStatusLabels} value={row.estado_contrato} />,
+      render: (row) => <ReportStatusBadge labels={contractStatusLabels} value={row.estado_contrato} />,
     },
     {
       key: 'estado_pago',
       header: 'Pago',
-      render: (row) => <StatusBadge labels={paymentLabels} value={row.estado_pago} />,
+      render: (row) => <ReportStatusBadge labels={paymentLabels} value={row.estado_pago} />,
     },
     {
       key: 'saldo_pendiente',
       header: 'Saldo',
+      align: 'right',
       render: (row) => formatCurrency(row.saldo_pendiente),
     },
   ]
@@ -528,7 +520,7 @@ function EventsReport({ data }) {
             key: 'total',
             label: 'Eventos',
             value: summary.total_eventos,
-            detail: 'Contratos en agenda',
+            detail: `${summary.eventos_cancelados} ${summary.eventos_cancelados === 1 ? 'cancelado' : 'cancelados'} en historial`,
           },
           {
             key: 'confirmados',
@@ -553,8 +545,10 @@ function EventsReport({ data }) {
       <BreakdownList items={data.por_tipo_evento} title="Eventos por tipo" />
       <Card>
         <DataTable
+          caption="Eventos contratados del periodo"
           columns={columns}
           emptyMessage="No hay contratos en el periodo seleccionado."
+          getRowClassName={(row) => row.estado_contrato === 'cancelado' ? 'data-table__row--cancelled' : ''}
           mobileTitle={(row) => `Contrato #${row.contrato_id}`}
           rows={data.eventos}
         />
@@ -573,21 +567,25 @@ function PackagesReport({ data }) {
     {
       key: 'ingresos_confirmados',
       header: 'Ingresos',
+      align: 'right',
       render: (row) => formatCurrency(row.ingresos_confirmados),
     },
     {
       key: 'costos_directos',
       header: 'Costos',
+      align: 'right',
       render: (row) => formatCurrency(row.costos_directos),
     },
     {
       key: 'utilidad_bruta',
       header: 'Utilidad',
+      align: 'right',
       render: (row) => formatCurrency(row.utilidad_bruta),
     },
     {
       key: 'margen_bruto',
       header: 'Margen',
+      align: 'right',
       render: (row) => formatPercent(row.margen_bruto),
     },
   ]
@@ -624,6 +622,7 @@ function PackagesReport({ data }) {
       />
       <Card>
         <DataTable
+          caption="Actividad comercial y rentabilidad por paquete"
           columns={columns}
           emptyMessage="No hay actividad por paquete en el periodo seleccionado."
           mobileTitle={(row) => row.paquete_nombre}
@@ -637,30 +636,57 @@ function PackagesReport({ data }) {
 export function ReportesPage() {
   const [activeReport, setActiveReport] = useState('comercial')
   const [filters, setFilters] = useState(initialRangeFilters)
-  const [financialFilters, setFinancialFilters] = useState(initialFinancialFilters)
-  const [appliedFilters, setAppliedFilters] = useState(initialRangeFilters)
-  const [appliedFinancialFilters, setAppliedFinancialFilters] = useState(initialFinancialFilters)
+  const [financialPeriod, setFinancialPeriod] = useState(initialFinancialPeriod)
+  const [filterErrors, setFilterErrors] = useState({})
   const [reportData, setReportData] = useState(null)
   const [pageError, setPageError] = useState('')
+  const [exportError, setExportError] = useState('')
+  const [exportMessage, setExportMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const requestIdRef = useRef(0)
 
-  const loadReport = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
+  const loadReport = useCallback(async ({ silent = false } = {}) => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    const nextFilterErrors = {}
+
+    if (activeReport !== 'financiero') {
+      if (!filters.desde) nextFilterErrors.desde = 'Selecciona la fecha inicial.'
+      if (!filters.hasta) nextFilterErrors.hasta = 'Selecciona la fecha final.'
+      if (filters.desde && filters.hasta && filters.desde > filters.hasta) {
+        nextFilterErrors.hasta = 'La fecha final no puede ser anterior a la fecha inicial.'
+      }
+    }
+
+    setFilterErrors(nextFilterErrors)
+    if (Object.keys(nextFilterErrors).length) {
+      setReportData(null)
+      setIsLoading(false)
+      return
+    }
+
+    if (!silent) {
+      setIsLoading(true)
+      setReportData(null)
+      setPageError('')
+    }
 
     try {
       const params =
         activeReport === 'financiero'
-          ? buildQueryParams(appliedFinancialFilters)
-          : buildQueryParams(appliedFilters)
+          ? periodToFilters(financialPeriod)
+          : buildQueryParams(filters)
       const data = await reportesService[activeReport](params)
-      setReportData(data)
+      if (requestId === requestIdRef.current) {
+        setReportData(data)
+        setPageError('')
+      }
     } catch (error) {
-      setPageError(getApiErrorMessage(error))
+      if (requestId === requestIdRef.current) setPageError(getApiErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [activeReport, appliedFilters, appliedFinancialFilters])
+  }, [activeReport, filters, financialPeriod])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadReport, 0)
@@ -674,39 +700,25 @@ export function ReportesPage() {
     [activeReport],
   )
 
+  const exportRows = useMemo(
+    () => buildExportRows(activeReport, reportData),
+    [activeReport, reportData],
+  )
+
   const handleReportChange = (report) => {
     setActiveReport(report)
     setReportData(null)
     setPageError('')
+    setFilterErrors({})
+    setExportError('')
+    setExportMessage('')
   }
 
   const handleFilterChange = (event) => {
     const { name, value } = event.target
     setFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleFinancialFilterChange = (event) => {
-    const { name, value } = event.target
-    setFinancialFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    if (activeReport === 'financiero') {
-      setAppliedFinancialFilters(financialFilters)
-    } else {
-      setAppliedFilters(filters)
-    }
-  }
-
-  const handleClear = () => {
-    if (activeReport === 'financiero') {
-      setFinancialFilters(initialFinancialFilters)
-      setAppliedFinancialFilters(initialFinancialFilters)
-    } else {
-      setFilters(initialRangeFilters)
-      setAppliedFilters(initialRangeFilters)
-    }
+    setExportError('')
+    setExportMessage('')
   }
 
   const renderReport = () => {
@@ -718,27 +730,34 @@ export function ReportesPage() {
   }
 
   const handleExportCsv = () => {
-    const rows = buildExportRows(activeReport, reportData)
-    const timestamp = new Date().toISOString().slice(0, 10)
-    downloadCsv(`rfm-core-reporte-${activeReport}-${timestamp}.csv`, rows)
+    if (!exportRows.length) return
+
+    setExportError('')
+    setExportMessage('')
+    try {
+      const period = getExportPeriodSlug(reportData)
+      downloadCsv(`rfm-core-${activeReport}-${period}.csv`, exportRows)
+      setExportMessage(`El CSV del reporte ${activeLabel.toLowerCase()} se descargó correctamente.`)
+    } catch {
+      setExportError('No fue posible generar el archivo CSV. Inténtalo nuevamente.')
+    }
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--workspace">
       <PageHeader
         actions={
-          <>
-            <Button
-              disabled={isLoading || !reportData}
-              icon={Download}
-              onClick={handleExportCsv}
-              variant="secondary"
-            >
-              Exportar CSV
-            </Button>
-          </>
+          <Button
+            disabled={isLoading || !exportRows.length}
+            icon={Download}
+            onClick={handleExportCsv}
+            variant="secondary"
+          >
+            Exportar CSV
+          </Button>
         }
-        description="Reportes comerciales, financieros, de eventos y paquetes desde backend."
+        description="Consulta resultados comerciales, operativos y financieros con datos reales del sistema."
+        eyebrow="Finanzas"
         title="Reportes"
       />
 
@@ -746,16 +765,28 @@ export function ReportesPage() {
 
       <ReportFilters
         activeReport={activeReport}
+        errors={filterErrors}
         filters={filters}
-        financialFilters={financialFilters}
-        isLoading={isLoading}
-        onClear={handleClear}
+        financialPeriod={financialPeriod}
         onFilterChange={handleFilterChange}
-        onFinancialFilterChange={handleFinancialFilterChange}
-        onSubmit={handleSubmit}
+        onFinancialPeriodChange={(value) => {
+          setFinancialPeriod(value)
+          setExportError('')
+          setExportMessage('')
+        }}
+        onResetRange={() => {
+          setFilters(initialRangeFilters)
+          setExportError('')
+          setExportMessage('')
+        }}
       />
 
-      <ErrorMessage>{pageError}</ErrorMessage>
+      <ErrorMessage
+        action={pageError ? <Button onClick={() => loadReport()} variant="secondary">Reintentar</Button> : null}
+      >
+        {pageError || exportError}
+      </ErrorMessage>
+      {exportMessage ? <div className="success-message" role="status">{exportMessage}</div> : null}
 
       {isLoading && !reportData ? (
         <Card>
@@ -763,16 +794,27 @@ export function ReportesPage() {
         </Card>
       ) : null}
 
-      {!isLoading && !reportData && !pageError ? (
+      {!isLoading && !reportData && !pageError && !Object.keys(filterErrors).length ? (
         <Card>
           <EmptyState
-            description="No hay informacion disponible con los filtros actuales."
-            title="Sin reporte"
+            description="El reporte todavía no puede calcularse con la información disponible."
+            title="Reporte no disponible"
           />
         </Card>
       ) : null}
 
-      {renderReport()}
+      {reportData ? (
+        <section
+          aria-busy={isLoading}
+          aria-labelledby={`reporte-tab-${activeReport}`}
+          className={isLoading ? 'report-panel report-panel--refreshing' : 'report-panel'}
+          id="reporte-panel"
+          role="tabpanel"
+          tabIndex="0"
+        >
+          {renderReport()}
+        </section>
+      ) : null}
     </div>
   )
 }

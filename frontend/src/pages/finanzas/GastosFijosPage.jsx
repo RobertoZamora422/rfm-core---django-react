@@ -1,89 +1,55 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Edit3, FilterX, Plus, Search, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Edit3, Plus, Search, Trash2, WalletCards } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
+import { FiltersToolbar } from '../../components/ui/FiltersToolbar'
 import { Input } from '../../components/ui/Input'
-import { KpiCard } from '../../components/ui/KpiCard'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { Select } from '../../components/ui/Select'
+import { PeriodToolbar } from '../../components/ui/PeriodToolbar'
 import { Textarea } from '../../components/ui/Textarea'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 import { gastosFijosService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 import { formatCurrency } from '../../utils/formatters'
-
-const currentDate = new Date()
-const currentMonth = String(currentDate.getMonth() + 1)
-const currentYear = String(currentDate.getFullYear())
-
-const monthOptions = [
-  { value: '1', label: 'Enero' },
-  { value: '2', label: 'Febrero' },
-  { value: '3', label: 'Marzo' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Mayo' },
-  { value: '6', label: 'Junio' },
-  { value: '7', label: 'Julio' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Septiembre' },
-  { value: '10', label: 'Octubre' },
-  { value: '11', label: 'Noviembre' },
-  { value: '12', label: 'Diciembre' },
-]
-
-const initialFilters = {
-  mes: currentMonth,
-  anio: currentYear,
-  concepto: '',
-}
-
-const emptyForm = {
-  concepto: '',
-  valor: '',
-  mes: currentMonth,
-  anio: currentYear,
-  observaciones: '',
-}
+import {
+  filtersToPeriod,
+  getCurrentPeriodValue,
+  getPeriodLabel,
+  periodToFilters,
+} from '../../utils/periods'
 
 function toArray(data) {
   return Array.isArray(data) ? data : data?.results ?? []
 }
 
-function buildQueryParams(filters) {
-  return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''),
-  )
-}
-
-function getMonthLabel(value) {
-  return monthOptions.find((month) => month.value === String(value))?.label ?? value
-}
-
-function getPeriodLabel(filters) {
-  if (filters.mes && filters.anio) return `${getMonthLabel(filters.mes)} ${filters.anio}`
-  if (filters.mes) return getMonthLabel(filters.mes)
-  if (filters.anio) return filters.anio
-  return 'Todos los periodos'
-}
-
-function buildInitialForm(item) {
-  if (!item) return emptyForm
+function buildInitialForm(item, defaultPeriod) {
+  if (!item) {
+    return {
+      concepto: '',
+      valor: '',
+      periodo: defaultPeriod,
+      observaciones: '',
+    }
+  }
 
   return {
     concepto: item.concepto ?? '',
     valor: item.valor ?? '',
-    mes: String(item.mes ?? currentMonth),
-    anio: String(item.anio ?? currentYear),
+    periodo: filtersToPeriod(item),
     observaciones: item.observaciones ?? '',
   }
 }
 
-function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit }) {
-  const [form, setForm] = useState(() => buildInitialForm(initialValues))
+function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit, selectedPeriod }) {
+  const [form, setForm] = useState(() => buildInitialForm(initialValues, selectedPeriod))
+  useFocusFirstError(errors)
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -92,10 +58,13 @@ function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    const period = periodToFilters(form.periodo)
     onSubmit({
-      ...form,
-      mes: form.mes ? Number(form.mes) : '',
-      anio: form.anio ? Number(form.anio) : '',
+      concepto: form.concepto,
+      valor: form.valor,
+      mes: Number(period.mes),
+      anio: Number(period.anio),
+      observaciones: form.observaciones,
     })
   }
 
@@ -105,8 +74,10 @@ function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit
         error={errors.concepto}
         id="gasto-fijo-concepto"
         label="Concepto"
+        maxLength={150}
         name="concepto"
         onChange={handleChange}
+        placeholder="Ej. Internet, arriendo o mantenimiento"
         required
         value={form.concepto}
       />
@@ -114,7 +85,8 @@ function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit
         <Input
           error={errors.valor}
           id="gasto-fijo-valor"
-          label="Valor"
+          inputMode="decimal"
+          label="Valor (USD)"
           min="0"
           name="valor"
           onChange={handleChange}
@@ -123,47 +95,32 @@ function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit
           type="number"
           value={form.valor}
         />
-        <Select
-          error={errors.mes}
-          id="gasto-fijo-mes"
-          label="Mes"
-          name="mes"
-          onChange={handleChange}
-          required
-          value={form.mes}
-        >
-          {monthOptions.map((month) => (
-            <option key={month.value} value={month.value}>
-              {month.label}
-            </option>
-          ))}
-        </Select>
         <Input
-          error={errors.anio}
-          id="gasto-fijo-anio"
-          label="Año"
-          min="2000"
-          name="anio"
+          error={errors.mes || errors.anio}
+          helpText="El gasto se incluirá en los resultados de este mes."
+          id="gasto-fijo-periodo"
+          label="Mes y año"
+          name="periodo"
           onChange={handleChange}
           required
-          type="number"
-          value={form.anio}
+          type="month"
+          value={form.periodo}
         />
       </div>
       <Textarea
         error={errors.observaciones}
         id="gasto-fijo-observaciones"
-        label="Observaciones"
+        label="Observaciones (opcional)"
         name="observaciones"
         onChange={handleChange}
         value={form.observaciones}
       />
       <div className="form-actions">
-        <Button onClick={onCancel} variant="secondary">
+        <Button disabled={isSubmitting} onClick={onCancel} variant="secondary">
           Cancelar
         </Button>
-        <Button isLoading={isSubmitting} type="submit">
-          Guardar gasto fijo
+        <Button isLoading={isSubmitting} loadingLabel="Guardando gasto" type="submit">
+          {initialValues?.id ? 'Guardar cambios' : 'Registrar gasto'}
         </Button>
       </div>
     </form>
@@ -171,10 +128,18 @@ function GastoFijoForm({ errors, initialValues, isSubmitting, onCancel, onSubmit
 }
 
 export function GastosFijosPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialPeriod = searchParams.get('periodo') || getCurrentPeriodValue()
+  const [selectedPeriod, setSelectedPeriod] = useState(initialPeriod)
+  const [search, setSearch] = useState(searchParams.get('concepto') ?? '')
+  const debouncedSearch = useDebouncedValue(search, 350)
+  const periodParams = useMemo(() => periodToFilters(selectedPeriod), [selectedPeriod])
+  const listParams = useMemo(
+    () => ({ ...periodParams, ...(debouncedSearch ? { concepto: debouncedSearch } : {}) }),
+    [debouncedSearch, periodParams],
+  )
   const [gastos, setGastos] = useState([])
   const [totalPeriodo, setTotalPeriodo] = useState('0.00')
-  const [filters, setFilters] = useState(initialFilters)
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters)
   const [fieldErrors, setFieldErrors] = useState({})
   const [pageError, setPageError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
@@ -184,25 +149,39 @@ export function GastosFijosPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [formTrigger, setFormTrigger] = useState(null)
+  const requestIdRef = useRef(0)
+  const hasSearch = Boolean(debouncedSearch)
 
-  const loadGastos = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
+  const loadGastos = useCallback(async ({ silent = false } = {}) => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    if (!silent) setIsLoading(true)
+    if (!silent) setPageError('')
 
     try {
-      const params = buildQueryParams(appliedFilters)
       const [data, resumen] = await Promise.all([
-        gastosFijosService.list(params),
-        gastosFijosService.resumen(params),
+        gastosFijosService.list(listParams),
+        gastosFijosService.resumen(periodParams),
       ])
-      setGastos(toArray(data))
-      setTotalPeriodo(resumen.total_periodo ?? '0.00')
+      if (requestId === requestIdRef.current) {
+        setGastos(toArray(data))
+        setTotalPeriodo(resumen.total_periodo ?? '0.00')
+        setPageError('')
+      }
     } catch (error) {
-      setPageError(getApiErrorMessage(error))
+      if (requestId === requestIdRef.current) setPageError(getApiErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [appliedFilters])
+  }, [listParams, periodParams])
+
+  useEffect(() => {
+    setSearchParams(
+      { periodo: selectedPeriod, ...(debouncedSearch ? { concepto: debouncedSearch } : {}) },
+      { replace: true },
+    )
+  }, [debouncedSearch, selectedPeriod, setSearchParams])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadGastos, 0)
@@ -211,43 +190,32 @@ export function GastosFijosPage() {
 
   useAutoRefresh(loadGastos, { refreshOnMutation: false })
 
-  const handleFilterChange = (event) => {
-    const { name, value } = event.target
-    setFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleApplyFilters = (event) => {
-    event.preventDefault()
-    setActionMessage('')
-    setAppliedFilters(filters)
-  }
-
-  const handleClearFilters = () => {
-    setFilters(initialFilters)
-    setAppliedFilters(initialFilters)
-    setActionMessage('')
-  }
-
-  const openCreate = () => {
+  const openCreate = (event) => {
+    setFormTrigger(event?.currentTarget ?? null)
     setEditingItem(null)
     setFieldErrors({})
     setPageError('')
+    setActionMessage('')
     setIsFormOpen(true)
   }
 
-  const openEdit = (item) => {
+  const openEdit = (item, event) => {
+    setFormTrigger(event?.currentTarget ?? null)
     setEditingItem(item)
     setFieldErrors({})
     setPageError('')
+    setActionMessage('')
     setIsFormOpen(true)
   }
 
   const closeForm = () => {
+    if (isSaving) return
     setEditingItem(null)
     setIsFormOpen(false)
   }
 
   const handleSubmit = async (payload) => {
+    if (isSaving) return
     setIsSaving(true)
     setFieldErrors({})
     setPageError('')
@@ -256,33 +224,35 @@ export function GastosFijosPage() {
     try {
       if (editingItem) {
         await gastosFijosService.update(editingItem.id, payload)
-        setActionMessage(`Gasto fijo #${editingItem.id} actualizado.`)
+        setActionMessage(`El gasto “${payload.concepto}” se actualizó correctamente.`)
       } else {
-        const created = await gastosFijosService.create(payload)
-        setActionMessage(`Gasto fijo #${created.id} registrado.`)
+        await gastosFijosService.create(payload)
+        setActionMessage(`El gasto “${payload.concepto}” se registró correctamente.`)
       }
-      closeForm()
-      await loadGastos()
+      setEditingItem(null)
+      setIsFormOpen(false)
+      await loadGastos({ silent: true })
     } catch (error) {
-      setFieldErrors(getApiFieldErrors(error))
-      setPageError(getApiErrorMessage(error))
+      const errors = getApiFieldErrors(error)
+      setFieldErrors(errors)
+      if (!Object.keys(errors).length) setPageError(getApiErrorMessage(error))
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!deletingItem) return
-
+    if (!deletingItem || isDeleting) return
     setIsDeleting(true)
     setPageError('')
     setActionMessage('')
 
     try {
+      const deletedConcept = deletingItem.concepto
       await gastosFijosService.remove(deletingItem.id)
-      setActionMessage(`Gasto fijo #${deletingItem.id} eliminado.`)
       setDeletingItem(null)
-      await loadGastos()
+      setActionMessage(`El gasto “${deletedConcept}” se eliminó del periodo.`)
+      await loadGastos({ silent: true })
     } catch (error) {
       setPageError(getApiErrorMessage(error))
     } finally {
@@ -291,29 +261,33 @@ export function GastosFijosPage() {
   }
 
   const columns = [
-    { key: 'concepto', header: 'Concepto' },
+    {
+      key: 'concepto',
+      header: 'Concepto',
+      render: (item) => (
+        <div className="stacked-cell">
+          <strong>{item.concepto}</strong>
+          {item.observaciones ? <span>{item.observaciones}</span> : null}
+        </div>
+      ),
+    },
+    {
+      key: 'periodo',
+      header: 'Periodo',
+      render: (item) => getPeriodLabel(filtersToPeriod(item)),
+    },
     {
       key: 'valor',
       header: 'Valor',
+      align: 'right',
       render: (item) => formatCurrency(item.valor),
-    },
-    {
-      key: 'mes',
-      header: 'Mes',
-      render: (item) => getMonthLabel(item.mes),
-    },
-    { key: 'anio', header: 'Año' },
-    {
-      key: 'observaciones',
-      header: 'Observaciones',
-      render: (item) => item.observaciones || '-',
     },
     {
       key: 'acciones',
       header: 'Acciones',
       render: (item) => (
-        <div className="table-actions">
-          <Button icon={Edit3} onClick={() => openEdit(item)} variant="secondary">
+        <div className="table-actions table-actions--compact">
+          <Button icon={Edit3} onClick={(event) => openEdit(item, event)} variant="secondary">
             Editar
           </Button>
           <Button icon={Trash2} onClick={() => setDeletingItem(item)} variant="ghost">
@@ -325,74 +299,89 @@ export function GastosFijosPage() {
   ]
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--workspace">
       <PageHeader
         actions={
           <Button icon={Plus} onClick={openCreate}>
-            Nuevo gasto fijo
+            Nuevo gasto
           </Button>
         }
-        description="Registra gastos operativos mensuales del negocio."
+        description="Administra los gastos operativos mensuales del negocio."
+        eyebrow="Finanzas"
         title="Gastos fijos"
       />
 
-      <ErrorMessage>{pageError}</ErrorMessage>
-      {actionMessage ? <div className="success-message">{actionMessage}</div> : null}
+      <PeriodToolbar
+        id="gastos-periodo"
+        label="Periodo de gastos"
+        onChange={(value) => {
+          setSelectedPeriod(value)
+          setActionMessage('')
+        }}
+        value={selectedPeriod}
+      />
 
-      <section className="summary-grid" aria-label="Resumen de gastos fijos">
-        <KpiCard
-          detail={getPeriodLabel(appliedFilters)}
-          label="Total de gastos del periodo"
-          value={formatCurrency(totalPeriodo)}
-        />
-      </section>
+      <ErrorMessage
+        action={pageError ? <Button onClick={() => loadGastos()} variant="secondary">Reintentar</Button> : null}
+      >
+        {pageError}
+      </ErrorMessage>
+      {actionMessage ? <div className="success-message" role="status">{actionMessage}</div> : null}
 
-      <Card>
-        <form className="filters-grid filters-grid--expenses" onSubmit={handleApplyFilters}>
-          <Select id="gastos-mes" label="Mes" name="mes" onChange={handleFilterChange} value={filters.mes}>
-            <option value="">Todos los meses</option>
-            {monthOptions.map((month) => (
-              <option key={month.value} value={month.value}>
-                {month.label}
-              </option>
-            ))}
-          </Select>
-          <Input
-            id="gastos-anio"
-            label="Año"
-            min="2000"
-            name="anio"
-            onChange={handleFilterChange}
-            type="number"
-            value={filters.anio}
-          />
-          <Input
-            id="gastos-concepto"
-            label="Concepto"
-            name="concepto"
-            onChange={handleFilterChange}
-            placeholder="Buscar por concepto"
-            value={filters.concepto}
-          />
-          <div className="filters-actions">
-            <Button icon={Search} type="submit">
-              Filtrar
-            </Button>
-            <Button icon={FilterX} onClick={handleClearFilters} variant="secondary">
-              Limpiar
-            </Button>
-          </div>
-        </form>
+      <Card className="period-total-card">
+        <span className="period-total-card__icon" aria-hidden="true"><WalletCards size={22} /></span>
+        <div>
+          <span>Total de gastos del periodo</span>
+          <strong>{formatCurrency(totalPeriodo)}</strong>
+          <small>{getPeriodLabel(selectedPeriod)} · incluye todos los gastos activos del mes</small>
+        </div>
       </Card>
 
-      <Card>
+      <FiltersToolbar
+        hasFilters={hasSearch}
+        isLoading={isLoading}
+        onClear={() => {
+          setSearch('')
+          setActionMessage('')
+        }}
+        resultCount={gastos.length}
+      >
+        <Input
+          icon={Search}
+          id="gastos-concepto"
+          label="Buscar por concepto"
+          name="concepto"
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setActionMessage('')
+          }}
+          placeholder="Ej. internet o mantenimiento"
+          type="search"
+          value={search}
+        />
+      </FiltersToolbar>
+
+      <Card className="commercial-list-card">
         {isLoading ? (
           <LoadingState label="Cargando gastos fijos" />
         ) : (
           <DataTable
+            caption={`Gastos fijos de ${getPeriodLabel(selectedPeriod)}`}
             columns={columns}
-            emptyMessage="No hay gastos fijos para los filtros aplicados."
-            mobileTitle={(item) => `${item.concepto} - ${getMonthLabel(item.mes)} ${item.anio}`}
+            emptyAction={
+              hasSearch ? (
+                <Button onClick={() => setSearch('')} variant="secondary">Limpiar búsqueda</Button>
+              ) : (
+                <Button icon={Plus} onClick={openCreate}>Registrar gasto del periodo</Button>
+              )
+            }
+            emptyMessage={
+              hasSearch
+                ? 'No hay gastos del periodo que coincidan con el concepto buscado.'
+                : `No existen gastos activos registrados para ${getPeriodLabel(selectedPeriod)}.`
+            }
+            emptyTitle={hasSearch ? 'Sin coincidencias' : 'Periodo sin gastos registrados'}
+            mobileTitle={(item) => `${item.concepto} · ${formatCurrency(item.valor)}`}
             rows={gastos}
           />
         )}
@@ -401,34 +390,38 @@ export function GastosFijosPage() {
       <Modal
         isOpen={isFormOpen}
         onClose={closeForm}
-        title={editingItem ? `Editar gasto fijo #${editingItem.id}` : 'Nuevo gasto fijo'}
+        returnFocusElement={formTrigger}
+        title={editingItem ? `Editar gasto #${editingItem.id}` : 'Registrar gasto fijo'}
       >
         <GastoFijoForm
           errors={fieldErrors}
           initialValues={editingItem}
           isSubmitting={isSaving}
-          key={editingItem?.id ?? 'nuevo'}
+          key={editingItem?.id ?? `nuevo-${selectedPeriod}`}
           onCancel={closeForm}
           onSubmit={handleSubmit}
+          selectedPeriod={selectedPeriod}
         />
       </Modal>
 
       <Modal
         isOpen={Boolean(deletingItem)}
-        onClose={() => setDeletingItem(null)}
+        onClose={() => {
+          if (!isDeleting) setDeletingItem(null)
+        }}
         title="Eliminar gasto fijo"
       >
         <div className="confirm-dialog">
           <p>
-            Se marcara como eliminado el gasto fijo #{deletingItem?.id}. No se borrara
-            fisicamente, pero dejara de contar en dashboard y reportes.
+            Se eliminará “{deletingItem?.concepto}” por {formatCurrency(deletingItem?.valor)} del periodo.
+            Se conservará en el historial, pero dejará de contar en dashboard y reportes.
           </p>
           <div className="form-actions">
-            <Button onClick={() => setDeletingItem(null)} variant="secondary">
-              Cancelar
+            <Button disabled={isDeleting} onClick={() => setDeletingItem(null)} variant="secondary">
+              Mantener gasto
             </Button>
-            <Button icon={Trash2} isLoading={isDeleting} onClick={handleDelete}>
-              Eliminar
+            <Button icon={Trash2} isLoading={isDeleting} loadingLabel="Eliminando" onClick={handleDelete}>
+              Eliminar gasto
             </Button>
           </div>
         </div>
