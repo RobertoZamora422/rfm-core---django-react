@@ -254,6 +254,76 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("telefono", response.data)
 
+    def test_cliente_evitar_duplicado_por_telefono_sin_importar_formato(self):
+        Cliente.objects.create(nombre="Cliente existente", telefono="+593 99 123 4567")
+
+        response = self.client.post(
+            "/api/clientes/",
+            {"nombre": "Cliente duplicado", "telefono": "+593-99-123-4567"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("telefono", response.data)
+        self.assertEqual(Cliente.objects.count(), 1)
+
+    def test_clientes_incluye_conteos_relacionados_sin_consultas_por_fila(self):
+        tipo_evento = TipoEvento.objects.create(nombre="Boda")
+        cliente = Cliente.objects.create(nombre="Cliente resumen", telefono="0991234567")
+        cotizacion = Cotizacion.objects.create(
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            fecha_tentativa=timezone.localdate(),
+            numero_invitados=50,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
+            total_estimado=Decimal("1000.00"),
+        )
+        Contrato.objects.create(
+            cotizacion=cotizacion,
+            cliente=cliente,
+            tipo_evento=tipo_evento,
+            fecha_evento=timezone.localdate(),
+            numero_invitados=50,
+            valor_final=Decimal("1000.00"),
+        )
+
+        with self.assertNumQueries(1):
+            response = self.client.get("/api/clientes/", {"buscar": "099123"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data[0]["cotizaciones_count"], 1)
+        self.assertEqual(response.data[0]["contratos_count"], 1)
+
+    def test_catalogos_se_buscan_filtran_y_no_se_eliminan_fisicamente(self):
+        tipo = TipoEvento.objects.create(nombre="Evento Corporativo", activo=False)
+        paquete = Paquete.objects.create(
+            nombre="Paquete Corporativo",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("35.00"),
+            activo=False,
+        )
+
+        tipos_response = self.client.get(
+            "/api/tipos-evento/", {"buscar": "Corporativo", "activo": "false"}
+        )
+        paquetes_response = self.client.get(
+            "/api/paquetes/",
+            {
+                "buscar": "Corporativo",
+                "activo": "false",
+                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+            },
+        )
+        delete_tipo = self.client.delete(f"/api/tipos-evento/{tipo.id}/")
+        delete_paquete = self.client.delete(f"/api/paquetes/{paquete.id}/")
+
+        self.assertEqual([item["id"] for item in tipos_response.data], [tipo.id])
+        self.assertEqual([item["id"] for item in paquetes_response.data], [paquete.id])
+        self.assertEqual(delete_tipo.status_code, 400)
+        self.assertEqual(delete_paquete.status_code, 400)
+        self.assertTrue(TipoEvento.objects.filter(pk=tipo.id).exists())
+        self.assertTrue(Paquete.objects.filter(pk=paquete.id).exists())
+
     def test_configuracion_activa_es_unica_en_api(self):
         payload = {
             "nombre_negocio": "Rancho Flor Maria",

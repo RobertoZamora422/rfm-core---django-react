@@ -1,7 +1,10 @@
 export function Textarea({ error, id, label, rows = 4, ...props }) {
   return (
     <label className="field" htmlFor={id}>
-      <span className="field__label">{label}</span>
+      <span className="field__label">
+        {label}
+        {props.required ? <span className="field__required" aria-hidden="true"> *</span> : null}
+      </span>
       <textarea
         aria-describedby={error ? `${id}-error` : undefined}
         aria-invalid={Boolean(error)}
@@ -11,7 +14,7 @@ export function Textarea({ error, id, label, rows = 4, ...props }) {
         {...props}
       />
       {error ? (
-        <span className="field__error" id={`${id}-error`}>
+        <span className="field__error" id={`${id}-error`} role="alert">
           {error}
         </span>
       ) : null}

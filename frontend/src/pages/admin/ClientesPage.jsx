@@ -1,18 +1,42 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { ResourcePage } from '../../components/admin/ResourcePage'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Textarea } from '../../components/ui/Textarea'
 import { clientesService } from '../../services/resourceService'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
+import { formatPhone } from '../../utils/formatters'
 
 const columns = [
-  { key: 'nombre', header: 'Nombre' },
-  { key: 'telefono', header: 'Telefono' },
-  { key: 'correo', header: 'Correo', render: (item) => item.correo || '-' },
   {
-    key: 'es_demo',
-    header: 'Origen',
-    render: (item) => <span className="pill">{item.es_demo ? 'Demo' : 'Real'}</span>,
+    key: 'cliente',
+    header: 'Cliente',
+    render: (item) => (
+      <div className="stacked-cell">
+        <strong>{item.nombre}</strong>
+        <a className="inline-contact" href={`tel:${item.telefono}`}>{formatPhone(item.telefono)}</a>
+      </div>
+    ),
+  },
+  { key: 'correo', header: 'Correo', render: (item) => item.correo || 'Sin correo' },
+  {
+    key: 'cotizaciones_count',
+    header: 'Cotizaciones',
+    render: (item) => (
+      <Link className="count-link" to={`/cotizaciones?buscar=${encodeURIComponent(item.telefono)}`}>
+        {item.cotizaciones_count} {item.cotizaciones_count === 1 ? 'cotización' : 'cotizaciones'}
+      </Link>
+    ),
+  },
+  {
+    key: 'contratos_count',
+    header: 'Contratos',
+    render: (item) => (
+      <Link className="count-link" to={`/contratos?buscar=${encodeURIComponent(item.telefono)}`}>
+        {item.contratos_count} {item.contratos_count === 1 ? 'contrato' : 'contratos'}
+      </Link>
+    ),
   },
 ]
 
@@ -23,6 +47,7 @@ function ClienteForm({ errors, initialValues, isSubmitting, onCancel, onSubmit }
     correo: initialValues?.correo ?? '',
     observaciones: initialValues?.observaciones ?? '',
   })
+  useFocusFirstError(errors)
 
   const handleChange = (event) => {
     setForm((current) => ({
@@ -45,12 +70,16 @@ function ClienteForm({ errors, initialValues, isSubmitting, onCancel, onSubmit }
         name="nombre"
         onChange={handleChange}
         required
+        autoComplete="name"
+        autoFocus
         value={form.nombre}
       />
       <Input
         error={errors.telefono}
         id="cliente-telefono"
-        label="Telefono"
+        autoComplete="tel"
+        helpText="Se usa para identificar al cliente y evitar registros duplicados."
+        label="Teléfono"
         name="telefono"
         onChange={handleChange}
         required
@@ -59,6 +88,7 @@ function ClienteForm({ errors, initialValues, isSubmitting, onCancel, onSubmit }
       <Input
         error={errors.correo}
         id="cliente-correo"
+        autoComplete="email"
         label="Correo"
         name="correo"
         onChange={handleChange}
@@ -90,9 +120,18 @@ export function ClientesPage() {
     <ResourcePage
       columns={columns}
       createLabel="Crear cliente"
-      description="Administracion de clientes e interesados registrados en el sistema."
-      emptyMessage="No existen clientes registrados."
+      description="Encuentra personas por nombre o teléfono y revisa rápidamente su relación con el negocio."
+      emptyMessage="Crea el primer cliente para asociarlo a cotizaciones y contratos."
+      filterDefinitions={[
+        {
+          key: 'buscar',
+          label: 'Buscar cliente',
+          placeholder: 'Nombre, teléfono o correo',
+          type: 'search',
+        },
+      ]}
       FormComponent={ClienteForm}
+      itemLabel="Cliente"
       mobileTitle={(item) => item.nombre}
       service={clientesService}
       title="Clientes"

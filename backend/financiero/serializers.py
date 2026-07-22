@@ -67,6 +67,7 @@ class ContratoSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "estado_contrato",
             "estado_pago",
             "saldo_pendiente",
             "total_costos_directos",

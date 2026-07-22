@@ -70,7 +70,7 @@ export function NuevaCotizacionPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
         actions={
           <Link className="button button--secondary" to="/cotizaciones">
@@ -78,13 +78,14 @@ export function NuevaCotizacionPage() {
             <span>Volver</span>
           </Link>
         }
-        description="Registra una cotizacion administrativa sin crear contrato ni ingreso real."
-        title="Nueva cotizacion"
+        description="Registra una oportunidad comercial. No se creará un ingreso ni una venta hasta convertirla en contrato."
+        eyebrow="Comercial · Cotizaciones"
+        title="Nueva cotización"
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
 
-      <Card>
+      <Card className="form-card">
         {isLoadingCatalogs ? (
           <LoadingState label="Cargando datos del formulario" />
         ) : (

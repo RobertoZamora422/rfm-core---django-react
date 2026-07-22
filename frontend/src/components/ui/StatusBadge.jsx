@@ -1,4 +1,5 @@
 const STATUS_VARIANTS = {
+  activo: 'success',
   abonado: 'warning',
   cancelado: 'neutral-dark',
   confirmada: 'success',
@@ -6,6 +7,7 @@ const STATUS_VARIANTS = {
   contactada: 'notice',
   convertida: 'strong-success',
   descartada: 'neutral',
+  inactivo: 'neutral',
   nueva: 'info',
   pagado: 'success',
   pendiente: 'warning',

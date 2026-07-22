@@ -1,13 +1,15 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from config.pagination import OptionalPageNumberPagination
 
 from .models import CostoDirecto, GastoFijoMensual
 from .serializers import (
@@ -76,6 +78,7 @@ class CleanModelValidationMixin:
 
 class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     serializer_class = ContratoSerializer
+    pagination_class = OptionalPageNumberPagination
     search_fields = ["cliente__nombre", "cliente__telefono", "observaciones"]
 
     def get_queryset(self):
@@ -118,6 +121,8 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(cliente__nombre__icontains=buscar)
                 | Q(cliente__telefono__icontains=buscar)
+                | Q(tipo_evento__nombre__icontains=buscar)
+                | Q(paquete__nombre__icontains=buscar)
             )
         if es_demo is not None:
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
@@ -126,8 +131,29 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="cancelar")
     def cancelar(self, request, pk=None):
         contrato = self.get_object()
-        contrato = cancelar_contrato(contrato)
+        try:
+            contrato = cancelar_contrato(contrato)
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
         return Response(ContratoSerializer(contrato).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="resumen")
+    def resumen(self, request):
+        summary = self.get_queryset().aggregate(
+            total=Count("id"),
+            confirmados=Count(
+                "id",
+                filter=Q(estado_contrato="confirmado"),
+            ),
+            cancelados=Count(
+                "id",
+                filter=Q(estado_contrato="cancelado"),
+            ),
+            pendientes=Count("id", filter=Q(estado_pago="pendiente")),
+            abonados=Count("id", filter=Q(estado_pago="abonado")),
+            pagados=Count("id", filter=Q(estado_pago="pagado")),
+        )
+        return Response(summary)
 
 
 class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):

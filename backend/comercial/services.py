@@ -7,7 +7,7 @@ from django.db import transaction
 
 from financiero.models import Contrato
 from negocio.models import Cliente
-from negocio.selectors import obtener_configuracion_activa
+from negocio.selectors import buscar_cliente_por_telefono, obtener_configuracion_activa
 
 from .models import Cotizacion
 from .pre_cotizacion_strategies import obtener_estrategia_pre_cotizacion
@@ -61,7 +61,10 @@ def crear_pre_cotizacion(
     )
 
     if cliente is None:
-        cliente = Cliente.objects.create(**(datos_cliente or {}))
+        datos_cliente = datos_cliente or {}
+        cliente = buscar_cliente_por_telefono(datos_cliente.get("telefono"))
+        if cliente is None:
+            cliente = Cliente.objects.create(**datos_cliente)
 
     observaciones_finales = observaciones
     if tipo_servicio == Cotizacion.TipoServicioInteres.NO_SEGURO:
@@ -92,6 +95,34 @@ def cambiar_estado_cotizacion(cotizacion, nuevo_estado):
     if cotizacion.estado == Cotizacion.Estado.CONVERTIDA:
         raise ValidationError(
             {"estado": "Una cotizacion convertida no permite cambios de estado."}
+        )
+
+    transiciones_permitidas = {
+        Cotizacion.Estado.NUEVA: {
+            Cotizacion.Estado.CONTACTADA,
+            Cotizacion.Estado.CONFIRMADA,
+            Cotizacion.Estado.DESCARTADA,
+        },
+        Cotizacion.Estado.CONTACTADA: {
+            Cotizacion.Estado.NUEVA,
+            Cotizacion.Estado.CONFIRMADA,
+            Cotizacion.Estado.DESCARTADA,
+        },
+        Cotizacion.Estado.CONFIRMADA: {
+            Cotizacion.Estado.NUEVA,
+            Cotizacion.Estado.CONTACTADA,
+            Cotizacion.Estado.DESCARTADA,
+        },
+        Cotizacion.Estado.DESCARTADA: {Cotizacion.Estado.NUEVA},
+    }
+    if nuevo_estado not in transiciones_permitidas.get(cotizacion.estado, set()):
+        raise ValidationError(
+            {
+                "estado": (
+                    f"No se puede cambiar una cotizacion {cotizacion.get_estado_display().lower()} "
+                    f"directamente a {dict(Cotizacion.Estado.choices).get(nuevo_estado, nuevo_estado).lower()}."
+                )
+            }
         )
 
     cotizacion.estado = nuevo_estado

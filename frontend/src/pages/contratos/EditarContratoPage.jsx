@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
@@ -26,6 +26,8 @@ function ensureCurrentOption(items, currentId, currentName) {
 export function EditarContratoPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const returnPath = location.state?.from || `/contratos/${id}`
   const [contrato, setContrato] = useState(null)
   const [clientes, setClientes] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
@@ -75,7 +77,7 @@ export function EditarContratoPage() {
 
     try {
       const updated = await contratosService.update(id, payload)
-      navigate(`/contratos/${updated.id}`)
+      navigate(`/contratos/${updated.id}`, { state: { from: location.state?.from } })
     } catch (error) {
       setFieldErrors(getApiFieldErrors(error))
       setPageError(getApiErrorMessage(error))
@@ -85,21 +87,22 @@ export function EditarContratoPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to={`/contratos/${id}`}>
+          <Link className="button button--secondary" to={returnPath}>
             <ArrowLeft aria-hidden="true" size={18} />
             <span>Volver</span>
           </Link>
         }
-        description="Actualiza los datos operativos y financieros editables del contrato."
+        description="Actualiza datos operativos y financieros. El estado de pago seguirá calculándose automáticamente."
+        eyebrow="Comercial · Contratos"
         title={`Editar contrato #${id}`}
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
 
-      <Card>
+      <Card className="form-card">
         {isLoading ? (
           <LoadingState label="Cargando contrato" />
         ) : contrato ? (
@@ -110,7 +113,7 @@ export function EditarContratoPage() {
             isLoadingCatalogs={isLoading}
             isSubmitting={isSaving}
             key={contrato.id}
-            onCancel={() => navigate(`/contratos/${id}`)}
+            onCancel={() => navigate(returnPath)}
             onSubmit={handleSubmit}
             paquetes={paquetes}
             submitLabel="Guardar cambios"

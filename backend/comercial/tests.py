@@ -437,11 +437,111 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], cotizacion_objetivo.id)
 
+    def test_listado_paginado_y_resumen_conservan_totales_filtrados(self):
+        for index in range(3):
+            Cotizacion.objects.create(
+                cliente=self.cliente,
+                tipo_evento=self.tipo_evento,
+                fecha_tentativa=date(2026, 8, index + 1),
+                numero_invitados=50,
+                tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
+                estado=Cotizacion.Estado.NUEVA,
+                total_estimado=Decimal("1000.00"),
+            )
+
+        page_response = self.client.get(
+            "/api/cotizaciones/", {"page": 2, "page_size": 2}
+        )
+        summary_response = self.client.get(
+            "/api/cotizaciones/resumen/", {"estado": Cotizacion.Estado.NUEVA}
+        )
+
+        self.assertEqual(page_response.status_code, 200)
+        self.assertEqual(page_response.data["count"], 3)
+        self.assertEqual(len(page_response.data["results"]), 1)
+        self.assertEqual(summary_response.data["total"], 3)
+        self.assertEqual(summary_response.data["nuevas"], 3)
+
     def test_filtro_fecha_invalida_devuelve_error_claro(self):
         response = self.client.get("/api/cotizaciones/", {"desde": "2026/08/01"})
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("desde", response.data)
+
+    def test_rechaza_rango_de_fechas_invertido(self):
+        response = self.client.get(
+            "/api/cotizaciones/",
+            {"desde": "2026-09-10", "hasta": "2026-09-01"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("hasta", response.data)
+
+    def test_cotizacion_descartada_debe_reactivarse_antes_de_continuar(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
+            estado=Cotizacion.Estado.DESCARTADA,
+            total_estimado=Decimal("1000.00"),
+        )
+
+        invalid_response = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/cambiar-estado/",
+            {"estado": Cotizacion.Estado.CONFIRMADA},
+            format="json",
+        )
+        reactivate_response = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/cambiar-estado/",
+            {"estado": Cotizacion.Estado.NUEVA},
+            format="json",
+        )
+
+        self.assertEqual(invalid_response.status_code, 400)
+        self.assertEqual(reactivate_response.status_code, 200)
+        self.assertEqual(reactivate_response.data["estado"], Cotizacion.Estado.NUEVA)
+
+    def test_estado_no_se_cambia_desde_patch_generico(self):
+        cotizacion = Cotizacion.objects.create(
+            cliente=self.cliente,
+            tipo_evento=self.tipo_evento,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
+            total_estimado=Decimal("1000.00"),
+        )
+
+        response = self.client.patch(
+            f"/api/cotizaciones/{cotizacion.id}/",
+            {"estado": Cotizacion.Estado.CONTACTADA},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("estado", response.data)
+
+    def test_pre_cotizacion_reutiliza_cliente_con_mismo_telefono(self):
+        self.client.force_authenticate(user=None)
+        initial_count = Cliente.objects.count()
+
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre": "Cliente API",
+                "telefono": "+593-999999111",
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-09-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Cliente.objects.count(), initial_count)
+        self.assertEqual(response.data["cotizacion"]["cliente"], self.cliente.id)
 
     def test_crud_no_marca_cotizacion_como_convertida(self):
         cotizacion = Cotizacion.objects.create(

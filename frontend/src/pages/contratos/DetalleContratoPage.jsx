@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, ClipboardList, Edit3, Plus } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
@@ -10,7 +10,7 @@ import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { contratosService, costosDirectosService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
-import { formatCurrency, formatDate, formatPercent } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatPercent, formatPhone } from '../../utils/formatters'
 import { getEstadoContratoLabel, getEstadoPagoLabel } from './contractConstants'
 
 function DetailItem({ label, value }) {
@@ -28,6 +28,8 @@ function toArray(data) {
 
 export function DetalleContratoPage() {
   const { id } = useParams()
+  const location = useLocation()
+  const returnPath = location.state?.from || '/contratos'
   const [contrato, setContrato] = useState(null)
   const [costosDirectos, setCostosDirectos] = useState([])
   const [pageError, setPageError] = useState('')
@@ -62,7 +64,7 @@ export function DetalleContratoPage() {
 
   if (isLoading) {
     return (
-      <div className="page-stack">
+      <div className="page-stack page-stack--commercial">
         <PageHeader title="Detalle de contrato" />
         <Card>
           <LoadingState label="Cargando contrato" />
@@ -73,10 +75,10 @@ export function DetalleContratoPage() {
 
   if (!contrato) {
     return (
-      <div className="page-stack">
+      <div className="page-stack page-stack--commercial">
         <PageHeader title="Detalle de contrato" />
         <ErrorMessage>{pageError || 'No se pudo cargar el contrato solicitado.'}</ErrorMessage>
-        <Link className="button button--secondary" to="/contratos">
+        <Link className="button button--secondary detail-link" to={returnPath}>
           <ArrowLeft aria-hidden="true" size={18} />
           <span>Volver</span>
         </Link>
@@ -105,33 +107,34 @@ export function DetalleContratoPage() {
   ]
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
         actions={
           <>
-            <Link className="button button--secondary" to="/contratos">
+            <Link className="button button--secondary" to={returnPath}>
               <ArrowLeft aria-hidden="true" size={18} />
               <span>Volver</span>
             </Link>
-            <Link className="button button--primary" to={`/contratos/${contrato.id}/editar`}>
+            <Link className="button button--primary" state={{ from: returnPath }} to={`/contratos/${contrato.id}/editar`}>
               <Edit3 aria-hidden="true" size={18} />
               <span>Editar contrato</span>
             </Link>
           </>
         }
-        description="Resumen operativo, comercial y financiero del contrato."
+        description="Información operativa, comercial y financiera de esta venta."
+        eyebrow="Comercial · Contratos"
         title={`Contrato #${contrato.id}`}
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
       {isCanceled ? (
         <div className="warning-message">
-          Este contrato esta cancelado. Se conserva como historial, pero no se incluye en los indicadores financieros principales.
+          Este contrato está cancelado. Se conserva como historial, pero no se incluye en los indicadores financieros principales.
         </div>
       ) : null}
 
       <div className="contract-detail-grid">
-        <Card>
+        <Card className="contract-overview-card">
           <div className="detail-section">
             <div className="detail-section__header">
               <h2>Resumen del contrato</h2>
@@ -144,11 +147,13 @@ export function DetalleContratoPage() {
                 </StatusBadge>
               </div>
             </div>
-            <dl className="detail-list">
+            <div className="financial-highlights">
+              <div><span>Valor final</span><strong>{formatCurrency(contrato.valor_final)}</strong></div>
+              <div><span>Monto abonado</span><strong>{formatCurrency(contrato.monto_abonado)}</strong></div>
+              <div className="financial-highlights__balance"><span>Saldo pendiente</span><strong>{formatCurrency(contrato.saldo_pendiente)}</strong></div>
+            </div>
+            <dl className="detail-list detail-list--compact">
               <DetailItem label="Fecha del evento" value={formatDate(contrato.fecha_evento)} />
-              <DetailItem label="Valor final" value={formatCurrency(contrato.valor_final)} />
-              <DetailItem label="Monto abonado" value={formatCurrency(contrato.monto_abonado)} />
-              <DetailItem label="Saldo pendiente" value={formatCurrency(contrato.saldo_pendiente)} />
               <DetailItem label="Creado" value={formatDate(contrato.creado_en)} />
               <DetailItem label="Actualizado" value={formatDate(contrato.actualizado_en)} />
             </dl>
@@ -162,8 +167,7 @@ export function DetalleContratoPage() {
             </div>
             <dl className="detail-list">
               <DetailItem label="Cliente" value={contrato.cliente_nombre} />
-              <DetailItem label="Telefono" value={contrato.cliente_telefono} />
-              <DetailItem label="ID cliente" value={contrato.cliente} />
+              <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${contrato.cliente_telefono}`}>{formatPhone(contrato.cliente_telefono)}</a>} />
             </dl>
           </div>
         </Card>
@@ -175,7 +179,7 @@ export function DetalleContratoPage() {
             </div>
             <dl className="detail-list">
               <DetailItem label="Tipo de evento" value={contrato.tipo_evento_nombre} />
-              <DetailItem label="Numero de invitados" value={contrato.numero_invitados} />
+              <DetailItem label="Número de invitados" value={contrato.numero_invitados} />
               <DetailItem label="Paquete" value={contrato.paquete_nombre || 'Sin paquete'} />
             </dl>
           </div>
@@ -187,23 +191,12 @@ export function DetalleContratoPage() {
               <h2>Datos financieros</h2>
             </div>
             <dl className="detail-list">
-              <DetailItem label="Valor final" value={formatCurrency(contrato.valor_final)} />
-              <DetailItem label="Monto abonado" value={formatCurrency(contrato.monto_abonado)} />
-              <DetailItem label="Saldo pendiente" value={formatCurrency(contrato.saldo_pendiente)} />
               <DetailItem
                 label="Total costos directos"
                 value={formatCurrency(contrato.total_costos_directos)}
               />
               <DetailItem label="Utilidad bruta" value={formatCurrency(contrato.utilidad_bruta)} />
               <DetailItem label="Margen bruto" value={formatPercent(contrato.margen_bruto)} />
-              <DetailItem
-                label="Estado pago"
-                value={
-                  <StatusBadge status={contrato.estado_pago}>
-                    {getEstadoPagoLabel(contrato.estado_pago)}
-                  </StatusBadge>
-                }
-              />
             </dl>
           </div>
         </Card>

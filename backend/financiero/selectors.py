@@ -26,7 +26,7 @@ def contratos_con_relaciones():
             Value(ZERO),
             output_field=DecimalField(max_digits=12, decimal_places=2),
         )
-    )
+    ).order_by("-fecha_evento", "-creado_en")
 
 
 def contratos_confirmados_entre(inicio, fin):

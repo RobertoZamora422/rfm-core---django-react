@@ -15,6 +15,11 @@ def validate_phone(value):
         )
 
 
+def normalizar_telefono_busqueda(value):
+    """Quita los separadores permitidos para comparar teléfonos sin cambiar su presentación."""
+    return re.sub(r"[^0-9]", "", value or "")
+
+
 def normalizar_whatsapp_ecuador(value):
     value = value or ""
     if not WHATSAPP_ECUADOR_PATTERN.match(value):

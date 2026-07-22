@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  AUTH_EXPIRED_EVENT,
   clearStoredAuth,
   getStoredAuth,
   setAuthToken,
@@ -17,6 +18,17 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     setAuthToken(token)
   }, [token])
+
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      setToken(null)
+      setUser(null)
+      setIsCheckingSession(false)
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
+  }, [])
 
   useEffect(() => {
     if (!token) {

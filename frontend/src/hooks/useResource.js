@@ -1,28 +1,36 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getApiErrorMessage, getApiFieldErrors } from '../utils/apiErrors'
 import { useAutoRefresh } from './useAutoRefresh'
 
-export function useResource(service) {
+export function useResource(service, params = {}) {
   const [items, setItems] = useState([])
+  const [totalItems, setTotalItems] = useState(0)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const requestIdRef = useRef(0)
 
-  const load = useCallback(async () => {
-    setIsLoading(true)
-    setError('')
+  const load = useCallback(async ({ silent = false } = {}) => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    if (!silent) setIsLoading(true)
+    if (!silent) setError('')
 
     try {
-      const data = await service.list()
-      setItems(Array.isArray(data) ? data : data.results ?? [])
+      const data = await service.list(params)
+      if (requestId === requestIdRef.current) {
+        const nextItems = Array.isArray(data) ? data : data.results ?? []
+        setItems(nextItems)
+        setTotalItems(Array.isArray(data) ? data.length : data.count ?? nextItems.length)
+        setError('')
+      }
     } catch (loadError) {
-      setError(getApiErrorMessage(loadError))
+      if (requestId === requestIdRef.current) setError(getApiErrorMessage(loadError))
     } finally {
-      setIsLoading(false)
+      if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [service])
+  }, [params, service])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(load, 0)
@@ -41,13 +49,11 @@ export function useResource(service) {
       setFieldErrors({})
 
       try {
-        if (id) {
-          await service.update(id, payload)
-        } else {
-          await service.create(payload)
-        }
+        const saved = id
+          ? await service.update(id, payload)
+          : await service.create(payload)
         await load()
-        return true
+        return saved
       } catch (saveError) {
         setFieldErrors(getApiFieldErrors(saveError))
         setError(getApiErrorMessage(saveError))
@@ -59,35 +65,16 @@ export function useResource(service) {
     [load, service],
   )
 
-  const remove = useCallback(
-    async (id) => {
-      setIsDeleting(true)
-      setError('')
-
-      try {
-        await service.remove(id)
-        await load()
-        return true
-      } catch (deleteError) {
-        setError(getApiErrorMessage(deleteError))
-        return false
-      } finally {
-        setIsDeleting(false)
-      }
-    },
-    [load, service],
-  )
-
   return {
     error,
     fieldErrors,
-    isDeleting,
     isLoading,
     isSaving,
     items,
-    remove,
+    load,
     save,
     setError,
     setFieldErrors,
+    totalItems,
   }
 }

@@ -1,8 +1,17 @@
 import { EmptyState } from './EmptyState'
 
-export function DataTable({ caption, columns, emptyMessage, mobileTitle, rows }) {
+export function DataTable({
+  caption,
+  columns,
+  emptyAction,
+  emptyMessage,
+  emptyTitle = 'Sin registros',
+  getRowClassName,
+  mobileTitle,
+  rows,
+}) {
   if (!rows?.length) {
-    return <EmptyState description={emptyMessage} title="Sin registros" />
+    return <EmptyState action={emptyAction} description={emptyMessage} title={emptyTitle} />
   }
 
   return (
@@ -13,7 +22,7 @@ export function DataTable({ caption, columns, emptyMessage, mobileTitle, rows })
           <thead>
             <tr>
               {columns.map((column) => (
-                <th key={column.key} scope="col">
+                <th className={column.align ? `data-table__cell--${column.align}` : undefined} key={column.key} scope="col">
                   {column.header}
                 </th>
               ))}
@@ -21,9 +30,11 @@ export function DataTable({ caption, columns, emptyMessage, mobileTitle, rows })
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id}>
+              <tr className={getRowClassName?.(row)} key={row.id}>
                 {columns.map((column) => (
-                  <td key={column.key}>{column.render ? column.render(row) : row[column.key]}</td>
+                  <td className={column.align ? `data-table__cell--${column.align}` : undefined} key={column.key}>
+                    {column.render ? column.render(row) : row[column.key]}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -33,12 +44,12 @@ export function DataTable({ caption, columns, emptyMessage, mobileTitle, rows })
 
       <div className="mobile-list">
         {rows.map((row) => (
-          <article className="mobile-record" key={row.id}>
+          <article className={['mobile-record', getRowClassName?.(row)].filter(Boolean).join(' ')} key={row.id}>
             <h2>{mobileTitle ? mobileTitle(row) : row.nombre}</h2>
             <dl>
-              {columns.map((column) => (
+              {columns.filter((column) => column.mobile !== false).map((column) => (
                 <div key={column.key}>
-                  <dt>{column.header}</dt>
+                  <dt>{column.mobileLabel ?? column.header}</dt>
                   <dd>{column.render ? column.render(row) : row[column.key]}</dd>
                 </div>
               ))}

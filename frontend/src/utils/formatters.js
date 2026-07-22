@@ -30,3 +30,16 @@ export function formatPercent(value) {
     maximumFractionDigits: 2,
   }).format(Number(value))}%`
 }
+
+export function formatPhone(value) {
+  if (!value) return '-'
+
+  const digits = String(value).replace(/\D/g, '')
+  if (digits.length === 10 && digits.startsWith('09')) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`
+  }
+  if (digits.length === 12 && digits.startsWith('593')) {
+    return `+593 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`
+  }
+  return value
+}

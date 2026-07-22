@@ -1,20 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Ban, Eye, FilterX, Plus, Search } from 'lucide-react'
+import { Ban, Edit3, Eye, Plus, Receipt, Search } from 'lucide-react'
+import { ActionMenu } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
+import { FiltersToolbar } from '../../components/ui/FiltersToolbar'
 import { Input } from '../../components/ui/Input'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
+import { Pagination } from '../../components/ui/Pagination'
 import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import { SummaryStrip } from '../../components/ui/SummaryStrip'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
+import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { contratosService, tiposEventoService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
-import { formatCurrency, formatDate } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatPhone } from '../../utils/formatters'
 import {
   ESTADOS_CONTRATO_FILTRO,
   ESTADOS_PAGO_FILTRO,
@@ -30,126 +35,114 @@ const initialFilters = {
   desde: '',
   hasta: '',
 }
+const PAGE_SIZE = 12
+const initialSummary = { total: 0, confirmados: 0, cancelados: 0, pendientes: 0, abonados: 0, pagados: 0 }
+
+function filtersFromSearchParams(searchParams) {
+  return Object.fromEntries(Object.keys(initialFilters).map((key) => [key, searchParams.get(key) ?? '']))
+}
 
 function buildQueryParams(filters) {
-  return Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''),
-  )
+  return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== ''))
 }
 
 export function ContratosPage() {
-  const [searchParams] = useSearchParams()
-  const initialFiltersFromQuery = {
-    buscar: searchParams.get('buscar') ?? searchParams.get('search') ?? '',
-    estado_contrato: searchParams.get('estado_contrato') ?? '',
-    estado_pago: searchParams.get('estado_pago') ?? '',
-    tipo_evento: searchParams.get('tipo_evento') ?? '',
-    desde: searchParams.get('desde') ?? '',
-    hasta: searchParams.get('hasta') ?? '',
-  }
+  const [searchParams, setSearchParams] = useSearchParams()
   const [contratos, setContratos] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
-  const [filters, setFilters] = useState(initialFiltersFromQuery)
-  const [appliedFilters, setAppliedFilters] = useState(initialFiltersFromQuery)
+  const [filters, setFilters] = useState(() => filtersFromSearchParams(searchParams))
+  const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('page')) || 1))
+  const debouncedSearch = useDebouncedValue(filters.buscar, 350)
+  const appliedFilters = useMemo(() => ({ ...filters, buscar: debouncedSearch }), [debouncedSearch, filters])
+  const queryParams = useMemo(() => buildQueryParams(appliedFilters), [appliedFilters])
+  const requestParams = useMemo(() => ({ ...queryParams, page, page_size: PAGE_SIZE }), [page, queryParams])
+  const [summary, setSummary] = useState(initialSummary)
+  const [totalItems, setTotalItems] = useState(0)
   const [pageError, setPageError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [contractToCancel, setContractToCancel] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
   const [isCanceling, setIsCanceling] = useState(false)
+  const requestIdRef = useRef(0)
+  const hasFilters = Object.values(appliedFilters).some(Boolean)
+  const listLocation = `/contratos${searchParams.toString() ? `?${searchParams}` : ''}`
 
-  const loadContratos = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
+  const loadContratos = useCallback(async ({ silent = false } = {}) => {
+    const requestId = requestIdRef.current + 1
+    requestIdRef.current = requestId
+    if (!silent) setIsLoading(true)
+    if (!silent) setPageError('')
 
     try {
-      const data = await contratosService.list(buildQueryParams(appliedFilters))
-      setContratos(Array.isArray(data) ? data : data.results ?? [])
+      const [data, summaryData] = await Promise.all([
+        contratosService.list(requestParams),
+        contratosService.resumen(queryParams),
+      ])
+      if (requestId === requestIdRef.current) {
+        const nextItems = Array.isArray(data) ? data : data.results ?? []
+        setContratos(nextItems)
+        setTotalItems(Array.isArray(data) ? data.length : data.count ?? nextItems.length)
+        setSummary(summaryData)
+        setPageError('')
+      }
     } catch (error) {
-      setPageError(getApiErrorMessage(error))
+      if (requestId === requestIdRef.current) setPageError(getApiErrorMessage(error))
     } finally {
-      setIsLoading(false)
+      if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [appliedFilters])
+  }, [queryParams, requestParams])
+
+  useEffect(() => {
+    setSearchParams({ ...queryParams, ...(page > 1 ? { page } : {}) }, { replace: true })
+  }, [page, queryParams, setSearchParams])
 
   useEffect(() => {
     let isActive = true
-
-    async function loadTiposEvento() {
-      setIsLoadingCatalogs(true)
-      try {
-        const data = await tiposEventoService.list({ activo: true })
-        if (isActive) {
-          setTiposEvento(Array.isArray(data) ? data : data.results ?? [])
-        }
-      } catch (error) {
-        if (isActive) {
-          setPageError(getApiErrorMessage(error))
-        }
-      } finally {
-        if (isActive) {
-          setIsLoadingCatalogs(false)
-        }
-      }
-    }
-
-    const timeoutId = window.setTimeout(loadTiposEvento, 0)
-    return () => {
-      isActive = false
-      window.clearTimeout(timeoutId)
-    }
+    tiposEventoService.list({ activo: true })
+      .then((data) => {
+        if (isActive) setTiposEvento(Array.isArray(data) ? data : data.results ?? [])
+      })
+      .catch((error) => {
+        if (isActive) setPageError(getApiErrorMessage(error))
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingCatalogs(false)
+      })
+    return () => { isActive = false }
   }, [])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadContratos, 0)
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    return () => window.clearTimeout(timeoutId)
   }, [loadContratos])
 
   useAutoRefresh(loadContratos, { refreshOnMutation: false })
 
-  const counters = useMemo(
-    () => ({
-      total: contratos.length,
-      confirmados: contratos.filter((contrato) => contrato.estado_contrato === 'confirmado').length,
-      cancelados: contratos.filter((contrato) => contrato.estado_contrato === 'cancelado').length,
-      pendientes: contratos.filter((contrato) => contrato.estado_pago === 'pendiente').length,
-      abonados: contratos.filter((contrato) => contrato.estado_pago === 'abonado').length,
-      pagados: contratos.filter((contrato) => contrato.estado_pago === 'pagado').length,
-    }),
-    [contratos],
-  )
-
   const handleFilterChange = (event) => {
     const { name, value } = event.target
     setFilters((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleApplyFilters = (event) => {
-    event.preventDefault()
+    setPage(1)
     setActionMessage('')
-    setAppliedFilters(filters)
   }
 
   const handleClearFilters = () => {
     setFilters(initialFilters)
-    setAppliedFilters(initialFilters)
+    setPage(1)
     setActionMessage('')
   }
 
   const handleCancelContract = async () => {
     if (!contractToCancel) return
-
     setIsCanceling(true)
     setPageError('')
     setActionMessage('')
 
     try {
       await contratosService.cancelar(contractToCancel.id)
-      setActionMessage(`Contrato #${contractToCancel.id} cancelado sin eliminar el registro.`)
+      setActionMessage(`Contrato #${contractToCancel.id} cancelado y conservado en el historial.`)
       setContractToCancel(null)
-      await loadContratos()
+      await loadContratos({ silent: true })
     } catch (error) {
       setPageError(getApiErrorMessage(error))
     } finally {
@@ -164,208 +157,141 @@ export function ContratosPage() {
       render: (item) => (
         <div className="stacked-cell">
           <strong>{item.cliente_nombre}</strong>
-          <span>{item.cliente_telefono || '-'}</span>
+          <span>{formatPhone(item.cliente_telefono)}</span>
         </div>
       ),
     },
-    { key: 'tipo_evento_nombre', header: 'Tipo de evento' },
     {
-      key: 'fecha_evento',
-      header: 'Fecha del evento',
-      render: (item) => formatDate(item.fecha_evento),
+      key: 'evento',
+      header: 'Evento',
+      render: (item) => (
+        <div className="stacked-cell">
+          <strong>{item.tipo_evento_nombre}</strong>
+          <span>{item.paquete_nombre || 'Sin paquete'} · {formatDate(item.fecha_evento)}</span>
+        </div>
+      ),
     },
     {
-      key: 'paquete_nombre',
-      header: 'Paquete',
-      render: (item) => item.paquete_nombre || 'Sin paquete',
-    },
-    {
-      key: 'valor_final',
-      header: 'Valor final',
-      render: (item) => formatCurrency(item.valor_final),
-    },
-    {
-      key: 'monto_abonado',
-      header: 'Monto abonado',
-      render: (item) => formatCurrency(item.monto_abonado),
-    },
-    {
-      key: 'saldo_pendiente',
-      header: 'Saldo pendiente',
-      render: (item) => formatCurrency(item.saldo_pendiente),
+      key: 'valores',
+      header: 'Valores',
+      align: 'right',
+      render: (item) => (
+        <dl className="money-breakdown">
+          <div><dt>Final</dt><dd>{formatCurrency(item.valor_final)}</dd></div>
+          <div><dt>Abonado</dt><dd>{formatCurrency(item.monto_abonado)}</dd></div>
+          <div className="money-breakdown__balance"><dt>Saldo</dt><dd>{formatCurrency(item.saldo_pendiente)}</dd></div>
+        </dl>
+      ),
     },
     {
       key: 'estado_contrato',
-      header: 'Estado contrato',
-      render: (item) => (
-        <StatusBadge status={item.estado_contrato}>
-          {getEstadoContratoLabel(item.estado_contrato)}
-        </StatusBadge>
-      ),
+      header: 'Contrato',
+      render: (item) => <StatusBadge status={item.estado_contrato}>{getEstadoContratoLabel(item.estado_contrato)}</StatusBadge>,
     },
     {
       key: 'estado_pago',
-      header: 'Estado pago',
-      render: (item) => (
-        <StatusBadge status={item.estado_pago}>{getEstadoPagoLabel(item.estado_pago)}</StatusBadge>
-      ),
+      header: 'Pago',
+      render: (item) => <StatusBadge status={item.estado_pago}>{getEstadoPagoLabel(item.estado_pago)}</StatusBadge>,
     },
     {
       key: 'acciones',
       header: 'Acciones',
       render: (item) => (
-        <div className="table-actions">
-          <Link className="button button--secondary" to={`/contratos/${item.id}`}>
-            <Eye aria-hidden="true" size={18} />
-            <span>Ver detalle</span>
+        <div className="table-actions table-actions--compact">
+          <Link className="button button--secondary" state={{ from: listLocation }} to={`/contratos/${item.id}`}>
+            <Eye aria-hidden="true" size={18} /><span>Detalle</span>
           </Link>
-          {item.estado_contrato !== 'cancelado' ? (
-            <Button icon={Ban} onClick={() => setContractToCancel(item)} variant="ghost">
-              Cancelar
-            </Button>
-          ) : null}
+          <ActionMenu label={`Más acciones para el contrato #${item.id}`}>
+            <Link className="action-menu__item" state={{ from: listLocation }} to={`/contratos/${item.id}/editar`}>
+              <Edit3 aria-hidden="true" size={17} /> Editar contrato
+            </Link>
+            {item.estado_contrato !== 'cancelado' ? (
+              <>
+                <Link className="action-menu__item" to={`/costos-directos?contrato=${item.id}&nuevo=1`}>
+                  <Receipt aria-hidden="true" size={17} /> Registrar costo directo
+                </Link>
+                <button className="action-menu__item action-menu__item--danger" onClick={() => setContractToCancel(item)} type="button">
+                  <Ban aria-hidden="true" size={17} /> Cancelar contrato
+                </button>
+              </>
+            ) : null}
+          </ActionMenu>
         </div>
       ),
     },
   ]
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
-        actions={
-          <>
-            <Link className="button button--primary" to="/contratos/nuevo">
-              <Plus aria-hidden="true" size={18} />
-              <span>Nuevo contrato</span>
-            </Link>
-          </>
-        }
-        description="Administra las ventas reales del negocio y su estado de pago."
+        actions={<Link className="button button--primary" to="/contratos/nuevo"><Plus aria-hidden="true" size={18} /><span>Nuevo contrato</span></Link>}
+        description="Consulta ventas confirmadas, pagos y saldos sin confundir el estado comercial con la cobranza."
+        eyebrow="Comercial"
         title="Contratos"
       />
 
-      <ErrorMessage>{pageError}</ErrorMessage>
-      {actionMessage ? <div className="success-message">{actionMessage}</div> : null}
+      <ErrorMessage action={pageError ? <Button onClick={() => loadContratos()} variant="secondary">Reintentar</Button> : null}>{pageError}</ErrorMessage>
+      {actionMessage ? <div className="success-message" role="status">{actionMessage}</div> : null}
 
-      <Card>
-        <div className="contract-summary">
-          <span>Total: {counters.total}</span>
-          <span>Confirmados: {counters.confirmados}</span>
-          <span>Cancelados: {counters.cancelados}</span>
-          <span>Pendientes: {counters.pendientes}</span>
-          <span>Abonados: {counters.abonados}</span>
-          <span>Pagados: {counters.pagados}</span>
-        </div>
-      </Card>
+      <SummaryStrip groups={[
+        {
+          label: hasFilters ? 'Contratos filtrados' : 'Estado del contrato',
+          items: [
+            { label: 'Total', value: summary.total },
+            { label: 'Confirmados', value: summary.confirmados, tone: 'success' },
+            { label: 'Cancelados', value: summary.cancelados, tone: 'muted' },
+          ],
+        },
+        {
+          label: 'Estado del pago',
+          items: [
+            { label: 'Pendientes', value: summary.pendientes, tone: 'notice' },
+            { label: 'Abonados', value: summary.abonados, tone: 'info' },
+            { label: 'Pagados', value: summary.pagados, tone: 'success' },
+          ],
+        },
+      ]} />
 
-      <Card>
-        <form className="filters-grid filters-grid--contracts" onSubmit={handleApplyFilters}>
-          <Input
-            id="contratos-buscar"
-            label="Buscar"
-            name="buscar"
-            onChange={handleFilterChange}
-            placeholder="Cliente o telefono"
-            value={filters.buscar}
-          />
-          <Select
-            id="contratos-estado-contrato"
-            label="Estado de contrato"
-            name="estado_contrato"
-            onChange={handleFilterChange}
-            value={filters.estado_contrato}
-          >
-            {ESTADOS_CONTRATO_FILTRO.map((estado) => (
-              <option key={estado.value || 'todos'} value={estado.value}>
-                {estado.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            id="contratos-estado-pago"
-            label="Estado de pago"
-            name="estado_pago"
-            onChange={handleFilterChange}
-            value={filters.estado_pago}
-          >
-            {ESTADOS_PAGO_FILTRO.map((estado) => (
-              <option key={estado.value || 'todos'} value={estado.value}>
-                {estado.label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            disabled={isLoadingCatalogs}
-            id="contratos-tipo-evento"
-            label="Tipo de evento"
-            name="tipo_evento"
-            onChange={handleFilterChange}
-            value={filters.tipo_evento}
-          >
-            <option value="">Todos los eventos</option>
-            {tiposEvento.map((tipo) => (
-              <option key={tipo.id} value={tipo.id}>
-                {tipo.nombre}
-              </option>
-            ))}
-          </Select>
-          <Input
-            id="contratos-desde"
-            label="Fecha desde"
-            name="desde"
-            onChange={handleFilterChange}
-            type="date"
-            value={filters.desde}
-          />
-          <Input
-            id="contratos-hasta"
-            label="Fecha hasta"
-            name="hasta"
-            onChange={handleFilterChange}
-            type="date"
-            value={filters.hasta}
-          />
-          <div className="filters-actions">
-            <Button icon={Search} type="submit">
-              Filtrar
-            </Button>
-            <Button icon={FilterX} onClick={handleClearFilters} variant="secondary">
-              Limpiar
-            </Button>
-          </div>
-        </form>
-      </Card>
+      <FiltersToolbar hasFilters={hasFilters} isLoading={isLoading} onClear={handleClearFilters} resultCount={totalItems}>
+        <Input icon={Search} id="contratos-buscar" label="Buscar" name="buscar" onChange={handleFilterChange} placeholder="Cliente, teléfono, evento o paquete" type="search" value={filters.buscar} />
+        <Select id="contratos-estado-contrato" label="Estado del contrato" name="estado_contrato" onChange={handleFilterChange} value={filters.estado_contrato}>
+          {ESTADOS_CONTRATO_FILTRO.map((item) => <option key={item.value || 'todos'} value={item.value}>{item.label}</option>)}
+        </Select>
+        <Select id="contratos-estado-pago" label="Estado del pago" name="estado_pago" onChange={handleFilterChange} value={filters.estado_pago}>
+          {ESTADOS_PAGO_FILTRO.map((item) => <option key={item.value || 'todos'} value={item.value}>{item.label}</option>)}
+        </Select>
+        <Select disabled={isLoadingCatalogs} id="contratos-tipo-evento" label="Tipo de evento" name="tipo_evento" onChange={handleFilterChange} value={filters.tipo_evento}>
+          <option value="">Todos los eventos</option>
+          {tiposEvento.map((tipo) => <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>)}
+        </Select>
+        <Input id="contratos-desde" label="Evento desde" name="desde" onChange={handleFilterChange} type="date" value={filters.desde} />
+        <Input id="contratos-hasta" label="Evento hasta" name="hasta" onChange={handleFilterChange} type="date" value={filters.hasta} />
+      </FiltersToolbar>
 
-      <Card>
-        {isLoading ? (
-          <LoadingState label="Cargando contratos" />
-        ) : (
+      <Card className="commercial-list-card">
+        {isLoading ? <LoadingState label="Cargando contratos" /> : (
           <DataTable
+            caption="Contratos comerciales y estado de pago"
             columns={columns}
-            emptyMessage="No hay contratos reales para los filtros aplicados."
-            mobileTitle={(item) => `${item.cliente_nombre} - #${item.id}`}
+            emptyAction={hasFilters ? <Button onClick={handleClearFilters} variant="secondary">Limpiar filtros</Button> : <Link className="button button--primary" to="/contratos/nuevo">Crear primer contrato</Link>}
+            emptyMessage={hasFilters ? 'No hay contratos que coincidan con la búsqueda o los filtros actuales.' : 'Crea el primer contrato cuando exista una venta confirmada.'}
+            emptyTitle={hasFilters ? 'Sin coincidencias' : 'Aún no hay contratos'}
+            getRowClassName={(item) => item.estado_contrato === 'cancelado' ? 'data-table__row--cancelled' : ''}
+            mobileTitle={(item) => `${item.cliente_nombre} · Contrato #${item.id}`}
             rows={contratos}
           />
         )}
+        <Pagination onPageChange={setPage} page={page} pageSize={PAGE_SIZE} total={totalItems} />
       </Card>
 
-      <Modal
-        isOpen={Boolean(contractToCancel)}
-        onClose={() => setContractToCancel(null)}
-        title="Cancelar contrato"
-      >
+      <Modal isOpen={Boolean(contractToCancel)} onClose={() => setContractToCancel(null)} title="Cancelar contrato">
         <div className="confirm-dialog">
           <p>
-            Esta accion cambiara el contrato #{contractToCancel?.id} a cancelado. El registro se conserva para
-            control historico.
+            El contrato #{contractToCancel?.id} se conservará para control histórico, pero dejará de contar como venta activa y no permitirá nuevos costos directos.
           </p>
           <div className="form-actions">
-            <Button onClick={() => setContractToCancel(null)} variant="secondary">
-              Mantener contrato
-            </Button>
-            <Button icon={Ban} isLoading={isCanceling} onClick={handleCancelContract}>
-              Cancelar contrato
-            </Button>
+            <Button onClick={() => setContractToCancel(null)} variant="secondary">Mantener contrato</Button>
+            <Button icon={Ban} isLoading={isCanceling} onClick={handleCancelContract}>Cancelar contrato</Button>
           </div>
         </div>
       </Modal>

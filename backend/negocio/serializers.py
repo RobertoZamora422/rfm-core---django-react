@@ -1,9 +1,13 @@
 from rest_framework import serializers
 
 from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
+from .selectors import buscar_cliente_por_telefono
 
 
 class ClienteSerializer(serializers.ModelSerializer):
+    cotizaciones_count = serializers.SerializerMethodField()
+    contratos_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Cliente
         fields = [
@@ -12,11 +16,41 @@ class ClienteSerializer(serializers.ModelSerializer):
             "telefono",
             "correo",
             "observaciones",
+            "cotizaciones_count",
+            "contratos_count",
             "es_demo",
             "creado_en",
             "actualizado_en",
         ]
         read_only_fields = ["id", "es_demo", "creado_en", "actualizado_en"]
+
+    def validate_nombre(self, value):
+        value = (value or "").strip()
+        if not value:
+            raise serializers.ValidationError("El nombre es obligatorio.")
+        return value
+
+    def get_cotizaciones_count(self, obj):
+        if hasattr(obj, "cotizaciones_count"):
+            return obj.cotizaciones_count
+        return obj.cotizaciones.count()
+
+    def get_contratos_count(self, obj):
+        if hasattr(obj, "contratos_count"):
+            return obj.contratos_count
+        return obj.contratos.count()
+
+    def validate_telefono(self, value):
+        value = (value or "").strip()
+        duplicate = buscar_cliente_por_telefono(
+            value,
+            exclude_id=getattr(self.instance, "id", None),
+        )
+        if duplicate:
+            raise serializers.ValidationError(
+                "Ya existe un cliente con este teléfono. Edite el registro existente para evitar duplicados."
+            )
+        return value
 
 
 class TipoEventoSerializer(serializers.ModelSerializer):
@@ -31,6 +65,15 @@ class TipoEventoSerializer(serializers.ModelSerializer):
             "actualizado_en",
         ]
         read_only_fields = ["id", "creado_en", "actualizado_en"]
+
+    def validate_nombre(self, value):
+        value = (value or "").strip()
+        queryset = TipoEvento.objects.filter(nombre__iexact=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("Ya existe un tipo de evento con este nombre.")
+        return value
 
 
 class PublicTipoEventoSerializer(serializers.ModelSerializer):

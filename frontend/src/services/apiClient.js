@@ -10,6 +10,7 @@ const API_BASE_URL = envApiBaseUrl ?? 'http://127.0.0.1:8000/api'
 const AUTH_TOKEN_KEY = 'rfm_core_auth_token'
 const AUTH_USER_KEY = 'rfm_core_auth_user'
 export const DATA_CHANGED_EVENT = 'rfm:data-changed'
+export const AUTH_EXPIRED_EVENT = 'rfm:auth-expired'
 
 const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
@@ -56,24 +57,34 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
-apiClient.interceptors.response.use((response) => {
-  const method = response.config.method?.toLowerCase()
+apiClient.interceptors.response.use(
+  (response) => {
+    const method = response.config.method?.toLowerCase()
 
-  if (MUTATION_METHODS.has(method)) {
-    const detail = {
-      method,
-      url: response.config.url ?? '',
-      timestamp: Date.now(),
+    if (MUTATION_METHODS.has(method)) {
+      const detail = {
+        method,
+        url: response.config.url ?? '',
+        timestamp: Date.now(),
+      }
+
+      window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail }))
+
+      if ('BroadcastChannel' in window) {
+        const channel = new BroadcastChannel(DATA_CHANGED_EVENT)
+        channel.postMessage(detail)
+        channel.close()
+      }
     }
 
-    window.dispatchEvent(new CustomEvent(DATA_CHANGED_EVENT, { detail }))
-
-    if ('BroadcastChannel' in window) {
-      const channel = new BroadcastChannel(DATA_CHANGED_EVENT)
-      channel.postMessage(detail)
-      channel.close()
+    return response
+  },
+  (error) => {
+    if (error?.response?.status === 401 && getStoredAuth().token) {
+      clearStoredAuth()
+      setAuthToken(null)
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
     }
-  }
-
-  return response
-})
+    return Promise.reject(error)
+  },
+)

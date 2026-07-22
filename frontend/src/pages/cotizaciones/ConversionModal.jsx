@@ -6,6 +6,7 @@ import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
 import { paquetesService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 
 function buildInitialForm(cotizacion) {
   return {
@@ -33,6 +34,7 @@ export function ConversionModal({
   const [paquetes, setPaquetes] = useState([])
   const [catalogError, setCatalogError] = useState('')
   const [isLoadingPaquetes, setIsLoadingPaquetes] = useState(true)
+  useFocusFirstError(errors)
 
   useEffect(() => {
     let isActive = true
@@ -96,6 +98,7 @@ export function ConversionModal({
     >
       <form className="resource-form" onSubmit={handleSubmit}>
         <Input
+          autoFocus
           error={errors.fecha_evento}
           id="conversion-fecha-evento"
           label="Fecha del evento"
@@ -108,7 +111,7 @@ export function ConversionModal({
         <Input
           error={errors.numero_invitados}
           id="conversion-numero-invitados"
-          label="Numero de invitados final"
+          label="Número de invitados final"
           min="1"
           name="numero_invitados"
           onChange={handleChange}
@@ -135,7 +138,8 @@ export function ConversionModal({
         <Input
           error={errors.valor_final}
           id="conversion-valor-final"
-          label="Valor final acordado"
+          inputMode="decimal"
+          label="Valor final acordado (USD)"
           min="0"
           name="valor_final"
           onChange={handleChange}
@@ -147,7 +151,9 @@ export function ConversionModal({
         <Input
           error={errors.monto_abonado}
           id="conversion-monto-abonado"
-          label="Monto abonado"
+          helpText="No puede superar el valor final."
+          inputMode="decimal"
+          label="Monto abonado (USD)"
           min="0"
           name="monto_abonado"
           onChange={handleChange}
@@ -163,8 +169,11 @@ export function ConversionModal({
           onChange={handleChange}
           value={form.observaciones}
         />
+        <div className="notice-message">
+          Al convertir, se creará una venta real y esta cotización quedará bloqueada como Convertida.
+        </div>
         <div className="form-actions">
-          <Button onClick={onClose} variant="secondary">
+          <Button disabled={isSubmitting} onClick={onClose} variant="secondary">
             Cancelar
           </Button>
           <Button isLoading={isSubmitting} type="submit">

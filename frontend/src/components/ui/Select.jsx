@@ -13,7 +13,10 @@ export function Select({ children, error, icon: Icon, id, label, ...props }) {
 
   return (
     <label className="field" htmlFor={id}>
-      <span className="field__label">{label}</span>
+      <span className="field__label">
+        {label}
+        {props.required ? <span className="field__required" aria-hidden="true"> *</span> : null}
+      </span>
       {Icon ? (
         <span className="field__control-wrap">
           <Icon aria-hidden="true" className="field__control-icon" size={18} />

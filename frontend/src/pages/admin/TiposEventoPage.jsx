@@ -5,15 +5,24 @@ import { Input } from '../../components/ui/Input'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { Textarea } from '../../components/ui/Textarea'
 import { tiposEventoService } from '../../services/resourceService'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 
 const columns = [
-  { key: 'nombre', header: 'Nombre' },
-  { key: 'descripcion', header: 'Descripcion', render: (item) => item.descripcion || '-' },
+  {
+    key: 'nombre',
+    header: 'Tipo de evento',
+    render: (item) => (
+      <div className="stacked-cell">
+        <strong>{item.nombre}</strong>
+        <span className="line-clamp">{item.descripcion || 'Sin descripción'}</span>
+      </div>
+    ),
+  },
   {
     key: 'activo',
     header: 'Estado',
     render: (item) => (
-      <StatusBadge status={item.activo ? 'confirmado' : 'descartada'}>
+      <StatusBadge status={item.activo ? 'activo' : 'inactivo'}>
         {item.activo ? 'Activo' : 'Inactivo'}
       </StatusBadge>
     ),
@@ -24,14 +33,14 @@ function TipoEventoForm({ errors, initialValues, isSubmitting, onCancel, onSubmi
   const [form, setForm] = useState({
     nombre: initialValues?.nombre ?? '',
     descripcion: initialValues?.descripcion ?? '',
-    activo: initialValues?.activo ?? true,
   })
+  useFocusFirstError(errors)
 
   const handleChange = (event) => {
-    const { checked, name, type, value } = event.target
+    const { name, value } = event.target
     setForm((current) => ({
       ...current,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: value,
     }))
   }
 
@@ -49,27 +58,17 @@ function TipoEventoForm({ errors, initialValues, isSubmitting, onCancel, onSubmi
         name="nombre"
         onChange={handleChange}
         required
+        autoFocus
         value={form.nombre}
       />
       <Textarea
         error={errors.descripcion}
         id="tipo-evento-descripcion"
-        label="Descripcion"
+        label="Descripción"
         name="descripcion"
         onChange={handleChange}
         value={form.descripcion}
       />
-      <label className="checkbox-field" htmlFor="tipo-evento-activo">
-        <input
-          checked={form.activo}
-          id="tipo-evento-activo"
-          name="activo"
-          onChange={handleChange}
-          type="checkbox"
-        />
-        <span>Tipo de evento activo</span>
-      </label>
-      {errors.activo ? <span className="field__error">{errors.activo}</span> : null}
       <div className="form-actions">
         <Button onClick={onCancel} variant="secondary">
           Cancelar
@@ -87,12 +86,42 @@ export function TiposEventoPage() {
     <ResourcePage
       columns={columns}
       createLabel="Crear tipo de evento"
-      description="Catalogo de eventos disponibles para cotizaciones y contratos."
-      emptyMessage="No existen tipos de evento registrados."
+      description="Mantén una lista clara de los eventos que el negocio ofrece actualmente."
+      emptyMessage="Crea el primer tipo de evento para usarlo en cotizaciones y contratos."
+      filterDefinitions={[
+        {
+          key: 'buscar',
+          label: 'Buscar',
+          placeholder: 'Nombre o descripción',
+          type: 'search',
+        },
+        {
+          key: 'activo',
+          label: 'Estado',
+          type: 'select',
+          options: [
+            { value: '', label: 'Todos' },
+            { value: 'true', label: 'Activos' },
+            { value: 'false', label: 'Inactivos' },
+          ],
+        },
+      ]}
       FormComponent={TipoEventoForm}
+      itemLabel="Tipo de evento"
       mobileTitle={(item) => item.nombre}
       service={tiposEventoService}
       title="Tipos de evento"
+      statusConfig={{
+        field: 'activo',
+        activateLabel: 'Activar',
+        deactivateLabel: 'Desactivar',
+        activateTitle: 'Activar tipo de evento',
+        deactivateTitle: 'Desactivar tipo de evento',
+        activateDescription: 'Este tipo de evento volverá a estar disponible en nuevos registros.',
+        deactivateDescription: 'Dejará de ofrecerse en nuevas cotizaciones y contratos, pero permanecerá en el historial existente.',
+        activatedText: 'activado para nuevos registros',
+        deactivatedText: 'desactivado sin afectar el historial',
+      }}
     />
   )
 }

@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Sum
 from django.utils import timezone
 
@@ -86,6 +87,8 @@ def _safe_percentage(numerator, denominator):
 
 
 def cancelar_contrato(contrato):
+    if contrato.estado_contrato == Contrato.EstadoContrato.CANCELADO:
+        raise ValidationError({"estado_contrato": "El contrato ya se encuentra cancelado."})
     contrato.estado_contrato = Contrato.EstadoContrato.CANCELADO
     contrato.save(update_fields=["estado_contrato", "actualizado_en"])
     return contrato

@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -11,7 +11,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from financiero.serializers import ContratoSerializer
+from config.pagination import OptionalPageNumberPagination
 
+from .models import Cotizacion
 from .selectors import cotizaciones_con_relaciones
 from .serializers import (
     CambiarEstadoCotizacionSerializer,
@@ -92,6 +94,7 @@ class PreCotizacionAPIView(APIView):
 
 class CotizacionViewSet(viewsets.ModelViewSet):
     serializer_class = CotizacionSerializer
+    pagination_class = OptionalPageNumberPagination
     search_fields = ["cliente__nombre", "cliente__telefono", "observaciones"]
 
     def get_queryset(self):
@@ -113,6 +116,8 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             or ""
         ).strip()
         es_demo = self.request.query_params.get("es_demo")
+        if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+            raise ApiValidationError({"hasta": "La fecha hasta no puede ser anterior a desde."})
         if estado:
             queryset = queryset.filter(estado=estado)
         if cliente:
@@ -127,6 +132,8 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(cliente__nombre__icontains=buscar)
                 | Q(cliente__telefono__icontains=buscar)
+                | Q(tipo_evento__nombre__icontains=buscar)
+                | Q(paquete__nombre__icontains=buscar)
                 | Q(observaciones__icontains=buscar)
             )
         if es_demo is not None:
@@ -148,6 +155,18 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             _raise_api_validation_error(exc)
 
         return Response(CotizacionSerializer(cotizacion).data)
+
+    @action(detail=False, methods=["get"], url_path="resumen")
+    def resumen(self, request):
+        summary = self.get_queryset().aggregate(
+            total=Count("id"),
+            nuevas=Count("id", filter=Q(estado=Cotizacion.Estado.NUEVA)),
+            contactadas=Count("id", filter=Q(estado=Cotizacion.Estado.CONTACTADA)),
+            confirmadas=Count("id", filter=Q(estado=Cotizacion.Estado.CONFIRMADA)),
+            convertidas=Count("id", filter=Q(estado=Cotizacion.Estado.CONVERTIDA)),
+            descartadas=Count("id", filter=Q(estado=Cotizacion.Estado.DESCARTADA)),
+        )
+        return Response(summary)
 
     @action(detail=True, methods=["post"], url_path="convertir-contrato")
     def convertir_contrato(self, request, pk=None):

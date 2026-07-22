@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
@@ -33,6 +33,8 @@ function ensureCurrentOption(items, currentId, currentName, extra = {}) {
 export function EditarCotizacionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const returnPath = location.state?.from || `/cotizaciones/${id}`
   const [cotizacion, setCotizacion] = useState(null)
   const [clientes, setClientes] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
@@ -88,7 +90,7 @@ export function EditarCotizacionPage() {
 
     try {
       const updated = await cotizacionesService.update(id, payload)
-      navigate(`/cotizaciones/${updated.id}`)
+      navigate(`/cotizaciones/${updated.id}`, { state: { from: location.state?.from } })
     } catch (error) {
       setFieldErrors(getApiFieldErrors(error))
       setPageError(getApiErrorMessage(error))
@@ -98,21 +100,22 @@ export function EditarCotizacionPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
         actions={
-          <Link className="button button--secondary" to={`/cotizaciones/${id}`}>
+          <Link className="button button--secondary" to={returnPath}>
             <ArrowLeft aria-hidden="true" size={18} />
             <span>Volver</span>
           </Link>
         }
-        description="Actualiza la informacion comercial editable de la cotizacion."
-        title={`Editar cotizacion #${id}`}
+        description="Actualiza datos comerciales; los cambios de estado se realizan desde las acciones de seguimiento."
+        eyebrow="Comercial · Cotizaciones"
+        title={`Editar cotización #${id}`}
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
 
-      <Card>
+      <Card className="form-card">
         {isLoading ? (
           <LoadingState label="Cargando cotizacion" />
         ) : cotizacion ? (
@@ -123,7 +126,7 @@ export function EditarCotizacionPage() {
             isLoadingCatalogs={isLoading}
             isSubmitting={isSaving}
             key={cotizacion.id}
-            onCancel={() => navigate(`/cotizaciones/${id}`)}
+            onCancel={() => navigate(returnPath)}
             onSubmit={handleSubmit}
             paquetes={paquetes}
             submitLabel="Guardar cambios"

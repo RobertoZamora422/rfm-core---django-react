@@ -1,56 +1,62 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Edit3, FilePlus2, Save } from 'lucide-react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Edit3,
+  FilePlus2,
+  PhoneCall,
+  RotateCcw,
+  Undo2,
+  XCircle,
+} from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
+import { Modal } from '../../components/ui/Modal'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { Select } from '../../components/ui/Select'
 import { StatusBadge } from '../../components/ui/StatusBadge'
-import { Textarea } from '../../components/ui/Textarea'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
 import { cotizacionesService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
-import { formatCurrency, formatDate } from '../../utils/formatters'
+import { formatCurrency, formatDate, formatPhone } from '../../utils/formatters'
 import { ConversionModal } from './ConversionModal'
-import {
-  ESTADOS_CAMBIO,
-  TIPO_SERVICIO_LABELS,
-  canChangeQuoteStatus,
-  canConvertQuote,
-  getEstadoLabel,
-} from './quoteConstants'
+import { TIPO_SERVICIO_LABELS, canConvertQuote, getEstadoLabel } from './quoteConstants'
 
 function DetailItem({ label, value }) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{value || '-'}</dd>
-    </div>
-  )
+  return <div><dt>{label}</dt><dd>{value || '-'}</dd></div>
+}
+
+const stateDescriptions = {
+  nueva: 'Pendiente del primer contacto con el cliente.',
+  contactada: 'El cliente ya fue contactado; registra la confirmación cuando acepte continuar.',
+  confirmada: 'La oportunidad está lista para convertirse en contrato.',
+  convertida: 'Ya existe una venta asociada. Los datos comerciales críticos están bloqueados.',
+  descartada: 'La oportunidad salió del flujo activo y se conserva en el historial.',
 }
 
 export function DetalleCotizacionPage() {
   const { id } = useParams()
+  const location = useLocation()
+  const returnPath = location.state?.from || '/cotizaciones'
   const [cotizacion, setCotizacion] = useState(null)
-  const [estado, setEstado] = useState('')
   const [pageError, setPageError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
   const [conversionErrors, setConversionErrors] = useState({})
+  const [pendingState, setPendingState] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingState, setIsSavingState] = useState(false)
   const [isConverting, setIsConverting] = useState(false)
   const [isConversionOpen, setIsConversionOpen] = useState(false)
 
-  const loadCotizacion = useCallback(async () => {
-    setIsLoading(true)
-    setPageError('')
-
+  const loadCotizacion = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true)
+    if (!silent) setPageError('')
     try {
       const data = await cotizacionesService.retrieve(id)
       setCotizacion(data)
-      setEstado(data.estado)
+      setPageError('')
     } catch (error) {
       setPageError(getApiErrorMessage(error))
     } finally {
@@ -60,25 +66,20 @@ export function DetalleCotizacionPage() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadCotizacion, 0)
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
+    return () => window.clearTimeout(timeoutId)
   }, [loadCotizacion])
 
   useAutoRefresh(loadCotizacion, { refreshOnMutation: false })
 
-  const handleSaveState = async (event) => {
-    event.preventDefault()
-    if (!cotizacion || estado === cotizacion.estado) return
-
+  const changeState = async (estado) => {
+    if (!cotizacion) return
     setIsSavingState(true)
     setPageError('')
     setActionMessage('')
-
     try {
       const updated = await cotizacionesService.cambiarEstado(cotizacion.id, estado)
       setCotizacion(updated)
-      setEstado(updated.estado)
+      setPendingState(null)
       setActionMessage(`Estado actualizado a ${getEstadoLabel(updated.estado)}.`)
     } catch (error) {
       setPageError(getApiErrorMessage(error))
@@ -89,18 +90,15 @@ export function DetalleCotizacionPage() {
 
   const handleConvert = async (payload) => {
     if (!cotizacion) return
-
     setIsConverting(true)
     setConversionErrors({})
     setPageError('')
     setActionMessage('')
-
     try {
       const response = await cotizacionesService.convertirContrato(cotizacion.id, payload)
       setCotizacion(response.cotizacion)
-      setEstado(response.cotizacion.estado)
       setIsConversionOpen(false)
-      setActionMessage(`Contrato #${response.contrato.id} creado desde esta cotizacion.`)
+      setActionMessage(`Contrato #${response.contrato.id} creado desde esta cotización.`)
     } catch (error) {
       setConversionErrors(getApiFieldErrors(error))
       setPageError(getApiErrorMessage(error))
@@ -110,149 +108,97 @@ export function DetalleCotizacionPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="page-stack">
-        <PageHeader title="Detalle de cotizacion" />
-        <Card>
-          <LoadingState label="Cargando cotizacion" />
-        </Card>
-      </div>
-    )
+    return <div className="page-stack page-stack--commercial"><PageHeader title="Detalle de cotización" /><Card><LoadingState label="Cargando cotización" /></Card></div>
   }
 
   if (!cotizacion) {
     return (
-      <div className="page-stack">
-        <PageHeader title="Detalle de cotizacion" />
-        <ErrorMessage>{pageError || 'No se pudo cargar la cotizacion solicitada.'}</ErrorMessage>
-        <Link className="button button--secondary" to="/cotizaciones">
-          <ArrowLeft aria-hidden="true" size={18} />
-          <span>Volver</span>
-        </Link>
+      <div className="page-stack page-stack--commercial">
+        <PageHeader title="Detalle de cotización" />
+        <ErrorMessage action={<Button onClick={() => loadCotizacion()} variant="secondary">Reintentar</Button>}>{pageError || 'No se pudo cargar la cotización solicitada.'}</ErrorMessage>
+        <Link className="button button--secondary detail-link" to={returnPath}><ArrowLeft aria-hidden="true" size={18} /><span>Volver a cotizaciones</span></Link>
       </div>
     )
   }
 
-  const estadoBloqueado = !canChangeQuoteStatus(cotizacion)
+  const renderStateActions = () => {
+    if (cotizacion.estado === 'nueva') {
+      return <><Button icon={PhoneCall} isLoading={isSavingState} onClick={() => changeState('contactada')}>Marcar contactada</Button><Button icon={XCircle} onClick={() => setPendingState('descartada')} variant="ghost">Descartar</Button></>
+    }
+    if (cotizacion.estado === 'contactada') {
+      return <><Button icon={CheckCircle2} isLoading={isSavingState} onClick={() => changeState('confirmada')}>Confirmar</Button><Button icon={Undo2} onClick={() => changeState('nueva')} variant="secondary">Volver a nueva</Button><Button icon={XCircle} onClick={() => setPendingState('descartada')} variant="ghost">Descartar</Button></>
+    }
+    if (cotizacion.estado === 'confirmada') {
+      return <><Button icon={Undo2} onClick={() => changeState('contactada')} variant="secondary">Volver a contactada</Button><Button icon={XCircle} onClick={() => setPendingState('descartada')} variant="ghost">Descartar</Button></>
+    }
+    if (cotizacion.estado === 'descartada') {
+      return <Button icon={RotateCcw} onClick={() => setPendingState('nueva')}>Reactivar como nueva</Button>
+    }
+    if (cotizacion.contrato_id) {
+      return <Link className="button button--secondary" to={`/contratos/${cotizacion.contrato_id}`}><FilePlus2 aria-hidden="true" size={18} /><span>Ver contrato #{cotizacion.contrato_id}</span></Link>
+    }
+    return null
+  }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
         actions={
           <>
-            <Link className="button button--secondary" to="/cotizaciones">
-              <ArrowLeft aria-hidden="true" size={18} />
-              <span>Volver</span>
-            </Link>
-            <Link className="button button--secondary" to={`/cotizaciones/${cotizacion.id}/editar`}>
-              <Edit3 aria-hidden="true" size={18} />
-              <span>Editar</span>
-            </Link>
-            {canConvertQuote(cotizacion) ? (
-              <Button icon={FilePlus2} onClick={() => setIsConversionOpen(true)}>
-                Convertir
-              </Button>
-            ) : null}
+            <Link className="button button--secondary" to={returnPath}><ArrowLeft aria-hidden="true" size={18} /><span>Volver</span></Link>
+            <Link className="button button--secondary" state={{ from: returnPath }} to={`/cotizaciones/${cotizacion.id}/editar`}><Edit3 aria-hidden="true" size={18} /><span>Editar</span></Link>
+            {canConvertQuote(cotizacion) ? <Button icon={FilePlus2} onClick={() => setIsConversionOpen(true)}>Convertir</Button> : null}
           </>
         }
-        description="Informacion completa y acciones comerciales sobre la oportunidad."
-        title={`Cotizacion #${cotizacion.id}`}
+        description="Información comercial y próximos pasos de esta oportunidad."
+        eyebrow="Comercial · Cotizaciones"
+        title={`Cotización #${cotizacion.id}`}
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
-      {actionMessage ? <div className="success-message">{actionMessage}</div> : null}
+      {actionMessage ? <div className="success-message" role="status">{actionMessage}</div> : null}
 
       <div className="quote-detail-grid">
         <Card>
           <div className="detail-section">
-            <div className="detail-section__header">
-              <h2>Resumen comercial</h2>
-              <StatusBadge status={cotizacion.estado}>{getEstadoLabel(cotizacion.estado)}</StatusBadge>
-            </div>
+            <div className="detail-section__header"><h2>Resumen comercial</h2><StatusBadge status={cotizacion.estado}>{getEstadoLabel(cotizacion.estado)}</StatusBadge></div>
             <dl className="detail-list">
               <DetailItem label="Cliente" value={cotizacion.cliente_nombre} />
-              <DetailItem label="Telefono" value={cotizacion.cliente_telefono} />
+              <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${cotizacion.cliente_telefono}`}>{formatPhone(cotizacion.cliente_telefono)}</a>} />
               <DetailItem label="Tipo de evento" value={cotizacion.tipo_evento_nombre} />
               <DetailItem label="Fecha tentativa" value={formatDate(cotizacion.fecha_tentativa)} />
-              <DetailItem label="Numero de invitados" value={cotizacion.numero_invitados} />
-              <DetailItem
-                label="Tipo de servicio"
-                value={TIPO_SERVICIO_LABELS[cotizacion.tipo_servicio] ?? cotizacion.tipo_servicio}
-              />
-              <DetailItem label="Paquete" value={cotizacion.paquete_nombre} />
+              <DetailItem label="Invitados" value={cotizacion.numero_invitados} />
+              <DetailItem label="Servicio" value={TIPO_SERVICIO_LABELS[cotizacion.tipo_servicio] ?? cotizacion.tipo_servicio} />
+              <DetailItem label="Paquete" value={cotizacion.paquete_nombre || 'Sin paquete'} />
               <DetailItem label="Total estimado" value={formatCurrency(cotizacion.total_estimado)} />
-              <DetailItem label="Origen" value={cotizacion.es_demo ? 'Demo' : 'Real'} />
             </dl>
           </div>
         </Card>
 
-        <Card>
-          <form className="detail-section" onSubmit={handleSaveState}>
-            <div className="detail-section__header">
-              <h2>Estado comercial</h2>
-            </div>
-            <Select
-              disabled={estadoBloqueado}
-              id="detalle-cotizacion-estado"
-              label="Estado"
-              name="estado"
-              onChange={(event) => setEstado(event.target.value)}
-              value={estado}
-            >
-              {estadoBloqueado ? (
-                <option value="convertida">Convertida</option>
-              ) : (
-                ESTADOS_CAMBIO.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))
-              )}
-            </Select>
-            <div className="form-actions">
-              <Button
-                disabled={estadoBloqueado || estado === cotizacion.estado}
-                icon={Save}
-                isLoading={isSavingState}
-                type="submit"
-              >
-                Guardar estado
-              </Button>
-            </div>
-            {cotizacion.contrato_id ? (
-              <Link className="button button--secondary" to={`/contratos/${cotizacion.contrato_id}`}>
-                <FilePlus2 aria-hidden="true" size={18} />
-                <span>Ver contrato #{cotizacion.contrato_id}</span>
-              </Link>
-            ) : null}
-          </form>
+        <Card className="commercial-action-card">
+          <div className="detail-section">
+            <div className="detail-section__header"><h2>Seguimiento</h2></div>
+            <div className="current-state"><StatusBadge status={cotizacion.estado}>{getEstadoLabel(cotizacion.estado)}</StatusBadge><p>{stateDescriptions[cotizacion.estado]}</p></div>
+            <div className="detail-actions">{renderStateActions()}</div>
+          </div>
         </Card>
       </div>
 
       <Card>
         <div className="detail-section">
-          <div className="detail-section__header">
-            <h2>Observaciones</h2>
-          </div>
-          <Textarea
-            disabled
-            id="detalle-cotizacion-observaciones"
-            label="Observaciones registradas"
-            readOnly
-            value={cotizacion.observaciones}
-          />
+          <div className="detail-section__header"><h2>Observaciones</h2></div>
+          <p className="plain-text">{cotizacion.observaciones || 'Sin observaciones registradas.'}</p>
         </div>
       </Card>
 
-      {isConversionOpen ? (
-        <ConversionModal
-          cotizacion={cotizacion}
-          errors={conversionErrors}
-          isSubmitting={isConverting}
-          onClose={() => setIsConversionOpen(false)}
-          onSubmit={handleConvert}
-        />
-      ) : null}
+      {isConversionOpen ? <ConversionModal cotizacion={cotizacion} errors={conversionErrors} isSubmitting={isConverting} onClose={() => setIsConversionOpen(false)} onSubmit={handleConvert} /> : null}
+
+      <Modal isOpen={Boolean(pendingState)} onClose={() => setPendingState(null)} title={pendingState === 'descartada' ? 'Descartar cotización' : 'Reactivar cotización'}>
+        <div className="confirm-dialog">
+          <p>{pendingState === 'descartada' ? 'La oportunidad saldrá del flujo activo, pero conservará toda su información histórica.' : 'La oportunidad volverá al estado Nueva para iniciar nuevamente el seguimiento.'}</p>
+          <div className="form-actions"><Button onClick={() => setPendingState(null)} variant="secondary">Volver</Button><Button icon={pendingState === 'descartada' ? XCircle : RotateCcw} isLoading={isSavingState} onClick={() => changeState(pendingState)}>{pendingState === 'descartada' ? 'Descartar cotización' : 'Reactivar'}</Button></div>
+        </div>
+      </Modal>
     </div>
   )
 }

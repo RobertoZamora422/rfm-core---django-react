@@ -50,6 +50,11 @@ export const cotizacionesService = {
     return data
   },
 
+  async resumen(params) {
+    const { data } = await apiClient.get('/cotizaciones/resumen/', { params })
+    return data
+  },
+
   async convertirContrato(id, payload) {
     const { data } = await apiClient.post(`/cotizaciones/${id}/convertir-contrato/`, payload)
     return data
@@ -61,6 +66,11 @@ export const contratosService = {
 
   async cancelar(id) {
     const { data } = await apiClient.post(`/contratos/${id}/cancelar/`)
+    return data
+  },
+
+  async resumen(params) {
+    const { data } = await apiClient.get('/contratos/resumen/', { params })
     return data
   },
 }

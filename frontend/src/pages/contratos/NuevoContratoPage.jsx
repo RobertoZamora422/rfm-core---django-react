@@ -70,7 +70,7 @@ export function NuevoContratoPage() {
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack page-stack--commercial">
       <PageHeader
         actions={
           <Link className="button button--secondary" to="/contratos">
@@ -78,13 +78,14 @@ export function NuevoContratoPage() {
             <span>Volver</span>
           </Link>
         }
-        description="Registra un contrato real sin modificar manualmente el estado de pago."
+        description="Registra una venta real. El estado de pago se calculará automáticamente en el backend."
+        eyebrow="Comercial · Contratos"
         title="Nuevo contrato"
       />
 
       <ErrorMessage>{pageError}</ErrorMessage>
 
-      <Card>
+      <Card className="form-card">
         {isLoadingCatalogs ? (
           <LoadingState label="Cargando datos del formulario" />
         ) : (

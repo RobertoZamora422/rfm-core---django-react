@@ -364,6 +364,28 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["id"] for item in response.data], [contrato_objetivo.id])
 
+    def test_listado_paginado_y_resumen_separan_contrato_y_pago(self):
+        self.crear_contrato(monto_abonado=Decimal("0.00"))
+        self.crear_contrato(monto_abonado=Decimal("500.00"))
+        self.crear_contrato(
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+            monto_abonado=Decimal("2000.00"),
+        )
+
+        page_response = self.client.get(
+            "/api/contratos/", {"page": 1, "page_size": 2}
+        )
+        summary_response = self.client.get("/api/contratos/resumen/")
+
+        self.assertEqual(page_response.status_code, 200)
+        self.assertEqual(page_response.data["count"], 3)
+        self.assertEqual(len(page_response.data["results"]), 2)
+        self.assertEqual(summary_response.data["confirmados"], 2)
+        self.assertEqual(summary_response.data["cancelados"], 1)
+        self.assertEqual(summary_response.data["pendientes"], 1)
+        self.assertEqual(summary_response.data["abonados"], 1)
+        self.assertEqual(summary_response.data["pagados"], 1)
+
     def test_rechaza_rango_de_fechas_invertido(self):
         response = self.client.get(
             "/api/contratos/",
@@ -386,6 +408,31 @@ class FinancieroApiTests(APITestCase):
         contrato.refresh_from_db()
         self.assertEqual(contrato.estado_contrato, Contrato.EstadoContrato.CANCELADO)
         self.assertTrue(Contrato.objects.filter(id=contrato.id).exists())
+
+    def test_cancelar_contrato_repetido_devuelve_error_controlado(self):
+        contrato = self.crear_contrato(
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+
+        response = self.client.post(f"/api/contratos/{contrato.id}/cancelar/")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("estado_contrato", response.data)
+
+    def test_estado_de_contrato_no_se_reactiva_desde_patch_generico(self):
+        contrato = self.crear_contrato(
+            estado_contrato=Contrato.EstadoContrato.CANCELADO,
+        )
+
+        response = self.client.patch(
+            f"/api/contratos/{contrato.id}/",
+            {"estado_contrato": Contrato.EstadoContrato.CONFIRMADO},
+            format="json",
+        )
+
+        contrato.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(contrato.estado_contrato, Contrato.EstadoContrato.CANCELADO)
 
     def test_crea_costo_directo_y_gasto_fijo(self):
         contrato = self.crear_contrato()

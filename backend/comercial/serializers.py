@@ -113,6 +113,12 @@ class CotizacionSerializer(serializers.ModelSerializer):
         ):
             errors["estado"] = "La conversion a contrato debe realizarse desde la accion correspondiente."
 
+        if self.instance and estado and estado != self.instance.estado:
+            errors["estado"] = "Cambie el estado desde la accion de seguimiento correspondiente."
+
+        if self.instance is None and estado not in (None, Cotizacion.Estado.NUEVA):
+            errors["estado"] = "Una cotizacion nueva debe iniciar en estado Nueva."
+
         if (
             self.instance
             and self.instance.estado == Cotizacion.Estado.CONVERTIDA

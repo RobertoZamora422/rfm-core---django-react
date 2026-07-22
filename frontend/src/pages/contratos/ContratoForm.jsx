@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 
 function buildInitialForm(initialValues) {
   return {
@@ -30,6 +31,7 @@ export function ContratoForm({
   tiposEvento,
 }) {
   const [form, setForm] = useState(() => buildInitialForm(initialValues))
+  useFocusFirstError(errors)
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -52,8 +54,11 @@ export function ContratoForm({
 
   return (
     <form className="resource-form" onSubmit={handleSubmit}>
-      <div className="form-grid">
+      <fieldset className="form-section">
+        <legend>Cliente y evento</legend>
+        <div className="form-grid">
         <Select
+          autoFocus
           disabled={isLoadingCatalogs}
           error={errors.cliente}
           id="contrato-cliente"
@@ -66,7 +71,7 @@ export function ContratoForm({
           <option value="">Seleccione un cliente</option>
           {clientes.map((cliente) => (
             <option key={cliente.id} value={cliente.id}>
-              {cliente.nombre}
+              {cliente.nombre} · {cliente.telefono}
             </option>
           ))}
         </Select>
@@ -87,26 +92,20 @@ export function ContratoForm({
             </option>
           ))}
         </Select>
-      </div>
+        </div>
+      </fieldset>
 
-      <Select
-        disabled={isLoadingCatalogs}
-        error={errors.paquete}
-        id="contrato-paquete"
-        label="Paquete"
-        name="paquete"
-        onChange={handleChange}
-        value={form.paquete}
-      >
-        <option value="">Sin paquete</option>
-        {paquetes.map((paquete) => (
-          <option key={paquete.id} value={paquete.id}>
-            {paquete.nombre}
-          </option>
-        ))}
-      </Select>
+      <fieldset className="form-section">
+        <legend>Servicio contratado</legend>
+        <Select disabled={isLoadingCatalogs} error={errors.paquete} id="contrato-paquete" label="Paquete" name="paquete" onChange={handleChange} value={form.paquete}>
+          <option value="">Sin paquete</option>
+          {paquetes.map((paquete) => <option key={paquete.id} value={paquete.id}>{paquete.nombre}</option>)}
+        </Select>
+      </fieldset>
 
-      <div className="form-grid">
+      <fieldset className="form-section">
+        <legend>Operación y pago</legend>
+        <div className="form-grid">
         <Input
           error={errors.fecha_evento}
           id="contrato-fecha-evento"
@@ -120,7 +119,7 @@ export function ContratoForm({
         <Input
           error={errors.numero_invitados}
           id="contrato-numero-invitados"
-          label="Numero de invitados"
+          label="Número de invitados"
           min="1"
           name="numero_invitados"
           onChange={handleChange}
@@ -131,7 +130,8 @@ export function ContratoForm({
         <Input
           error={errors.valor_final}
           id="contrato-valor-final"
-          label="Valor final"
+          inputMode="decimal"
+          label="Valor final (USD)"
           min="0"
           name="valor_final"
           onChange={handleChange}
@@ -143,7 +143,9 @@ export function ContratoForm({
         <Input
           error={errors.monto_abonado}
           id="contrato-monto-abonado"
-          label="Monto abonado"
+          helpText="No puede superar el valor final."
+          inputMode="decimal"
+          label="Monto abonado (USD)"
           min="0"
           name="monto_abonado"
           onChange={handleChange}
@@ -151,23 +153,23 @@ export function ContratoForm({
           type="number"
           value={form.monto_abonado}
         />
-      </div>
+        </div>
+        <div className="notice-message">
+          El estado del pago se calcula automáticamente con el valor final y el monto abonado.
+        </div>
+      </fieldset>
 
       <Textarea
         error={errors.observaciones}
         id="contrato-observaciones"
-        label="Observaciones"
+        label="Observaciones internas"
         name="observaciones"
         onChange={handleChange}
         value={form.observaciones}
       />
 
-      <div className="notice-message">
-        El estado de pago se calcula automaticamente desde el valor final y el monto abonado.
-      </div>
-
       <div className="form-actions">
-        <Button onClick={onCancel} variant="secondary">
+        <Button disabled={isSubmitting} onClick={onCancel} variant="secondary">
           Cancelar
         </Button>
         <Button disabled={isLoadingCatalogs} isLoading={isSubmitting} type="submit">
