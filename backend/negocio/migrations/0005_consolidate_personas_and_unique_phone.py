@@ -93,6 +93,7 @@ def consolidate_existing_people(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ("comercial", "0004_cotizacion_origen"),
@@ -101,7 +102,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(consolidate_existing_people, migrations.RunPython.noop),
+        migrations.RunPython(
+            consolidate_existing_people,
+            migrations.RunPython.noop,
+            atomic=True,
+        ),
         migrations.AlterField(
             model_name="cliente",
             name="telefono_normalizado",
