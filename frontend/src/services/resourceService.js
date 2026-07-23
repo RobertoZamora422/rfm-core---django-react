@@ -28,16 +28,16 @@ export function createResourceService(endpoint) {
   }
 }
 
-export const clientesService = {
-  ...createResourceService('/clientes/'),
+export const personasService = {
+  ...createResourceService('/personas/'),
 
   async coincidencias(params) {
-    const { data } = await apiClient.get('/clientes/coincidencias/', { params })
+    const { data } = await apiClient.get('/personas/coincidencias/', { params })
     return data
   },
 
   async resumen(params) {
-    const { data } = await apiClient.get('/clientes/resumen/', { params })
+    const { data } = await apiClient.get('/personas/resumen/', { params })
     return data
   },
 }

@@ -1,55 +1,31 @@
 # RFM Core
 
-RFM Core es un sistema web para pre-cotizacion publica, gestion comercial y analisis de rentabilidad de un salon de eventos.
-
-Flujo principal:
+RFM Core gestiona la pre-cotización pública, el proceso comercial y el análisis financiero de Rancho Flor María.
 
 ```text
-Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
+Pre-cotización pública -> Cotización administrativa -> Contrato -> Costos y gastos -> Rentabilidad
 ```
 
 ## Estado actual
 
-El proyecto ya cuenta con deploy manual en Render y se encuentra en etapa de mantenimiento tecnico, validacion academica y revision operativa. La version actual consolida la separacion entre flujo publico y panel administrativo, mantiene el backend como fuente de verdad para calculos y conserva configuracion compatible con ejecucion local y Render.
+El backend es la fuente de verdad para identidad, reglas comerciales, estados y cálculos financieros. El frontend React consume la API de Django REST Framework y no reconstruye métricas cargando relaciones completas.
 
-URLs de produccion verificadas:
+La entidad canónica de identidad es `Persona`:
 
-- Frontend: https://rfm-core-frontend.onrender.com/
-- Backend API: https://rfm-core-backend.onrender.com/api
-- Backend health: https://rfm-core-backend.onrender.com/api/health/
+- `Interesado`: persona sin contratos históricos.
+- `Cliente`: persona con al menos un contrato histórico, incluso si fue cancelado.
+- Las clasificaciones son derivadas; no son modelos ni campos editables.
+- El teléfono normalizado es único y permite reutilizar una persona en lugar de duplicarla.
+- El origen inicial y los nombres alternativos se conservan.
+- Cotizaciones y contratos se relacionan mediante `persona`.
 
-La administracion de contratos permite creacion manual, edicion de campos operativos/financieros editables, detalle de rentabilidad por contrato y registro de costos directos desde el detalle. La sesion administrativa se persiste en `localStorage` para mantenerse entre pestanas del mismo navegador.
+En el menú administrativo la sección se llama **Personas**. Su pantalla conserva el título **Clientes & Interesados** y los filtros Todos, Clientes e Interesados.
 
-La administracion de cotizaciones permite crear y editar oportunidades comerciales desde el panel sin confundirlas con ingresos reales. Las cotizaciones convertidas bloquean cambios criticos para no romper su contrato asociado.
-
-`/clientes` presenta **Clientes & Interesados** sobre un único registro canónico de persona. La clasificación se deriva de contratos históricos: una persona sin contratos es interesada y pasa a cliente al crear su primer contrato. El teléfono normalizado tiene unicidad en base de datos, el origen inicial no se sobrescribe y los nombres alternativos quedan disponibles en `/clientes/:id`. Cotizaciones y contratos permiten buscar, reutilizar o preparar una persona nueva sin abandonar el formulario; la persona y el documento se crean en una sola transacción.
-
-## Inicio administrativo, dashboard y reportes
-
-`/inicio` es la pantalla operativa diaria del panel administrativo. Consume `GET /api/inicio-resumen/` y muestra cotizaciones nuevas, cotizaciones del mes, eventos del mes, eventos proximos, pendientes importantes y accesos rapidos agrupados por gestion comercial y finanzas/reportes.
-
-Los eventos proximos salen de contratos confirmados no cancelados, maximo 5 en Inicio, con enlace al detalle del contrato. Los pendientes importantes priorizan cotizaciones nuevas sin gestionar, eventos proximos sin costos directos activos, eventos proximos con saldo pendiente y oportunidades avanzadas sin contrato.
-
-`/dashboard-financiero` es el tablero de analisis financiero mensual. Consume `GET /api/dashboard-financiero/` y muestra KPIs financieros, desempeno comercial, evolucion mensual, comparativo contra mes anterior, rentabilidad por paquete, analisis por tipo de evento, top de eventos rentables, cobranza, pendientes financieros e interpretacion del periodo. Los costos directos del dashboard se agrupan por `Contrato.fecha_evento`; `CostoDirecto.fecha` se mantiene como trazabilidad administrativa.
-
-`/reportes` concentra consultas historicas o exportables por periodo. Consume los endpoints bajo `/api/reportes/`.
-
-React no calcula KPIs de Inicio cargando listas completas; el backend entrega el resumen listo para presentar.
-
-## Flujo publico
-
-La pre-cotizacion publica no requiere login y no muestra Sidebar ni Topbar administrativo.
-
-Pantalla:
-
-- `/pre-cotizacion`: formulario publico y resultado en la misma pantalla para alquiler,
-  servicio completo o comparacion de modalidades.
-
-El formulario publico solicita solo nombre, telefono/WhatsApp, tipo de evento, fecha tentativa, numero aproximado de invitados y tipo de servicio de interes. Al enviarlo, el backend registra una cotizacion en estado `nueva`, calcula valores referenciales y permite continuar por WhatsApp usando el numero configurado en Configuracion del negocio.
+La base local se entrega sin datos operativos demo. Solo permanece la configuración activa del negocio y el usuario administrativo. No existen semillas automáticas de demostración.
 
 ## Rutas
 
-Rutas publicas:
+Públicas:
 
 ```text
 /
@@ -57,12 +33,12 @@ Rutas publicas:
 /login
 ```
 
-Rutas administrativas protegidas:
+Administrativas protegidas:
 
 ```text
 /inicio
-/clientes
-/clientes/:id
+/personas
+/personas/:id
 /tipos-evento
 /paquetes
 /configuracion
@@ -80,37 +56,62 @@ Rutas administrativas protegidas:
 /reportes
 ```
 
-## Stack tecnico
+## API principal
+
+Pública:
+
+```text
+GET  /api/public/tipos-evento/
+GET  /api/public/paquetes/
+GET  /api/public/configuracion/
+POST /api/pre-cotizacion/
+```
+
+El formulario público envía `nombre_persona` y `telefono_persona`. El backend normaliza el teléfono, reutiliza la persona existente cuando corresponde y registra nombres alternativos sin revelar esa coincidencia al usuario público.
+
+Administrativa protegida:
+
+```text
+POST /api/auth/login/
+POST /api/auth/logout/
+GET  /api/auth/me/
+/api/personas/
+/api/personas/resumen/
+/api/personas/coincidencias/
+/api/tipos-evento/
+/api/paquetes/
+/api/configuracion-negocio/
+/api/cotizaciones/
+/api/cotizaciones/{id}/cambiar-estado/
+/api/cotizaciones/{id}/convertir-contrato/
+/api/contratos/
+/api/costos-directos/
+/api/gastos-fijos/
+/api/inicio-resumen/
+/api/dashboard-financiero/
+/api/reportes/
+```
+
+Frontend y backend usan exclusivamente el endpoint canónico `/api/personas/`.
+
+## Stack
 
 Backend:
 
 - Python 3.13
-- Django 5.2
-- Django REST Framework
-- TokenAuthentication de DRF
-- django-cors-headers
-- python-dotenv
-- WhiteNoise
-- dj-database-url
+- Django 5.2 y Django REST Framework
+- TokenAuthentication
 - SQLite local y PostgreSQL en Render
+- WhiteNoise, django-cors-headers y dj-database-url
 
 Frontend:
 
-- React
-- Vite
-- React Router
+- React, Vite y React Router
 - Axios
-- lucide-react
-- Recharts
-- CSS tradicional del proyecto
+- lucide-react y Recharts
+- CSS propio de Rancho Flor María
 
-Deploy actual:
-
-- Render Web Service para Django/DRF
-- Render Static Site para React/Vite
-- Render PostgreSQL
-
-## Ejecucion local
+## Instalación local
 
 Backend:
 
@@ -119,9 +120,11 @@ cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py seed_base
+.\.venv\Scripts\python.exe manage.py createsuperuser
 .\.venv\Scripts\python.exe manage.py runserver
 ```
+
+Después de crear el administrador, registrar la configuración vigente desde `/configuracion` y los catálogos reales desde Tipos de evento y Paquetes. Migrar o iniciar el sistema no inserta datos demo.
 
 Frontend:
 
@@ -131,32 +134,32 @@ npm install
 npm run dev
 ```
 
-Datos demo:
+## Limpieza operativa explícita
+
+El comando primero audita y solo elimina cuando se indica `--execute`:
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe manage.py seed_demo
-.\.venv\Scripts\python.exe manage.py clear_demo
+.\.venv\Scripts\python.exe manage.py limpiar_datos_operativos
+.\.venv\Scripts\python.exe manage.py limpiar_datos_operativos --execute
 ```
 
-## Validacion
+Elimina personas, alias, cotizaciones, contratos, tipos de evento, paquetes, costos directos y gastos fijos. Conserva usuarios y configuración del negocio. Es una operación destructiva y no forma parte de instalación ni despliegue.
 
-Backend:
+## Validación
 
 ```powershell
 cd backend
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
 .\.venv\Scripts\python.exe manage.py test
-```
 
-Frontend:
-
-```powershell
-cd frontend
+cd ..\frontend
 npm run lint
 npm run build
 ```
+
+El frontend no define actualmente un script de pruebas automatizadas adicional; `lint` y el build de producción son obligatorios.
 
 ## Variables de entorno
 
@@ -178,169 +181,35 @@ Frontend (`frontend/.env`):
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-`VITE_API_BASE_URL` es la convencion vigente para la URL base del API. En desarrollo el frontend conserva fallback local; en produccion debe definirse explicitamente.
+El WhatsApp se administra desde Configuración del negocio en formato ecuatoriano `09XXXXXXXX`; el backend produce el número internacional utilizado por `wa.me`.
 
-Si `DJANGO_DEBUG=False`, el backend exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `DATABASE_URL`. Si falta alguna, Django falla al iniciar con un error claro.
+## Despliegue en Render
 
-`FRONTEND_PUBLIC_URL` es opcional para desarrollo y permite que la raiz JSON del backend publique enlaces coherentes al frontend. En Render debe apuntar al Static Site activo.
-
-El WhatsApp del negocio no se configura en variables de entorno del frontend. El administrador lo ingresa en `/configuracion` con formato ecuatoriano local `09XXXXXXXX`; el backend lo expone al flujo publico como numero listo para `wa.me`. Ejemplo: `0991234567` -> `593991234567`.
-
-## URLs locales
-
-- Backend API: http://127.0.0.1:8000/api
-- Backend health: http://127.0.0.1:8000/api/health/
-- Backend root: http://127.0.0.1:8000/
-- Frontend: http://localhost:5173/
-- Pre-cotizacion publica: http://localhost:5173/pre-cotizacion
-- Panel administrativo: http://localhost:5173/login
-
-## URLs de produccion
-
-- Frontend: https://rfm-core-frontend.onrender.com/
-- Pre-cotizacion publica: https://rfm-core-frontend.onrender.com/pre-cotizacion
-- Panel administrativo: https://rfm-core-frontend.onrender.com/login
-- Backend API: https://rfm-core-backend.onrender.com/api
-- Backend health: https://rfm-core-backend.onrender.com/api/health/
-
-## API principal
-
-Publica:
-
-```text
-GET  /api/public/tipos-evento/
-GET  /api/public/paquetes/
-GET  /api/public/configuracion/
-POST /api/pre-cotizacion/
-```
-
-Administrativa protegida:
-
-```text
-/api/auth/login/
-/api/auth/logout/
-/api/auth/me/
-/api/clientes/
-/api/clientes/resumen/
-/api/clientes/coincidencias/
-/api/tipos-evento/
-/api/paquetes/
-/api/configuracion-negocio/
-/api/cotizaciones/
-/api/cotizaciones/{id}/cambiar-estado/
-/api/cotizaciones/{id}/convertir-contrato/
-/api/contratos/
-/api/costos-directos/
-/api/gastos-fijos/
-/api/inicio-resumen/
-/api/dashboard-financiero/
-/api/reportes/
-```
-
-El login devuelve `Authorization: Token <token>` para las solicitudes administrativas.
-
-## Aplicación de buenas prácticas: SOLID y patrones de diseño
-
-Se reviso el Core MVC/API de RFM Core y se detectaron dos oportunidades de mejora controladas: el dashboard financiero concentraba consultas ORM junto con calculos de negocio, y la pre-cotizacion seleccionaba su calculo mediante condicionales centrales por tipo de servicio.
-
-Principios SOLID aplicados:
-
-- `SRP - Single Responsibility Principle`: las consultas financieras reutilizables se separaron en selectors y las acciones de cancelacion/eliminacion logica se movieron desde views hacia services.
-- `OCP - Open/Closed Principle`: el calculo de pre-cotizacion se organiza por estrategias, permitiendo agregar nuevos tipos de calculo sin modificar el orquestador principal.
-
-Patrones de diseno aplicados:
-
-- `Repository / Selector Pattern`: `backend/financiero/selectors.py` centraliza consultas de contratos confirmados, contratos cancelados, costos directos activos y gastos fijos del periodo.
-- `Strategy Pattern`: `backend/comercial/pre_cotizacion_strategies.py` encapsula las estrategias de alquiler, servicio completo y comparacion/no seguro.
-- `Service Layer`: `backend/financiero/services.py` mantiene acciones de negocio como `cancelar_contrato`, `eliminar_logicamente_costo_directo` y `eliminar_logicamente_gasto_fijo`.
-
-Archivos modificados:
-
-- `backend/financiero/selectors.py`
-- `backend/financiero/services.py`
-- `backend/financiero/views.py`
-- `backend/comercial/services.py`
-- `backend/comercial/pre_cotizacion_strategies.py`
-- `README.md`
-
-Beneficios tecnicos:
-
-- Views mas delgadas y enfocadas en HTTP.
-- Consultas financieras reutilizables y consistentes.
-- Menor riesgo de duplicar filtros de contratos confirmados, cancelados o costos eliminados.
-- Calculos de pre-cotizacion extensibles sin cambiar el contrato publico de la API.
-- Sin cambios de modelos, migraciones, endpoints ni payloads consumidos por React.
-
-Comandos de prueba:
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe manage.py test comercial financiero reportes
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-```
-
-## Deploy manual en Render
-
-Render es el entorno real de produccion del proyecto. Para mantener o recrear el deploy, conservar las rutas, nombres de variables y comandos siguientes.
-
-Backend Render Web Service:
+Backend Web Service:
 
 - Root Directory: `backend`
 - Build Command: `pip install -r requirements.txt`
 - Start Command: `gunicorn config.wsgi:application`
-- Runtime: Python
-- Variables obligatorias:
-  - `DJANGO_SECRET_KEY=<valor-seguro-generado>`
-  - `DJANGO_DEBUG=False`
-  - `DJANGO_ALLOWED_HOSTS=rfm-core-backend.onrender.com`
-  - `DATABASE_URL=<Render PostgreSQL Internal Database URL>`
-  - `CORS_ALLOWED_ORIGINS=https://rfm-core-frontend.onrender.com`
-  - `CSRF_TRUSTED_ORIGINS=https://rfm-core-frontend.onrender.com,https://rfm-core-backend.onrender.com`
-  - `FRONTEND_PUBLIC_URL=https://rfm-core-frontend.onrender.com`
+- Antes de operar: `python manage.py migrate` y `python manage.py collectstatic --noinput`
+- Crear el superusuario y la configuración real de forma explícita.
+- No ejecutar comandos de carga demo; no existen como parte del flujo normal.
 
-Comandos operativos backend:
-
-```bash
-python manage.py migrate
-python manage.py collectstatic --noinput
-python manage.py seed_base
-python manage.py createsuperuser
-```
-
-`seed_base` carga datos base reales del negocio. `seed_demo` queda separado para demostracion y no debe ejecutarse sobre datos reales salvo decision explicita.
-
-Frontend Render Static Site:
+Frontend Static Site:
 
 - Root Directory: `frontend`
 - Build Command: `npm install && npm run build`
 - Publish Directory: `dist`
-- Variable obligatoria:
-  - `VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api`
+- `VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api`
 
-PostgreSQL:
+## Reglas críticas
 
-- Crear una base PostgreSQL en Render.
-- Copiar su `DATABASE_URL` al Web Service backend.
-- Ejecutar migraciones antes de operar con datos reales.
-- No mezclar datos demo con datos reales.
+- Una cotización no representa un ingreso.
+- Una cotización convertida no puede convertirse otra vez.
+- Un contrato cancelado no participa en métricas financieras principales, pero conserva la clasificación histórica de Cliente para su persona.
+- El monto abonado no puede superar el valor final.
+- Solo catálogos activos aparecen en registros nuevos.
+- Los costos y gastos usan eliminación lógica en la operación normal.
+- Normalización, unicidad, clasificación y cálculos permanecen en backend.
+- No se cargan datos demo al iniciar, migrar o desplegar.
 
-## Usuario demo
-
-Si se ejecutan los comandos de seed del proyecto, revisar la salida de `seed_base` o `seed_demo` para las credenciales disponibles en el entorno local. No se debe asumir que existen usuarios en una base limpia sin ejecutar migraciones y semillas.
-
-## Reglas criticas
-
-- La pre-cotizacion publica no es reserva ni precio final.
-- WhatsApp continua la atencion humana.
-- El WhatsApp del negocio se administra desde Configuracion del negocio.
-- El endpoint publico no abre CRUD administrativo.
-- Solo paquetes y tipos de evento activos se exponen al flujo publico.
-- Contratos y cotizaciones administrativas nuevas solo deben asignar catalogos activos.
-- Costos directos y gastos fijos se eliminan logicamente desde la API para no borrar evidencia financiera.
-- Reportes pueden exportarse como CSV desde la respuesta backend ya calculada.
-- Una cotizacion no es ingreso real.
-- Solo un contrato confirmado representa ingreso real.
-- Los contratos cancelados no suman ingresos, utilidad, margen ni saldo pendiente principal; solo aparecen como control visual de cobranza cuando aplica.
-- En el dashboard financiero, los costos directos se imputan al periodo del evento del contrato confirmado, no al mes administrativo de registro del costo.
-- Los calculos comerciales y financieros se mantienen en backend.
-- Render es el entorno real de produccion; cualquier cambio debe validarse localmente antes de actualizar servicios.
+Documentación detallada: [`docs/`](docs/).

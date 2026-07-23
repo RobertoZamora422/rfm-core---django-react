@@ -45,8 +45,8 @@ def calcular_pre_cotizacion(tipo_servicio, numero_invitados, paquete=None):
 @transaction.atomic
 def crear_pre_cotizacion(
     *,
-    cliente=None,
-    datos_cliente=None,
+    persona=None,
+    datos_persona=None,
     tipo_evento,
     paquete,
     fecha_tentativa,
@@ -60,13 +60,13 @@ def crear_pre_cotizacion(
         paquete=paquete,
     )
 
-    if cliente is None:
-        datos_cliente = datos_cliente or {}
-        cliente, _ = obtener_o_crear_persona_publica(
-            nombre=datos_cliente.get("nombre", ""),
-            telefono=datos_cliente.get("telefono", ""),
-            correo=datos_cliente.get("correo", ""),
-            observaciones=datos_cliente.get("observaciones", ""),
+    if persona is None:
+        datos_persona = datos_persona or {}
+        persona, _ = obtener_o_crear_persona_publica(
+            nombre=datos_persona.get("nombre", ""),
+            telefono=datos_persona.get("telefono", ""),
+            correo=datos_persona.get("correo", ""),
+            observaciones=datos_persona.get("observaciones", ""),
         )
 
     observaciones_finales = observaciones
@@ -75,7 +75,7 @@ def crear_pre_cotizacion(
         observaciones_finales = f"{observaciones}\n{nota}".strip()
 
     cotizacion = Cotizacion.objects.create(
-        cliente=cliente,
+        persona=persona,
         tipo_evento=tipo_evento,
         paquete=paquete,
         fecha_tentativa=fecha_tentativa,
@@ -177,7 +177,7 @@ def convertir_cotizacion_a_contrato(
 
     contrato = Contrato.objects.create(
         cotizacion=cotizacion,
-        cliente=cotizacion.cliente,
+        persona=cotizacion.persona,
         tipo_evento=cotizacion.tipo_evento,
         paquete=paquete_final,
         fecha_evento=fecha_evento or cotizacion.fecha_tentativa,
@@ -186,7 +186,6 @@ def convertir_cotizacion_a_contrato(
         monto_abonado=monto_abonado if monto_abonado is not None else Decimal("0.00"),
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         observaciones=observaciones,
-        es_demo=cotizacion.es_demo,
     )
 
     cotizacion.estado = Cotizacion.Estado.CONVERTIDA

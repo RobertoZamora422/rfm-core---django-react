@@ -152,12 +152,12 @@ export function ContratosPage() {
 
   const columns = [
     {
-      key: 'cliente',
+      key: 'persona',
       header: 'Cliente',
       render: (item) => (
         <div className="stacked-cell">
-          <strong>{item.cliente_nombre}</strong>
-          <span>{formatPhone(item.cliente_telefono)}</span>
+          <strong>{item.persona_nombre}</strong>
+          <span>{formatPhone(item.persona_telefono)}</span>
         </div>
       ),
     },
@@ -277,7 +277,7 @@ export function ContratosPage() {
             emptyMessage={hasFilters ? 'No hay contratos que coincidan con la búsqueda o los filtros actuales.' : 'Crea el primer contrato cuando exista una venta confirmada.'}
             emptyTitle={hasFilters ? 'Sin coincidencias' : 'Aún no hay contratos'}
             getRowClassName={(item) => item.estado_contrato === 'cancelado' ? 'data-table__row--cancelled' : ''}
-            mobileTitle={(item) => `${item.cliente_nombre} · Contrato #${item.id}`}
+            mobileTitle={(item) => `${item.persona_nombre} · Contrato #${item.id}`}
             rows={contratos}
           />
         )}

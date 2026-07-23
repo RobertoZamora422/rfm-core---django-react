@@ -36,11 +36,11 @@ export function CotizacionForm({
 }) {
   const [form, setForm] = useState(() => buildInitialForm(initialValues))
   const [personSelection, setPersonSelection] = useState(() => initialPerson ?? (
-    initialValues?.cliente
+    initialValues?.persona
       ? {
-          id: initialValues.cliente,
-          nombre: initialValues.cliente_nombre,
-          telefono: initialValues.cliente_telefono,
+          id: initialValues.persona,
+          nombre: initialValues.persona_nombre,
+          telefono: initialValues.persona_telefono,
           clasificacion_display: 'Persona registrada',
           isNew: false,
         }
@@ -80,7 +80,7 @@ export function CotizacionForm({
             observaciones: personSelection.observaciones ?? '',
           },
         }
-      : { cliente: personSelection?.id ?? '' }
+      : { persona: personSelection?.id ?? '' }
 
     onSubmit({
       ...personPayload,
@@ -109,7 +109,7 @@ export function CotizacionForm({
           <PersonaSelector
             allowCreate={!initialValues}
             disabled={isLoadingCatalogs || isConverted}
-            error={errors.cliente || errors.persona_nueva}
+            error={errors.persona || errors.persona_nueva}
             onChange={setPersonSelection}
             originLabel={PERSON_ORIGIN_LABELS.cotizacion_manual}
             selection={personSelection}

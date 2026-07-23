@@ -9,10 +9,10 @@ from rest_framework.views import APIView
 
 from config.pagination import OptionalPageNumberPagination
 
-from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
+from .models import ConfiguracionNegocio, Paquete, Persona, TipoEvento
 from .serializers import (
-    ClienteSerializer,
-    ClienteDetalleSerializer,
+    PersonaDetalleSerializer,
+    PersonaSerializer,
     ConfiguracionNegocioSerializer,
     PaqueteSerializer,
     PublicConfiguracionNegocioSerializer,
@@ -21,10 +21,10 @@ from .serializers import (
     TipoEventoSerializer,
 )
 from .selectors import (
-    buscar_cliente_por_telefono,
-    clientes_con_resumen,
+    buscar_persona_por_telefono,
     filtrar_personas,
     personas_con_detalle,
+    personas_con_resumen,
 )
 from .services import inicio_resumen
 
@@ -43,32 +43,29 @@ class DeactivateInsteadOfDeleteMixin:
         )
 
 
-class ClienteViewSet(viewsets.ModelViewSet):
-    serializer_class = ClienteSerializer
+class PersonaViewSet(viewsets.ModelViewSet):
+    serializer_class = PersonaSerializer
     pagination_class = OptionalPageNumberPagination
     search_fields = ["nombre", "telefono", "correo"]
 
     def get_serializer_class(self):
         if self.action == "retrieve":
-            return ClienteDetalleSerializer
-        return ClienteSerializer
+            return PersonaDetalleSerializer
+        return PersonaSerializer
 
     def get_queryset(self):
-        queryset = clientes_con_resumen()
+        queryset = personas_con_resumen()
         buscar = (
             self.request.query_params.get("buscar")
             or self.request.query_params.get("search")
             or ""
         ).strip()
-        es_demo = self.request.query_params.get("es_demo")
         clasificacion = self.request.query_params.get("clasificacion")
         queryset = filtrar_personas(queryset, buscar)
         if clasificacion == "cliente":
             queryset = queryset.filter(contratos_count__gt=0)
         elif clasificacion == "interesado":
             queryset = queryset.filter(contratos_count=0)
-        if es_demo is not None:
-            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
 
     def retrieve(self, request, *args, **kwargs):
@@ -86,12 +83,9 @@ class ClienteViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="resumen")
     def resumen(self, request):
-        queryset = Cliente.objects.all()
+        queryset = Persona.objects.all()
         buscar = (request.query_params.get("buscar") or "").strip()
-        es_demo = request.query_params.get("es_demo")
         queryset = filtrar_personas(queryset, buscar)
-        if es_demo is not None:
-            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         resumen = queryset.aggregate(
             total=Count("id", distinct=True),
             clientes=Count("id", filter=Q(contratos__isnull=False), distinct=True),
@@ -106,23 +100,23 @@ class ClienteViewSet(viewsets.ModelViewSet):
         if len(buscar) < 2:
             return Response({"exacta_telefono": None, "sugerencias": []})
 
-        exacta = buscar_cliente_por_telefono(buscar, exclude_id=exclude_id)
-        suggestions_queryset = filtrar_personas(clientes_con_resumen(), buscar)
+        exacta = buscar_persona_por_telefono(buscar, exclude_id=exclude_id)
+        suggestions_queryset = filtrar_personas(personas_con_resumen(), buscar)
         if exclude_id:
             suggestions_queryset = suggestions_queryset.exclude(pk=exclude_id)
         sugerencias = list(suggestions_queryset[:8])
         if exacta and all(item.id != exacta.id for item in sugerencias):
-            exacta = clientes_con_resumen().get(pk=exacta.pk)
+            exacta = personas_con_resumen().get(pk=exacta.pk)
             sugerencias.insert(0, exacta)
 
-        serializer = ClienteSerializer(sugerencias, many=True)
+        serializer = PersonaSerializer(sugerencias, many=True)
         exacta_data = None
         if exacta:
             exacta_resumen = next(
                 (item for item in sugerencias if item.id == exacta.id),
                 exacta,
             )
-            exacta_data = ClienteSerializer(exacta_resumen).data
+            exacta_data = PersonaSerializer(exacta_resumen).data
         return Response(
             {
                 "exacta_telefono": exacta_data,

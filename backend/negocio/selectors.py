@@ -3,7 +3,7 @@
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Prefetch, Q
 
-from .models import Cliente, ConfiguracionNegocio
+from .models import ConfiguracionNegocio, Persona
 from .validators import (
     extraer_digitos_telefono,
     normalizar_telefono,
@@ -11,20 +11,20 @@ from .validators import (
 )
 
 
-def clientes_con_resumen():
-    return Cliente.objects.annotate(
+def personas_con_resumen():
+    return Persona.objects.annotate(
         cotizaciones_count=Count("cotizaciones", distinct=True),
         contratos_count=Count("contratos", distinct=True),
     )
 
 
-def buscar_cliente_por_telefono(telefono, *, exclude_id=None):
+def buscar_persona_por_telefono(telefono, *, exclude_id=None):
     try:
         telefono_normalizado = normalizar_telefono(telefono)
     except ValidationError:
         return None
 
-    queryset = Cliente.objects.filter(telefono_normalizado=telefono_normalizado)
+    queryset = Persona.objects.filter(telefono_normalizado=telefono_normalizado)
     if exclude_id:
         queryset = queryset.exclude(pk=exclude_id)
     return queryset.first()
@@ -47,7 +47,7 @@ def personas_con_detalle():
     from financiero.models import Contrato
 
     return (
-        clientes_con_resumen()
+        personas_con_resumen()
         .prefetch_related(
             "nombres_utilizados",
             Prefetch(

@@ -178,8 +178,8 @@ def _serialize_contract_profitability(contrato):
     return {
         "id": contrato.id,
         "contrato_id": contrato.id,
-        "cliente_nombre": contrato.cliente.nombre,
-        "cliente_telefono": contrato.cliente.telefono,
+        "persona_nombre": contrato.persona.nombre,
+        "persona_telefono": contrato.persona.telefono,
         "tipo_evento_id": contrato.tipo_evento_id,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
         "paquete_id": contrato.paquete_id,

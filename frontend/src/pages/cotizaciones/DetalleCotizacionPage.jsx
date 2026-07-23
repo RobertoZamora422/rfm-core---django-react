@@ -163,8 +163,8 @@ export function DetalleCotizacionPage() {
           <div className="detail-section">
             <div className="detail-section__header"><h2>Resumen comercial</h2><StatusBadge status={cotizacion.estado}>{getEstadoLabel(cotizacion.estado)}</StatusBadge></div>
             <dl className="detail-list">
-              <DetailItem label="Persona" value={<Link className="detail-inline-link" to={`/clientes/${cotizacion.cliente}`}>{cotizacion.cliente_nombre}</Link>} />
-              <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${cotizacion.cliente_telefono}`}>{formatPhone(cotizacion.cliente_telefono)}</a>} />
+              <DetailItem label="Persona" value={<Link className="detail-inline-link" to={`/personas/${cotizacion.persona}`}>{cotizacion.persona_nombre}</Link>} />
+              <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${cotizacion.persona_telefono}`}>{formatPhone(cotizacion.persona_telefono)}</a>} />
               <DetailItem label="Tipo de evento" value={cotizacion.tipo_evento_nombre} />
               <DetailItem label="Fecha tentativa" value={formatDate(cotizacion.fecha_tentativa)} />
               <DetailItem label="Invitados" value={cotizacion.numero_invitados} />

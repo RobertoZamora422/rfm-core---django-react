@@ -6,7 +6,7 @@ from django.db.models import Q, Sum
 
 from comercial.models import Cotizacion
 from financiero.validators import validate_month, validate_non_negative, validate_year
-from negocio.models import Cliente, Paquete, TimeStampedModel, TipoEvento
+from negocio.models import Paquete, Persona, TimeStampedModel, TipoEvento
 from negocio.validators import validate_positive_integer
 
 
@@ -27,8 +27,8 @@ class Contrato(TimeStampedModel):
         blank=True,
         null=True,
     )
-    cliente = models.ForeignKey(
-        Cliente,
+    persona = models.ForeignKey(
+        Persona,
         on_delete=models.PROTECT,
         related_name="contratos",
     )
@@ -70,8 +70,6 @@ class Contrato(TimeStampedModel):
         default=EstadoPago.PENDIENTE,
     )
     observaciones = models.TextField(blank=True)
-    es_demo = models.BooleanField(default=False)
-
     class Meta:
         ordering = ["-fecha_evento", "-creado_en"]
         constraints = [
@@ -136,7 +134,7 @@ class Contrato(TimeStampedModel):
         self.estado_pago = self.calcular_estado_pago()
 
     def __str__(self):
-        return f"Contrato #{self.pk or 'nuevo'} - {self.cliente}"
+        return f"Contrato #{self.pk or 'nuevo'} - {self.persona}"
 
 
 class CostoDirecto(TimeStampedModel):
@@ -155,7 +153,6 @@ class CostoDirecto(TimeStampedModel):
     observaciones = models.TextField(blank=True)
     eliminado = models.BooleanField(default=False)
     eliminado_en = models.DateTimeField(blank=True, null=True)
-    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-fecha", "-creado_en"]
@@ -182,7 +179,6 @@ class GastoFijoMensual(TimeStampedModel):
     observaciones = models.TextField(blank=True)
     eliminado = models.BooleanField(default=False)
     eliminado_en = models.DateTimeField(blank=True, null=True)
-    es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-anio", "-mes", "concepto"]

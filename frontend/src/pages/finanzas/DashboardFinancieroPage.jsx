@@ -488,11 +488,11 @@ function PendingFinancials({ pendientes }) {
       ),
     },
     {
-      key: 'cliente_nombre',
+      key: 'persona_nombre',
       header: 'Cliente / evento',
       render: (row) => (
         <div className="stacked-cell">
-          <strong>{row.cliente_nombre}</strong>
+          <strong>{row.persona_nombre}</strong>
           <span>{row.tipo_evento_nombre}</span>
         </div>
       ),
@@ -543,11 +543,11 @@ function EventProfitabilityTable({ events, periodLabel }) {
       ),
     },
     {
-      key: 'cliente_nombre',
+      key: 'persona_nombre',
       header: 'Cliente / evento',
       render: (row) => (
         <div className="stacked-cell">
-          <strong>{row.cliente_nombre}</strong>
+          <strong>{row.persona_nombre}</strong>
           <span>{row.tipo_evento_nombre}</span>
         </div>
       ),

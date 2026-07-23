@@ -27,8 +27,8 @@ def _event_summary(contrato):
     return {
         "id": contrato.id,
         "contrato_id": contrato.id,
-        "cliente_nombre": contrato.cliente.nombre,
-        "cliente_telefono": contrato.cliente.telefono,
+        "persona_nombre": contrato.persona.nombre,
+        "persona_telefono": contrato.persona.telefono,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
         "paquete_nombre": contrato.paquete.nombre if contrato.paquete_id else "",
         "fecha_evento": contrato.fecha_evento.isoformat(),
@@ -85,7 +85,7 @@ def inicio_resumen(fecha_referencia=None):
     ).count()
     eventos_proximos = list(
         contratos_confirmados_futuros.select_related(
-            "cliente",
+            "persona",
             "tipo_evento",
             "paquete",
         ).order_by("fecha_evento", "id")[:5]

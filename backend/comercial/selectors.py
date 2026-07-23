@@ -5,7 +5,7 @@ from .models import Cotizacion
 
 def cotizaciones_con_relaciones():
     return Cotizacion.objects.select_related(
-        "cliente",
+        "persona",
         "tipo_evento",
         "paquete",
         "contrato",

@@ -14,7 +14,7 @@ ZERO = Decimal("0.00")
 def contratos_con_relaciones():
     return Contrato.objects.select_related(
         "cotizacion",
-        "cliente",
+        "persona",
         "tipo_evento",
         "paquete",
     ).annotate(
@@ -67,7 +67,7 @@ def contratos_confirmados_con_rentabilidad():
         Contrato.objects.filter(
             estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         )
-        .select_related("cliente", "tipo_evento", "paquete")
+        .select_related("persona", "tipo_evento", "paquete")
         .annotate(
             costos_directos_total=Coalesce(
                 Sum(

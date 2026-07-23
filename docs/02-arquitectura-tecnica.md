@@ -1,280 +1,91 @@
-# Arquitectura Tecnica - RFM Core
+# Arquitectura Técnica Detallada
 
-## Principios
-
-- Separar interfaz publica, panel administrativo, API, modelos, servicios de negocio y persistencia.
-- Mantener backend como fuente de verdad para validaciones y calculos.
-- Evitar datos quemados permanentes en frontend.
-- Exponer endpoints publicos controlados sin abrir CRUD administrativo.
-- Mantener rutas administrativas protegidas por token.
-- Preparar deploy en Render sin romper compatibilidad local.
-
-## Stack
-
-Backend:
-
-- Python 3.13.
-- Django 5.2.
-- Django REST Framework.
-- TokenAuthentication.
-- django-cors-headers.
-- python-dotenv.
-- WhiteNoise para estaticos en produccion.
-- dj-database-url para `DATABASE_URL`.
-- SQLite local como fallback.
-- PostgreSQL en Render.
-
-Frontend:
-
-- React.
-- Vite.
-- React Router.
-- Axios.
-- lucide-react.
-- Recharts para graficos del dashboard financiero.
-- CSS tradicional del proyecto.
-
-Deploy actual:
-
-- Render Web Service para Django/DRF.
-- Render Static Site para React/Vite.
-- Render PostgreSQL.
-
-## Backend
-
-Apps principales:
+## Componentes
 
 ```text
-accounts
-negocio
-comercial
-financiero
-reportes
+React/Vite -> Axios -> Django REST Framework -> Services/Selectors -> Django ORM -> SQLite/PostgreSQL
 ```
 
-Reglas backend:
+- React controla presentación, navegación y estado de formularios.
+- DRF valida contratos HTTP y permisos.
+- Services coordinan operaciones compuestas y transacciones.
+- Selectors centralizan consultas anotadas y filtros reutilizables.
+- Modelos y restricciones de base protegen la integridad final.
 
-- `services.py` contiene acciones y calculos de negocio.
-- `selectors.py` contiene consultas reutilizables.
-- Serializers validan contratos de API.
-- ViewSets administrativos usan permisos autenticados por defecto.
-- API publica usa `AllowAny` solo en endpoints acotados.
-- Dinero usa `DecimalField`, no `FloatField`.
+## Entidad Persona
 
-## API publica
+`negocio.models.Persona` reemplaza al nombre de dominio genérico anterior. Las relaciones vigentes son:
 
 ```text
-GET  /api/public/tipos-evento/
-GET  /api/public/paquetes/
-GET  /api/public/configuracion/
-POST /api/pre-cotizacion/
+Persona 1 --- N NombrePersona
+Persona 1 --- N Cotizacion
+Persona 1 --- N Contrato
 ```
 
-Restricciones:
+Los campos ORM y JSON son `persona` y `persona_id`. La tabla física vigente es `negocio_persona`; cotizaciones y contratos contienen `persona_id`.
 
-- Tipos de evento: solo activos.
-- Paquetes: solo activos.
-- Configuracion: solo campos necesarios para el calculo publico.
-- Configuracion publica incluye `whatsapp_numero_url` listo para `wa.me`, no el valor editable administrativo.
-- `POST /api/pre-cotizacion/` no requiere login.
-- El flujo publico no permite seleccionar clientes existentes por ID.
-- No se guarda correo electronico desde la pre-cotizacion publica.
-- No hay edicion ni eliminacion publica.
+La clasificación se obtiene mediante conteos de contratos anotados. Un contrato cancelado sigue siendo histórico y, por tanto, mantiene la clasificación Cliente.
 
-## API administrativa
+## Identidad y concurrencia
+
+La normalización telefónica está centralizada en `negocio.validators.normalizar_telefono`. `telefono_normalizado` tiene unicidad en base de datos. `persona_services.py` usa transacciones y captura conflictos de integridad para evitar duplicados incluso con solicitudes concurrentes.
+
+`NombrePersona` conserva alias únicos por persona y nombre normalizado. La persona mantiene su origen inicial.
+
+## API de personas
 
 ```text
-/api/auth/login/
-/api/auth/logout/
-/api/auth/me/
-/api/clientes/
-/api/tipos-evento/
-/api/paquetes/
-/api/configuracion-negocio/
-/api/cotizaciones/
-/api/cotizaciones/{id}/
-/api/cotizaciones/{id}/cambiar-estado/
-/api/cotizaciones/{id}/convertir-contrato/
-/api/contratos/
-/api/costos-directos/
-/api/gastos-fijos/
-/api/inicio-resumen/
-/api/dashboard-financiero/
-/api/reportes/
+GET|POST       /api/personas/
+GET|PUT|PATCH  /api/personas/{id}/
+GET            /api/personas/resumen/
+GET            /api/personas/coincidencias/?buscar=...
+GET            /api/personas/coincidencias/?telefono=...
 ```
 
-### Inicio administrativo
+La búsqueda devuelve sugerencias por nombre y una coincidencia exacta separada cuando el teléfono normalizado ya existe. Los listados incluyen conteos eficientes de cotizaciones y contratos.
 
-`GET /api/inicio-resumen/` es el contrato backend-first para la pantalla `/inicio`.
+No existe una ruta de compatibilidad heredada porque frontend y backend se actualizan en conjunto y no se identificó un consumidor externo.
 
-Implementacion:
+## Flujos compuestos
 
-- Servicio: `backend/negocio/services.py` -> `inicio_resumen()`.
-- Vista: `backend/negocio/views.py` -> `InicioResumenAPIView`.
-- Ruta: `backend/negocio/urls.py` -> `inicio-resumen/`.
-- Consumo frontend: `frontend/src/services/resourceService.js` -> `inicioService.resumen()`.
+### Pre-cotización pública
 
-Payload principal:
+`POST /api/pre-cotizacion/` recibe `nombre_persona` y `telefono_persona`. El service reutiliza o crea Persona, registra alias y crea la cotización en una transacción. La respuesta pública no expone coincidencias administrativas.
 
-- `fecha_referencia` y `periodo`.
-- `kpis`: cotizaciones nuevas, cotizaciones del mes, eventos del mes y eventos proximos.
-- `eventos_proximos`: maximo 5 contratos confirmados futuros, excluyendo cancelados, listos para enlazar a `/contratos/:id` e incluyendo cliente, tipo de evento, paquete si aplica, fecha, estado de pago y saldo pendiente.
-- `pendientes_importantes`: senales operativas calculadas en backend.
+### Cotización administrativa
 
-Decisiones tecnicas:
+`CotizacionSerializer` acepta una relación `persona` o `persona_nueva`, nunca ambas. Si se crea una persona, su origen es `cotizacion_manual` y ambos registros se confirman o revierten juntos.
 
-- Inicio no carga `/api/cotizaciones/` ni `/api/contratos/` para calcular KPIs en React.
-- Los eventos proximos y metricas operativas principales excluyen contratos cancelados.
-- Los pendientes de eventos proximos sin costos consideran solo costos directos activos; costos eliminados logicamente no cierran el pendiente.
-- Inicio no reemplaza `/api/dashboard-financiero/` ni `/api/reportes/`; esos endpoints cubren analisis financiero y reportes historicos.
+### Contrato directo
 
-### Dashboard financiero
-
-`GET /api/dashboard-financiero/?mes=MM&anio=YYYY` es el contrato backend-first para la pantalla `/dashboard-financiero`.
-
-Implementacion:
-
-- Servicio: `backend/financiero/services.py` -> `dashboard_financiero()`.
-- Vista: `backend/financiero/views.py` -> `DashboardFinancieroAPIView`.
-- Ruta: `backend/financiero/urls.py` -> `dashboard-financiero/`.
-- Consumo frontend: `frontend/src/services/resourceService.js` -> `dashboardFinancieroService.resumen()`.
-
-Payload principal:
-
-- `metricas` y `kpis`: ingresos, costos directos, utilidad bruta, margen bruto, gastos fijos, utilidad neta, margen neto, ticket promedio y contratos confirmados.
-- `comparacion_mes_anterior` y `comparativo_mes_anterior`: variaciones y categorias para comparar el periodo actual contra el mes anterior.
-- `desempeno_comercial`: paquete mas vendido, paquete mas rentable, tipo de evento mas frecuente y tipo de evento mas rentable.
-- `evolucion_mensual`, `rentabilidad_por_paquete`, `analisis_por_tipo_evento` y `top_eventos_rentables`: series listas para graficos.
-- `rentabilidad_eventos`: tabla de contratos confirmados con ingresos, costos, utilidad, margen y saldo.
-- `estado_pagos` / `estado_pagos_cobranza`: cobranza de contratos confirmados y control separado de cancelados.
-- `pendientes_financieros` e `interpretacion`.
-
-Decisiones tecnicas:
-
-- Los costos directos del dashboard se agrupan por `Contrato.fecha_evento`; `CostoDirecto.fecha` queda como trazabilidad administrativa.
-- Cotizaciones no se cuentan como ingresos.
-- Contratos cancelados no suman ingresos, utilidad, margen ni saldo pendiente principal. Solo aparecen separados como control visual de cobranza.
-- La rentabilidad de paquetes y tipos de evento usa margen ponderado sobre ingresos, con desempate por utilidad bruta y cantidad de contratos.
-- React renderiza el payload y los graficos; no recalcula las metricas financieras principales.
-
-Autenticacion:
-
-- Login devuelve `{ auth: { type: "token", token: "..." } }`.
-- Frontend envia `Authorization: Token <token>`.
-- Frontend conserva la sesion administrativa en `localStorage` usando las claves `rfm_core_auth_token` y `rfm_core_auth_user`.
-- `/api/auth/me/` requiere token.
-- Logout invalida el token actual.
+`ContratoSerializer` aplica el mismo patrón. Una persona nueva nace con origen `contrato_directo`; una persona existente conserva su origen. Al guardar el contrato su clasificación derivada pasa a Cliente.
 
 ## Frontend
 
-Layouts:
+- `personasService` consume `/personas/`.
+- `usePersonaMatches` deduplica solicitudes idénticas y aplica búsqueda remota.
+- `PersonaSelector` se reutiliza en cotizaciones y contratos.
+- `PersonasPage` usa `/personas` y `DetallePersonaPage` usa `/personas/:id`.
+- Los parámetros de preselección usan `?persona={id}`.
 
-- `PublicLayout`: rutas publicas, sin Sidebar ni Topbar administrativo.
-- `AdminLayout`: panel protegido con Sidebar, Topbar y contenido administrativo.
+## Rendimiento
 
-Rutas publicas:
+- `select_related` para persona, tipo de evento y paquete.
+- `prefetch_related` para detalle de persona.
+- `Count(..., distinct=True)` para clasificación y conteos.
+- paginación opcional en recursos administrativos.
+- debounce en búsquedas de texto.
+- no se cargan todas las personas en los formularios.
 
-```text
-/
-/pre-cotizacion
-/pre-cotizacion/alquiler
-/pre-cotizacion/servicio-completo
-/pre-cotizacion/comparacion
-/login
+## Instalación y despliegue
+
+```powershell
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py createsuperuser
 ```
 
-Rutas administrativas protegidas:
+La configuración y los catálogos reales se crean de forma explícita. No hay seeds automáticos. En producción se usa PostgreSQL mediante `DATABASE_URL`; el frontend recibe la URL del API en `VITE_API_BASE_URL`.
 
-```text
-/inicio
-/clientes
-/tipos-evento
-/paquetes
-/configuracion
-/cotizaciones
-/cotizaciones/nueva
-/cotizaciones/:id
-/cotizaciones/:id/editar
-/contratos
-/contratos/nuevo
-/contratos/:id
-/contratos/:id/editar
-/costos-directos
-/gastos-fijos
-/dashboard-financiero
-/reportes
-```
+## Limpieza controlada
 
-## Variables de entorno
-
-Backend:
-
-```text
-DJANGO_SECRET_KEY=
-DJANGO_DEBUG=True
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-CSRF_TRUSTED_ORIGINS=
-FRONTEND_PUBLIC_URL=http://localhost:5173
-DATABASE_URL=
-```
-
-Frontend:
-
-```text
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
-```
-
-`VITE_API_BASE_URL` es la convencion vigente para la URL del API en frontend. En produccion debe estar definida; el fallback local solo aplica a desarrollo.
-
-Con `DJANGO_DEBUG=False`, el backend exige `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `DATABASE_URL`.
-
-`FRONTEND_PUBLIC_URL` alimenta los enlaces informativos de la raiz JSON del backend. No participa en calculos ni autenticacion.
-
-## Render manual
-
-Backend Render Web Service:
-
-```text
-Root Directory: backend
-Build Command: pip install -r requirements.txt
-Start Command: gunicorn config.wsgi:application
-```
-
-Variables backend:
-
-```text
-DJANGO_SECRET_KEY=<valor-seguro-generado>
-DJANGO_DEBUG=False
-DJANGO_ALLOWED_HOSTS=rfm-core-backend.onrender.com
-DATABASE_URL=<Render PostgreSQL Internal Database URL>
-CORS_ALLOWED_ORIGINS=https://rfm-core-frontend.onrender.com
-CSRF_TRUSTED_ORIGINS=https://rfm-core-frontend.onrender.com,https://rfm-core-backend.onrender.com
-FRONTEND_PUBLIC_URL=https://rfm-core-frontend.onrender.com
-```
-
-Comandos posteriores a crear el servicio:
-
-```bash
-python manage.py migrate
-python manage.py collectstatic --noinput
-python manage.py seed_base
-python manage.py createsuperuser
-```
-
-Frontend Render Static Site:
-
-```text
-Root Directory: frontend
-Build Command: npm install && npm run build
-Publish Directory: dist
-VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api
-```
-
-PostgreSQL debe proveer `DATABASE_URL`; las migraciones deben ejecutarse antes de operar con datos reales. `seed_demo` no debe mezclarse con datos reales.
-
-El numero de WhatsApp del negocio se administra en `ConfiguracionNegocio.whatsapp_negocio` con formato local ecuatoriano `09XXXXXXXX`. La API publica lo entrega normalizado como `whatsapp_numero_url`, por ejemplo `0991234567` -> `593991234567`.
-
-## Raiz backend
-
-`GET /` devuelve JSON util con enlaces a health, admin, API, frontend local y pre-cotizacion publica. No reemplaza `/api/health/`.
+`limpiar_datos_operativos` audita por defecto y exige `--execute`. Conserva usuarios y Configuración del negocio. No debe formar parte de build, startup ni deploy.

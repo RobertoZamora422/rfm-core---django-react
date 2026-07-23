@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from negocio.models import Cliente, ConfiguracionNegocio, NombrePersona, TipoEvento
+from negocio.models import Persona, ConfiguracionNegocio, NombrePersona, TipoEvento
 
 from .models import Cotizacion
 
@@ -23,8 +23,8 @@ class PublicPersonFlowTests(APITestCase):
 
     def payload(self, nombre, telefono):
         return {
-            "nombre": nombre,
-            "telefono": telefono,
+            "nombre_persona": nombre,
+            "telefono_persona": telefono,
             "tipo_evento": self.tipo_evento.id,
             "fecha_tentativa": "2026-12-10",
             "numero_invitados": 60,
@@ -45,11 +45,11 @@ class PublicPersonFlowTests(APITestCase):
 
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 201)
-        self.assertEqual(Cliente.objects.count(), 1)
-        persona = Cliente.objects.get()
-        self.assertEqual(persona.origen, Cliente.Origen.FORMULARIO_PUBLICO)
+        self.assertEqual(Persona.objects.count(), 1)
+        persona = Persona.objects.get()
+        self.assertEqual(persona.origen, Persona.Origen.FORMULARIO_PUBLICO)
         self.assertEqual(persona.cotizaciones.count(), 2)
-        self.assertTrue(NombrePersona.objects.filter(cliente=persona, nombre="Robert Z").exists())
+        self.assertTrue(NombrePersona.objects.filter(persona=persona, nombre="Robert Z").exists())
         self.assertNotIn("persona_existente", second.data)
 
     def test_mismo_nombre_con_telefonos_distintos_no_fusiona_personas(self):
@@ -64,7 +64,7 @@ class PublicPersonFlowTests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(Cliente.objects.count(), 2)
+        self.assertEqual(Persona.objects.count(), 2)
 
 
 class ManualQuotePersonFlowTests(APITestCase):
@@ -97,19 +97,19 @@ class ManualQuotePersonFlowTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        persona = Cliente.objects.get()
+        persona = Persona.objects.get()
         quote = Cotizacion.objects.get()
-        self.assertEqual(persona.origen, Cliente.Origen.COTIZACION_MANUAL)
+        self.assertEqual(persona.origen, Persona.Origen.COTIZACION_MANUAL)
         self.assertEqual(quote.origen, Cotizacion.Origen.COTIZACION_MANUAL)
-        self.assertEqual(quote.cliente_id, persona.id)
+        self.assertEqual(quote.persona_id, persona.id)
         self.assertIn("creado_en", response.data)
         self.assertIn("actualizado_en", response.data)
 
     def test_reutiliza_persona_existente_y_rechaza_persona_nueva_duplicada(self):
-        persona = Cliente.objects.create(nombre="Existente", telefono="0912345678")
+        persona = Persona.objects.create(nombre="Existente", telefono="0912345678")
         reused = self.client.post(
             "/api/cotizaciones/",
-            {**self.quote_payload(), "cliente": persona.id},
+            {**self.quote_payload(), "persona": persona.id},
             format="json",
         )
         duplicate = self.client.post(
@@ -123,7 +123,7 @@ class ManualQuotePersonFlowTests(APITestCase):
 
         self.assertEqual(reused.status_code, 201)
         self.assertEqual(duplicate.status_code, 400)
-        self.assertEqual(Cliente.objects.count(), 1)
+        self.assertEqual(Persona.objects.count(), 1)
 
     def test_error_posterior_revierte_persona_nueva(self):
         with patch("comercial.serializers.Cotizacion.objects.create", side_effect=RuntimeError("fallo")):
@@ -137,4 +137,4 @@ class ManualQuotePersonFlowTests(APITestCase):
                     format="json",
                 )
 
-        self.assertEqual(Cliente.objects.count(), 0)
+        self.assertEqual(Persona.objects.count(), 0)

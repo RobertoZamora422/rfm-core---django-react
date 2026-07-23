@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from negocio.models import Cliente, TipoEvento
+from negocio.models import Persona, TipoEvento
 
 from .models import Contrato
 
@@ -29,7 +29,7 @@ class DirectContractPersonFlowTests(APITestCase):
             {
                 **self.contract_payload(),
                 "persona_nueva": {
-                    "nombre": "Cliente directo",
+                    "nombre": "Persona directa",
                     "telefono": "0912345678",
                 },
             },
@@ -37,28 +37,28 @@ class DirectContractPersonFlowTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        persona = Cliente.objects.get()
-        detail = self.client.get(f"/api/clientes/{persona.id}/")
-        self.assertEqual(persona.origen, Cliente.Origen.CONTRATO_DIRECTO)
+        persona = Persona.objects.get()
+        detail = self.client.get(f"/api/personas/{persona.id}/")
+        self.assertEqual(persona.origen, Persona.Origen.CONTRATO_DIRECTO)
         self.assertEqual(detail.data["clasificacion"], "cliente")
 
     def test_interesado_existente_se_reutiliza_y_conserva_origen(self):
-        persona = Cliente.objects.create(
+        persona = Persona.objects.create(
             nombre="Interesado público",
             telefono="0912345678",
-            origen=Cliente.Origen.FORMULARIO_PUBLICO,
+            origen=Persona.Origen.FORMULARIO_PUBLICO,
         )
 
         response = self.client.post(
             "/api/contratos/",
-            {**self.contract_payload(), "cliente": persona.id},
+            {**self.contract_payload(), "persona": persona.id},
             format="json",
         )
 
         self.assertEqual(response.status_code, 201)
         persona.refresh_from_db()
-        self.assertEqual(Cliente.objects.count(), 1)
-        self.assertEqual(persona.origen, Cliente.Origen.FORMULARIO_PUBLICO)
+        self.assertEqual(Persona.objects.count(), 1)
+        self.assertEqual(persona.origen, Persona.Origen.FORMULARIO_PUBLICO)
         self.assertEqual(persona.contratos.count(), 1)
 
     def test_error_posterior_revierte_persona_nueva(self):
@@ -73,5 +73,5 @@ class DirectContractPersonFlowTests(APITestCase):
                     format="json",
                 )
 
-        self.assertEqual(Cliente.objects.count(), 0)
+        self.assertEqual(Persona.objects.count(), 0)
         self.assertEqual(Contrato.objects.count(), 0)

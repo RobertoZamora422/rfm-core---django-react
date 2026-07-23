@@ -1,87 +1,93 @@
-# Validacion Fase 17
+# Validación Integral Vigente
 
-Fecha de cierre: 2026-05-18
+Este documento reemplaza resultados históricos como fuente de verdad. Los números exactos de cada ejecución deben reportarse en la entrega correspondiente.
 
-Nota de mantenimiento: este documento conserva la evidencia historica de Fase 17. La validacion actual posterior al deploy en Render se registra en `docs/07-consolidacion-pre-cotizacion-publica-y-deploy.md`.
-
-Nota dashboard financiero: la revision posterior del dashboard financiero backend-first fue validada localmente con `manage.py test financiero reportes`, `npm run lint` y `npm run build`. Esta revision agrega KPIs financieros completos, graficos con Recharts, costos directos imputados por `Contrato.fecha_evento`, cancelados separados en cobranza y estados vacios profesionales.
-
-## Objetivo
-
-Validar el flujo completo de RFM Core antes de pasar a la documentacion final:
-
-```text
-Pre-cotizacion -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
-```
-
-## Cobertura automatizada agregada
-
-Archivo principal:
-
-```text
-backend/config/test_integral.py
-```
-
-La prueba integral cubre:
-
-- Creacion de pre-cotizacion desde `/api/pre-cotizacion/`.
-- Cambio de estado comercial a cotizacion confirmada.
-- Conversion controlada a contrato desde `/api/cotizaciones/{id}/convertir-contrato/`.
-- Rechazo de conversion doble.
-- Rechazo de conversion para cotizacion descartada.
-- Creacion de costos directos y gastos fijos desde API.
-- Dashboard financiero calculado desde backend.
-- Reporte financiero reutilizando metricas del dashboard.
-- Reporte de eventos diferenciando contratos confirmados y cancelados.
-- Inicio administrativo con evento proximo y pendiente de saldo.
-
-## Matriz de validacion ejecutada
-
-| Area | Validacion | Resultado |
-| --- | --- | --- |
-| Backend | `manage.py check` | Sin issues |
-| Backend | `manage.py test` | 56 pruebas OK |
-| Migraciones | `manage.py makemigrations --check --dry-run` | Sin cambios pendientes |
-| Frontend | `npm run lint` | Sin errores |
-| Frontend | `npm run build` | Build generado correctamente |
-| Runtime backend | `GET /api/health/` en `127.0.0.1:8000` | HTTP 200 |
-| Runtime frontend | `GET /` en `127.0.0.1:5173` | HTTP 200 |
-| Navegacion manual | Login administrativo y rutas principales | Sin redireccion indebida a login |
-| Navegacion manual | `/inicio`, `/pre-cotizacion`, `/cotizaciones`, `/contratos`, `/costos-directos`, `/gastos-fijos`, `/dashboard-financiero`, `/reportes` | Contenido visible y encabezado esperado |
-| Navegacion manual | Consola del navegador | Sin errores |
-| Navegacion manual | Overflow horizontal escritorio | Sin overflow luego del ajuste responsive |
-
-## Ajuste detectado durante validacion
-
-Durante el recorrido manual se detecto overflow horizontal en escritorio en pantallas con filtros extensos. La causa fue el breakpoint de filtros, que usaba el ancho del viewport y no el ancho real disponible despues del sidebar.
-
-Correccion aplicada:
-
-- Los contenedores `.page-stack`, `.card`, `.kpi-card` y `.table-wrap` ahora permiten reducirse con `min-width: 0`.
-- El breakpoint de filtros pasa a `max-width: 1400px` para que las pantallas con sidebar usen una grilla mas estable antes de desbordar.
-
-## Criterio de cierre
-
-La Fase 17 queda completada cuando los comandos de calidad y el recorrido manual anterior finalizan sin errores bloqueantes. Cualquier cambio posterior en endpoints, layout o filtros debe repetir al menos:
+## Backend obligatorio
 
 ```powershell
 cd backend
 .\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py test
 .\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe manage.py test
+```
 
-cd ..\frontend
+Cobertura mínima de identidad:
+
+- formatos telefónicos equivalentes producen una sola Persona;
+- teléfonos diferentes no se fusionan por nombre;
+- un nombre diferente se conserva como alias;
+- el origen inicial no cambia;
+- sin contratos se clasifica Interesado;
+- con cualquier contrato histórico se clasifica Cliente;
+- un contrato cancelado mantiene la clasificación histórica;
+- creación rápida desde cotización y contrato es transaccional;
+- formulario público reutiliza Persona sin revelar coincidencias;
+- conteos y detalle usan consultas backend eficientes.
+
+Cobertura mínima comercial y financiera:
+
+- transiciones válidas de cotización;
+- conversión única a contrato;
+- estados de contrato y pago separados;
+- monto abonado no supera valor final;
+- cancelados excluidos de métricas principales;
+- eliminación lógica de costos y gastos;
+- reportes y dashboard conservan sus reglas de periodo.
+
+## Migraciones
+
+Validar dos escenarios:
+
+1. aplicar las migraciones nuevas sobre una copia de una base existente y comparar conteos, IDs y FKs;
+2. aplicar todas las migraciones desde cero sobre una base SQLite temporal vacía.
+
+Después:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py showmigrations
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+```
+
+## Frontend obligatorio
+
+```powershell
+cd frontend
 npm run lint
 npm run build
 ```
 
-## Nota de consolidacion posterior
+Verificar que no existan imports, servicios, rutas o payloads con nomenclatura técnica obsoleta.
 
-La intervencion de consolidacion de pre-cotizacion publica y preparacion de deploy actualiza el contrato de rutas:
+## Navegador
 
-- `/pre-cotizacion` deja de ser ruta administrativa protegida.
-- Las cuatro pantallas publicas usan `PublicLayout`.
-- El panel administrativo permanece protegido desde `/login`.
-- La autenticacion de API administrativa usa `Authorization: Token <token>`.
+En escritorio y móvil:
 
-La matriz vigente de esta intervencion queda documentada en `docs/07-consolidacion-pre-cotizacion-publica-y-deploy.md`.
+- login y navegación protegida;
+- sidebar `Personas`;
+- `/personas` con título `Clientes & Interesados`;
+- segmentos Todos, Clientes e Interesados;
+- búsqueda, creación, edición y detalle;
+- preselección desde persona hacia nueva cotización y contrato;
+- creación rápida sin perder el formulario;
+- formulario público;
+- estados vacíos, foco, Escape, menús y objetivos táctiles.
+
+Los registros de validación temporales deben eliminarse al terminar.
+
+## Higiene del repositorio
+
+```powershell
+git diff --check
+```
+
+Buscar globalmente referencias a rutas, clases, campos, semillas y copias obsoletas. Las apariciones históricas dentro de migraciones antiguas son válidas porque Django necesita reconstruir cada estado previo.
+
+## Estado de datos
+
+Antes de empezar con información real debe comprobarse:
+
+- cero datos operativos demo;
+- configuración activa presente;
+- administrador presente;
+- ausencia de copias `.bak` y bases temporales;
+- ausencia de carga demo automática en inicio o despliegue.

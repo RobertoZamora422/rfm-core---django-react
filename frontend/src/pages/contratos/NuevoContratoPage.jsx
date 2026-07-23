@@ -6,7 +6,7 @@ import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import {
-  clientesService,
+  personasService,
   contratosService,
   paquetesService,
   tiposEventoService,
@@ -21,7 +21,7 @@ function toArray(data) {
 export function NuevoContratoPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const preselectedPersonId = searchParams.get('cliente')
+  const preselectedPersonId = searchParams.get('persona')
   const [initialPerson, setInitialPerson] = useState(null)
   const [tiposEvento, setTiposEvento] = useState([])
   const [paquetes, setPaquetes] = useState([])
@@ -36,7 +36,7 @@ export function NuevoContratoPage() {
 
     try {
       const [personData, tiposData, paquetesData] = await Promise.all([
-        preselectedPersonId ? clientesService.retrieve(preselectedPersonId) : Promise.resolve(null),
+        preselectedPersonId ? personasService.retrieve(preselectedPersonId) : Promise.resolve(null),
         tiposEventoService.list({ activo: true }),
         paquetesService.list({ activo: true }),
       ])

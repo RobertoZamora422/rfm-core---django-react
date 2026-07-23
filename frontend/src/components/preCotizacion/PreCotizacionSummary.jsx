@@ -276,7 +276,7 @@ function buildBaseMessage(cotizacion, nombreNegocio) {
   return [
     `Hola, vengo de la pre-cotización web de ${nombreNegocio || 'Rancho Flor María'}.`,
     'Me gustaría recibir más información.',
-    hasValue(cotizacion.cliente_nombre) ? `Nombre: ${cotizacion.cliente_nombre}` : null,
+    hasValue(cotizacion.persona_nombre) ? `Nombre: ${cotizacion.persona_nombre}` : null,
     hasValue(cotizacion.tipo_evento_nombre)
       ? `Evento: ${cotizacion.tipo_evento_nombre}`
       : null,

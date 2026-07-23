@@ -6,7 +6,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from comercial.models import Cotizacion
-from negocio.models import Cliente
+from negocio.models import Persona
 from negocio.persona_services import PersonaDuplicadaError, crear_persona
 from negocio.serializers import PersonaNuevaSerializer
 from negocio.validators import validate_non_negative, validate_positive_integer
@@ -15,13 +15,13 @@ from .models import Contrato, CostoDirecto, GastoFijoMensual
 
 
 class ContratoSerializer(serializers.ModelSerializer):
-    cliente = serializers.PrimaryKeyRelatedField(
-        queryset=Cliente.objects.all(),
+    persona = serializers.PrimaryKeyRelatedField(
+        queryset=Persona.objects.all(),
         required=False,
     )
     persona_nueva = PersonaNuevaSerializer(required=False, write_only=True)
-    cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
-    cliente_telefono = serializers.CharField(source="cliente.telefono", read_only=True)
+    persona_nombre = serializers.CharField(source="persona.nombre", read_only=True)
+    persona_telefono = serializers.CharField(source="persona.telefono", read_only=True)
     tipo_evento_nombre = serializers.CharField(
         source="tipo_evento.nombre",
         read_only=True,
@@ -53,9 +53,9 @@ class ContratoSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "cotizacion",
-            "cliente",
-            "cliente_nombre",
-            "cliente_telefono",
+            "persona",
+            "persona_nombre",
+            "persona_telefono",
             "persona_nueva",
             "tipo_evento",
             "tipo_evento_nombre",
@@ -72,7 +72,6 @@ class ContratoSerializer(serializers.ModelSerializer):
             "utilidad_bruta",
             "margen_bruto",
             "observaciones",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -84,7 +83,6 @@ class ContratoSerializer(serializers.ModelSerializer):
             "total_costos_directos",
             "utilidad_bruta",
             "margen_bruto",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -96,7 +94,7 @@ class ContratoSerializer(serializers.ModelSerializer):
             getattr(self.instance, "monto_abonado", 0),
         )
         cotizacion = attrs.get("cotizacion")
-        cliente = attrs.get("cliente")
+        persona = attrs.get("persona")
         persona_nueva = attrs.get("persona_nueva")
         tipo_evento = attrs.get(
             "tipo_evento",
@@ -105,8 +103,8 @@ class ContratoSerializer(serializers.ModelSerializer):
         paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))
         errors = {}
 
-        if self.instance is None and bool(cliente) == bool(persona_nueva):
-            errors["cliente"] = "Selecciona una persona existente o registra una nueva."
+        if self.instance is None and bool(persona) == bool(persona_nueva):
+            errors["persona"] = "Selecciona una persona existente o registra una nueva."
         if self.instance is not None and persona_nueva:
             errors["persona_nueva"] = "La creación rápida solo está disponible en un nuevo contrato."
 
@@ -142,9 +140,9 @@ class ContratoSerializer(serializers.ModelSerializer):
         persona_nueva = validated_data.pop("persona_nueva", None)
         if persona_nueva:
             try:
-                validated_data["cliente"] = crear_persona(
+                validated_data["persona"] = crear_persona(
                     **persona_nueva,
-                    origen=Cliente.Origen.CONTRATO_DIRECTO,
+                    origen=Persona.Origen.CONTRATO_DIRECTO,
                 )
             except PersonaDuplicadaError as exc:
                 raise serializers.ValidationError(
@@ -184,12 +182,12 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
         source="contrato.estado_contrato",
         read_only=True,
     )
-    cliente_nombre = serializers.CharField(
-        source="contrato.cliente.nombre",
+    persona_nombre = serializers.CharField(
+        source="contrato.persona.nombre",
         read_only=True,
     )
-    cliente_telefono = serializers.CharField(
-        source="contrato.cliente.telefono",
+    persona_telefono = serializers.CharField(
+        source="contrato.persona.telefono",
         read_only=True,
     )
     tipo_evento_nombre = serializers.CharField(
@@ -211,8 +209,8 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
             "contrato_label",
             "contrato_descripcion",
             "contrato_estado",
-            "cliente_nombre",
-            "cliente_telefono",
+            "persona_nombre",
+            "persona_telefono",
             "tipo_evento_nombre",
             "fecha_evento",
             "concepto",
@@ -221,7 +219,6 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
             "observaciones",
             "eliminado",
             "eliminado_en",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -229,7 +226,6 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
             "id",
             "eliminado",
             "eliminado_en",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -240,7 +236,7 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
     def get_contrato_descripcion(self, obj):
         contrato = obj.contrato
         return (
-            f"Contrato #{contrato.id} - {contrato.cliente.nombre} - "
+            f"Contrato #{contrato.id} - {contrato.persona.nombre} - "
             f"{contrato.tipo_evento.nombre} ({contrato.fecha_evento:%d/%m/%Y})"
         )
 
@@ -287,7 +283,6 @@ class GastoFijoMensualSerializer(serializers.ModelSerializer):
             "observaciones",
             "eliminado",
             "eliminado_en",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -295,7 +290,6 @@ class GastoFijoMensualSerializer(serializers.ModelSerializer):
             "id",
             "eliminado",
             "eliminado_en",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]

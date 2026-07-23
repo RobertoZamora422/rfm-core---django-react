@@ -1,13 +1,13 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import Cliente, ConfiguracionNegocio, NombrePersona, Paquete, TipoEvento
+from .models import ConfiguracionNegocio, NombrePersona, Paquete, Persona, TipoEvento
 from .persona_services import (
     PersonaDuplicadaError,
     actualizar_persona,
     crear_persona,
 )
-from .selectors import buscar_cliente_por_telefono
+from .selectors import buscar_persona_por_telefono
 
 
 def _raise_persona_validation_error(exc):
@@ -43,7 +43,7 @@ class PersonaNuevaSerializer(serializers.Serializer):
             validate_phone(value)
         except DjangoValidationError as exc:
             raise serializers.ValidationError(exc.messages) from exc
-        duplicate = buscar_cliente_por_telefono(value)
+        duplicate = buscar_persona_por_telefono(value)
         if duplicate:
             raise serializers.ValidationError(
                 "Esta persona ya está registrada. Puedes seleccionarla para continuar."
@@ -51,7 +51,7 @@ class PersonaNuevaSerializer(serializers.Serializer):
         return value
 
 
-class ClienteSerializer(serializers.ModelSerializer):
+class PersonaSerializer(serializers.ModelSerializer):
     cotizaciones_count = serializers.SerializerMethodField()
     contratos_count = serializers.SerializerMethodField()
     clasificacion = serializers.SerializerMethodField()
@@ -59,7 +59,7 @@ class ClienteSerializer(serializers.ModelSerializer):
     origen_display = serializers.CharField(source="get_origen_display", read_only=True)
 
     class Meta:
-        model = Cliente
+        model = Persona
         fields = [
             "id",
             "nombre",
@@ -72,7 +72,6 @@ class ClienteSerializer(serializers.ModelSerializer):
             "clasificacion_display",
             "cotizaciones_count",
             "contratos_count",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -82,7 +81,6 @@ class ClienteSerializer(serializers.ModelSerializer):
             "origen_display",
             "clasificacion",
             "clasificacion_display",
-            "es_demo",
             "creado_en",
             "actualizado_en",
         ]
@@ -111,7 +109,7 @@ class ClienteSerializer(serializers.ModelSerializer):
 
     def validate_telefono(self, value):
         value = (value or "").strip()
-        duplicate = buscar_cliente_por_telefono(
+        duplicate = buscar_persona_por_telefono(
             value,
             exclude_id=getattr(self.instance, "id", None),
         )
@@ -125,7 +123,7 @@ class ClienteSerializer(serializers.ModelSerializer):
         try:
             return crear_persona(
                 **validated_data,
-                origen=Cliente.Origen.REGISTRO_MANUAL,
+                origen=Persona.Origen.REGISTRO_MANUAL,
             )
         except DjangoValidationError as exc:
             _raise_persona_validation_error(exc)
@@ -146,16 +144,16 @@ class NombrePersonaSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class ClienteDetalleSerializer(ClienteSerializer):
+class PersonaDetalleSerializer(PersonaSerializer):
     nombres_utilizados = serializers.SerializerMethodField()
     resumen_relacion = serializers.SerializerMethodField()
     cotizaciones_relacionadas = serializers.SerializerMethodField()
     contratos_relacionados = serializers.SerializerMethodField()
     historial = serializers.SerializerMethodField()
 
-    class Meta(ClienteSerializer.Meta):
+    class Meta(PersonaSerializer.Meta):
         fields = [
-            *ClienteSerializer.Meta.fields,
+            *PersonaSerializer.Meta.fields,
             "nombres_utilizados",
             "resumen_relacion",
             "cotizaciones_relacionadas",

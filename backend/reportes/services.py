@@ -49,8 +49,8 @@ def _periodo_fechas(desde, hasta):
 def _quote_row(cotizacion):
     return {
         "id": cotizacion.id,
-        "cliente_nombre": cotizacion.cliente.nombre,
-        "cliente_telefono": cotizacion.cliente.telefono,
+        "persona_nombre": cotizacion.persona.nombre,
+        "persona_telefono": cotizacion.persona.telefono,
         "tipo_evento_nombre": cotizacion.tipo_evento.nombre,
         "paquete_nombre": cotizacion.paquete.nombre if cotizacion.paquete else "",
         "fecha_tentativa": cotizacion.fecha_tentativa.isoformat(),
@@ -66,7 +66,7 @@ def reporte_comercial(desde, hasta):
     cotizaciones = Cotizacion.objects.filter(
         fecha_tentativa__gte=desde,
         fecha_tentativa__lte=hasta,
-    ).select_related("cliente", "tipo_evento", "paquete")
+    ).select_related("persona", "tipo_evento", "paquete")
 
     total_cotizaciones = cotizaciones.count()
     total_estimado = _sum(cotizaciones, "total_estimado")
@@ -130,8 +130,8 @@ def _contract_row(contrato):
     return {
         "id": contrato.id,
         "contrato_id": contrato.id,
-        "cliente_nombre": contrato.cliente.nombre,
-        "cliente_telefono": contrato.cliente.telefono,
+        "persona_nombre": contrato.persona.nombre,
+        "persona_telefono": contrato.persona.telefono,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
         "paquete_nombre": contrato.paquete.nombre if contrato.paquete else "",
         "fecha_evento": contrato.fecha_evento.isoformat(),
@@ -148,7 +148,7 @@ def reporte_eventos(desde, hasta):
     contratos = Contrato.objects.filter(
         fecha_evento__gte=desde,
         fecha_evento__lte=hasta,
-    ).select_related("cliente", "tipo_evento", "paquete")
+    ).select_related("persona", "tipo_evento", "paquete")
     confirmados = contratos.filter(estado_contrato=Contrato.EstadoContrato.CONFIRMADO)
     cancelados = contratos.filter(estado_contrato=Contrato.EstadoContrato.CANCELADO)
     total_valor_confirmado = _sum(confirmados, "valor_final")

@@ -5,7 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from rest_framework import serializers
 
-from negocio.models import Cliente, Paquete, TipoEvento
+from negocio.models import Paquete, Persona, TipoEvento
 from negocio.persona_services import PersonaDuplicadaError, crear_persona
 from negocio.serializers import PersonaNuevaSerializer
 from negocio.validators import validate_phone
@@ -14,13 +14,13 @@ from .models import Cotizacion
 
 
 class CotizacionSerializer(serializers.ModelSerializer):
-    cliente = serializers.PrimaryKeyRelatedField(
-        queryset=Cliente.objects.all(),
+    persona = serializers.PrimaryKeyRelatedField(
+        queryset=Persona.objects.all(),
         required=False,
     )
     persona_nueva = PersonaNuevaSerializer(required=False, write_only=True)
-    cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
-    cliente_telefono = serializers.CharField(source="cliente.telefono", read_only=True)
+    persona_nombre = serializers.CharField(source="persona.nombre", read_only=True)
+    persona_telefono = serializers.CharField(source="persona.telefono", read_only=True)
     tipo_evento_nombre = serializers.CharField(
         source="tipo_evento.nombre",
         read_only=True,
@@ -34,9 +34,9 @@ class CotizacionSerializer(serializers.ModelSerializer):
         model = Cotizacion
         fields = [
             "id",
-            "cliente",
-            "cliente_nombre",
-            "cliente_telefono",
+            "persona",
+            "persona_nombre",
+            "persona_telefono",
             "persona_nueva",
             "tipo_evento",
             "tipo_evento_nombre",
@@ -50,7 +50,6 @@ class CotizacionSerializer(serializers.ModelSerializer):
             "observaciones",
             "origen",
             "origen_display",
-            "es_demo",
             "esta_convertida",
             "contrato_id",
             "creado_en",
@@ -58,7 +57,6 @@ class CotizacionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
-            "es_demo",
             "esta_convertida",
             "contrato_id",
             "origen",
@@ -84,18 +82,18 @@ class CotizacionSerializer(serializers.ModelSerializer):
             getattr(self.instance, "tipo_servicio", None),
         )
         estado = attrs.get("estado")
-        cliente = attrs.get("cliente")
+        persona = attrs.get("persona")
         persona_nueva = attrs.get("persona_nueva")
         errors = {}
 
-        if self.instance is None and bool(cliente) == bool(persona_nueva):
-            errors["cliente"] = "Selecciona una persona existente o registra una nueva."
+        if self.instance is None and bool(persona) == bool(persona_nueva):
+            errors["persona"] = "Selecciona una persona existente o registra una nueva."
         if self.instance is not None and persona_nueva:
             errors["persona_nueva"] = "La creación rápida solo está disponible en una nueva cotización."
 
         if self.instance and self.instance.estado == Cotizacion.Estado.CONVERTIDA:
             locked_fields = [
-                "cliente",
+                "persona",
                 "tipo_evento",
                 "paquete",
                 "fecha_tentativa",
@@ -159,9 +157,9 @@ class CotizacionSerializer(serializers.ModelSerializer):
         persona_nueva = validated_data.pop("persona_nueva", None)
         if persona_nueva:
             try:
-                validated_data["cliente"] = crear_persona(
+                validated_data["persona"] = crear_persona(
                     **persona_nueva,
-                    origen=Cliente.Origen.COTIZACION_MANUAL,
+                    origen=Persona.Origen.COTIZACION_MANUAL,
                 )
             except PersonaDuplicadaError as exc:
                 raise serializers.ValidationError(
@@ -189,21 +187,15 @@ class CotizacionSerializer(serializers.ModelSerializer):
 
 
 class PreCotizacionSerializer(serializers.Serializer):
-    cliente = serializers.IntegerField(required=False, write_only=True)
-    nombre_cliente = serializers.CharField(required=False, allow_blank=True)
-    nombre = serializers.CharField(required=False, allow_blank=True)
-    telefono_cliente = serializers.CharField(
+    persona = serializers.IntegerField(required=False, write_only=True)
+    nombre_persona = serializers.CharField(required=False, allow_blank=True)
+    telefono_persona = serializers.CharField(
         required=False,
         allow_blank=True,
         validators=[validate_phone],
     )
-    telefono = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        validators=[validate_phone],
-    )
-    correo_cliente = serializers.EmailField(required=False, allow_blank=True, write_only=True)
-    observaciones_cliente = serializers.CharField(required=False, allow_blank=True)
+    correo_persona = serializers.EmailField(required=False, allow_blank=True, write_only=True)
+    observaciones_persona = serializers.CharField(required=False, allow_blank=True)
     tipo_evento = serializers.PrimaryKeyRelatedField(
         queryset=TipoEvento.objects.filter(activo=True),
     )
@@ -218,22 +210,18 @@ class PreCotizacionSerializer(serializers.Serializer):
     observaciones = serializers.CharField(required=False, allow_blank=True)
 
     def validate(self, attrs):
-        nombre_cliente = (
-            attrs.get("nombre_cliente") or attrs.get("nombre") or ""
-        ).strip()
-        telefono_cliente = (
-            attrs.get("telefono_cliente") or attrs.get("telefono") or ""
-        ).strip()
+        nombre_persona = (attrs.get("nombre_persona") or "").strip()
+        telefono_persona = (attrs.get("telefono_persona") or "").strip()
         paquete = attrs.get("paquete")
         tipo_servicio = attrs.get("tipo_servicio")
 
         errors = {}
-        if "cliente" in attrs:
-            errors["cliente"] = "El flujo publico no permite seleccionar clientes existentes."
-        if not nombre_cliente:
-            errors["nombre_cliente"] = "El nombre del cliente es obligatorio."
-        if not telefono_cliente:
-            errors["telefono_cliente"] = "El telefono del cliente es obligatorio."
+        if "persona" in attrs:
+            errors["persona"] = "El flujo público no permite seleccionar personas existentes."
+        if not nombre_persona:
+            errors["nombre_persona"] = "El nombre de la persona es obligatorio."
+        if not telefono_persona:
+            errors["telefono_persona"] = "El teléfono de la persona es obligatorio."
 
         if paquete and paquete.tipo_servicio != tipo_servicio:
             errors["paquete"] = "El paquete no corresponde al tipo de servicio indicado."
@@ -241,8 +229,8 @@ class PreCotizacionSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
 
-        attrs["nombre_cliente"] = nombre_cliente
-        attrs["telefono_cliente"] = telefono_cliente
+        attrs["nombre_persona"] = nombre_persona
+        attrs["telefono_persona"] = telefono_persona
         return attrs
 
 

@@ -1,65 +1,62 @@
-# Estado del proyecto - RFM CORE
+# Estado actual de RFM Core
 
-## Estado general
+Fecha de referencia: 22 de julio de 2026.
 
-El proyecto se encuentra en etapa de mantenimiento tecnico posterior al deploy manual en Render. La documentacion inicial, el backend core, los servicios de negocio, el layout administrativo, los modulos de administracion, la gestion comercial de cotizaciones, contratos, costos directos/gastos fijos, el inicio administrativo backend-first, el dashboard financiero backend-first, los reportes basicos, la revision responsive/UX y la validacion integral se encuentran completados.
+## Estado funcional
 
-La version actual corrige la separacion conceptual de la pre-cotizacion: el flujo de cliente/interesado es publico, no requiere login, no muestra chrome administrativo y registra una cotizacion inicial gestionable luego desde el panel protegido.
+RFM Core dispone de:
 
-Tambien completa el uso administrativo previo a datos reales: cotizaciones administrativas manuales, contratos manuales, edicion de contratos, detalle de rentabilidad, costos directos desde contrato, conversion de cotizacion con invitados/paquete finales, sesion persistente entre pestanas y configuracion del negocio tratada como edicion de la configuracion vigente.
+- pre-cotización pública sin autenticación;
+- autenticación administrativa por token;
+- Inicio operativo;
+- Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
+- Configuración del negocio;
+- costos directos, gastos fijos, dashboard financiero y reportes;
+- diseño responsive y actualización automática de recursos administrativos.
 
-El sistema contempla como flujo principal:
+## Dominio de identidad
 
-```text
-Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
-```
+`Persona` es la única entidad canónica para cualquier persona relacionada con el negocio. Cotizaciones y contratos apuntan a `persona`.
 
-## Fases completadas
+La clasificación se calcula desde backend:
 
-- Fase 0 - Documentacion base: Completada.
-- Fase 1 - Inicializacion tecnica: Completada.
-- Fase 2 - Configuracion base del backend: Completada.
-- Fase 3 - Modelado del dominio: Completada.
-- Fase 4 - Administracion del sistema y datos semilla: Completada.
-- Fase 5 - API REST del core: Completada.
-- Fase 6 - Servicios de negocio y endpoints de acciones: Completada.
-- Fase 7 - Frontend base y layout administrativo: Completada.
-- Fase 8 - Modulos base de administracion en frontend: Completada.
-- Fase 9 - Pre-cotizacion: Completada.
-- Fase 10 - Gestion comercial de cotizaciones: Completada.
-- Fase 11 - Contratos y pagos: Completada.
-- Fase 12 - Costos directos y gastos fijos: Completada.
-- Fase 13 - Inicio administrativo backend-first: Completada.
-- Fase 14 - Dashboard financiero backend-first: Completada.
-- Fase 15 - Reportes: Completada.
-- Fase 16 - Responsive, limpieza visual y experiencia de usuario: Completada.
-- Fase 17 - Pruebas y validacion integral: Completada.
+- Interesado: cero contratos históricos.
+- Cliente: uno o más contratos históricos, incluidos los cancelados.
 
-## Estado actual de produccion
+No hay modelos `Cliente` o `Interesado`, ni un campo editable de clasificación. El teléfono normalizado es único; el origen inicial y los alias se conservan.
 
-- Frontend Render Static Site: https://rfm-core-frontend.onrender.com/
-- Backend Render Web Service: https://rfm-core-backend.onrender.com/api
-- Health backend: https://rfm-core-backend.onrender.com/api/health/
+## Navegación y API
 
-## Fase actual
+- Menú: `Personas`.
+- Pantalla: `Clientes & Interesados`.
+- Ruta: `/personas` y detalle `/personas/:id`.
+- API: `/api/personas/`, `/api/personas/resumen/` y `/api/personas/coincidencias/`.
+- La API y las rutas antiguas de la entidad genérica ya no se mantienen.
 
-La fase actual corresponde a auditoria profesional, limpieza segura y sincronizacion documental posterior al deploy. El objetivo es mantener estable el flujo aprobado, no reescribir la arquitectura.
+## Estado de datos
 
-Revision actual: Inicio administrativo queda confirmado como pantalla operativa diaria. Consume `GET /api/inicio-resumen/`, muestra KPIs operativos, eventos proximos, pendientes importantes y accesos rapidos agrupados. No reemplaza el dashboard financiero ni los reportes.
+La base local está preparada para información real:
 
-La revision de Inicio mantiene la fuente backend-first y ajusta la pantalla a uso diario: bienvenida con fecha, cuatro KPIs operativos, acciones frecuentes separadas entre gestion comercial y finanzas/reportes, maximo 5 eventos proximos enlazados a contratos y pendientes calculados con reglas del backend.
+- cero personas, alias, cotizaciones y contratos;
+- cero tipos de evento, paquetes, costos directos y gastos fijos operativos;
+- una configuración activa de Rancho Flor María;
+- un usuario administrativo.
 
-Revision actual del dashboard financiero: `/dashboard-financiero` queda como pantalla mensual ejecutiva conectada a `GET /api/dashboard-financiero/`. Los KPIs financieros, desempeno comercial, graficos, cobranza, pendientes e interpretacion salen del backend. Los costos directos se imputan al periodo por `Contrato.fecha_evento`, las cotizaciones no cuentan como ingresos y los contratos cancelados solo aparecen separados como control visual de cobranza.
+No existen cargas demo automáticas. Los comandos antiguos de semillas y sus marcadores técnicos fueron eliminados.
 
-El flujo publico queda compuesto por cuatro pantallas:
+## Calidad y mantenimiento
 
-- `/pre-cotizacion`
-- `/pre-cotizacion/alquiler`
-- `/pre-cotizacion/servicio-completo`
-- `/pre-cotizacion/comparacion`
+- reglas de negocio en servicios, selectors y serializers;
+- transacciones para creación compuesta y deduplicación;
+- consultas anotadas para clasificación y conteos;
+- búsqueda remota con debounce en selectores de persona;
+- migraciones reproducibles desde una base vacía;
+- limpieza operativa explícita mediante `limpiar_datos_operativos`.
 
-El panel administrativo permanece protegido desde `/login` y concentra inicio operativo, clientes, cotizaciones, contratos, costos, gastos, dashboard financiero y reportes. Cotizaciones incluye `/cotizaciones/nueva`, `/cotizaciones/:id` y `/cotizaciones/:id/editar`. Contratos incluye `/contratos/nuevo`, `/contratos/:id` y `/contratos/:id/editar`.
+## Próximos pasos operativos
 
-## Proximos pasos
-
-La siguiente etapa corresponde a revisar variables reales en Render, ejecutar migraciones/`collectstatic` cuando haya cambios de backend y validar el frontend antes de cada nuevo despliegue.
+1. Registrar tipos de evento reales.
+2. Registrar paquetes reales.
+3. Confirmar la configuración vigente del negocio.
+4. Iniciar la captación pública y administrativa de personas.
+5. Mantener las validaciones descritas en `06_validacion_fase_17.md` como control de regresión.

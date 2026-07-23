@@ -1,121 +1,64 @@
-# Documento Maestro - RFM Core
+# Documento Maestro del Sistema
 
-## Nombre del sistema
+## Propósito
 
-**RFM Core** - Sistema de pre-cotizacion, gestion comercial y analisis de rentabilidad para un salon de eventos.
-
-Nombre contextual del negocio: **RFM Core - Sistema administrativo para Rancho Flor Maria**.
-
-## Vision del producto
-
-RFM Core es un sistema web con una entrada publica de pre-cotizacion y un panel administrativo protegido. Su objetivo es transformar solicitudes iniciales de clientes interesados en informacion trazable para seguimiento comercial, conversion a contratos y analisis de rentabilidad.
-
-El sistema no reemplaza la atencion humana ni cierra ventas automaticamente. La pre-cotizacion entrega una referencia inicial y WhatsApp continua la conversacion con un asesor.
-
-## Flujo principal
-
-```text
-Pre-cotizacion publica -> Gestion comercial -> Contrato -> Costos/Gastos -> Rentabilidad
-```
-
-## Separacion publico / administrativo
-
-Parte publica:
-
-- Accesible sin login.
-- Orientada al cliente o interesado.
-- Permite una pre-cotizacion rapida.
-- Tiene tres opciones: alquiler del local, servicio completo y aun no estoy seguro.
-- Tiene cuatro pantallas: formulario, resultado alquiler, resultado servicio completo y comparacion.
-- No expone CRUD administrativo ni datos financieros internos.
-
-Parte administrativa:
-
-- Protegida por login.
-- Orientada al administrador o asesor.
-- Permite gestionar clientes, tipos de evento, paquetes, configuracion, cotizaciones, contratos, costos, gastos, dashboard y reportes.
-- Usa `Authorization: Token <token>` para API administrativa.
-- Mantiene el backend como fuente de verdad para calculos, validaciones y conversion de cotizaciones a contratos.
-
-## Alcance incluido
-
-- Autenticacion administrativa.
-- Clientes.
-- Tipos de evento.
-- Paquetes activos/inactivos.
-- Configuracion del negocio.
-- Pre-cotizaciones publicas.
-- Cotizaciones por estado.
-- Conversion de cotizaciones confirmadas a contratos.
-- Contratos reales.
-- Estado de contrato.
-- Estado de pago.
-- Costos directos por contrato/evento.
-- Gastos fijos mensuales.
-- Inicio administrativo operativo.
-- Dashboard financiero backend-first.
-- Reportes basicos.
-- API REST.
-- Frontend React/Vite.
-- Preparacion de deploy en Render.
-
-## Fuera de alcance para esta version
-
-No se implementan reservas online automaticas, bloqueo automatico de fechas, compra directa desde la web, pasarela de pagos, facturacion electronica, firma electronica, contabilidad completa, nomina, inventario avanzado, aplicacion movil nativa, chatbot completo ni automatizacion completa con WhatsApp Business API.
+RFM Core acompaña el ciclo de Rancho Flor María desde una consulta inicial hasta el contrato y su análisis de rentabilidad. Separa oportunidades comerciales de ventas reales y ofrece información comprensible para la operación diaria.
 
 ## Actores
 
-- Administrador: gestiona datos base, contratos, costos, gastos, reportes y configuracion.
-- Asesor comercial: gestiona cotizaciones, seguimiento comercial y conversion a contratos.
-- Cliente o interesado: completa la pre-cotizacion publica y continua por WhatsApp.
-- Docente o evaluador: revisa alcance, arquitectura, funcionamiento y documentacion.
+- Persona interesada: completa la pre-cotización pública y continúa la atención por WhatsApp.
+- Operador administrativo: gestiona personas, cotizaciones, contratos y catálogos.
+- Responsable financiero: registra costos y gastos, revisa cobranza, rentabilidad y reportes.
 
-## Requerimientos funcionales principales
+## Conceptos principales
 
-- Permitir login administrativo.
-- Gestionar clientes, tipos de evento, paquetes y configuracion del negocio.
-- Registrar pre-cotizaciones publicas en estado `nueva`.
-- Calcular referencias comerciales desde backend para alquiler, servicio completo y comparacion.
-- Cambiar estados de cotizacion.
-- Convertir cotizaciones confirmadas en contratos.
-- Gestionar contratos y separar estado comercial de estado de pago.
-- Registrar abonos y calcular saldo pendiente.
-- Registrar costos directos y gastos fijos mensuales.
-- Calcular utilidad bruta, margen bruto, utilidad neta y margen neto.
-- Mostrar inicio administrativo con informacion operativa.
-- Mostrar dashboard financiero con metricas calculadas en backend.
-- Exponer reportes basicos.
+### Persona
 
-## Inicio administrativo
+Registro canónico de identidad. Se detectan coincidencias por teléfono normalizado y se preservan origen y nombres alternativos.
 
-Inicio administrativo es una pantalla operativa diaria del panel protegido. Su objetivo es ayudar al administrador o asesor a decidir que atender primero, no analizar historicos ni explicar rentabilidad.
+### Interesado y Cliente
 
-Datos que muestra actualmente:
+Son clasificaciones derivadas, no entidades:
 
-- Cotizaciones nuevas pendientes de primer contacto.
-- Cotizaciones registradas en el mes actual.
-- Contratos confirmados con evento en el mes actual.
-- Eventos proximos basados solo en contratos confirmados y no cancelados.
-- Pendientes importantes generados por reglas backend: cotizaciones nuevas, eventos proximos sin costos directos activos, eventos proximos con saldo pendiente y cotizaciones activas sin contrato.
-- Accesos rapidos agrupados: pre-cotizacion publica, cotizaciones, contratos, paquetes, costos directos, gastos fijos, dashboard financiero y reportes.
+- Interesado: persona sin contratos históricos.
+- Cliente: persona que tuvo al menos un contrato, aun si luego fue cancelado.
 
-Inicio se alimenta de `GET /api/inicio-resumen/`, implementado como agregado backend-first. React presenta el payload y no carga listas completas para recalcular KPIs operativos.
+### Cotización
 
-## Separacion entre Inicio, Dashboard financiero y Reportes
+Oportunidad comercial con estados Nueva, Contactada, Confirmada, Convertida o Descartada. No es ingreso. Su conversión válida crea un contrato una sola vez.
 
-- Inicio administrativo: seguimiento operativo del dia y proximas acciones.
-- Dashboard financiero: analisis mensual de ingresos, costos, utilidad, margen, estado de pagos y comparaciones.
-- Reportes: consultas historicas o exportables por periodo y categoria.
+### Contrato
 
-## Reglas de negocio criticas
+Venta real asociada a una persona. Distingue el estado del contrato del estado de pago y sostiene los cálculos de saldo, costos y rentabilidad.
 
-- Una pre-cotizacion publica no es reserva ni precio final.
-- Una cotizacion representa una oportunidad comercial; no es ingreso real.
-- Solo un contrato confirmado representa ingreso real.
-- Un contrato cancelado se excluye de metricas financieras principales.
-- `estado_contrato` y `estado_pago` son conceptos distintos.
-- `saldo_pendiente = valor_final - monto_abonado`.
-- `monto_abonado` no puede ser mayor que `valor_final`.
-- La utilidad bruta por contrato es `valor_final - total_costos_directos`.
-- La utilidad neta mensual es `ingresos_mes - costos_directos_mes - gastos_fijos_mes`.
-- React no debe duplicar reglas financieras o comerciales criticas.
+## Flujo principal
+
+1. La persona completa el formulario público o es registrada desde administración.
+2. El backend normaliza el teléfono y reutiliza el registro canónico si existe.
+3. Se crea una cotización o un contrato con la relación `persona`.
+4. Al existir el primer contrato, la clasificación derivada pasa a Cliente.
+5. Costos y gastos alimentan el dashboard y los reportes.
+
+## Módulos
+
+- Público: Pre-cotización.
+- Comercial: Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes.
+- Administración: Configuración del negocio.
+- Finanzas: Costos directos, Gastos fijos, Dashboard financiero y Reportes.
+
+## Reglas de identidad
+
+- El teléfono normalizado es el criterio operativo actual de unicidad.
+- Los nombres coincidentes solo generan sugerencias.
+- Un teléfono exacto impide crear un duplicado.
+- El origen representa la captación inicial y no se sobrescribe.
+- Un nombre diferente recibido después se conserva como alias.
+- La creación rápida y el documento se guardan dentro de una transacción.
+
+## Experiencia administrativa
+
+El sidebar muestra `Personas`. La pantalla se titula `Clientes & Interesados`, conserva la descripción operativa y separa Todos, Clientes e Interesados. Permite buscar, crear, editar, abrir el detalle y preseleccionar la persona en nuevos documentos.
+
+## Datos iniciales
+
+Una instalación limpia no inserta datos operativos. Los usuarios, la configuración y los catálogos reales se crean explícitamente. No se ejecutan fixtures ni semillas demo al migrar o desplegar.

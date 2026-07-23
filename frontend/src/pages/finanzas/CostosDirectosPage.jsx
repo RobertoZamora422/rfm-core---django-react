@@ -56,7 +56,7 @@ function buildQueryParams(filters) {
 function buildContractLabel(contrato) {
   if (contrato.contrato_descripcion) return contrato.contrato_descripcion
 
-  return `Contrato #${contrato.id} · ${contrato.cliente_nombre} · ${contrato.tipo_evento_nombre} · ${formatDate(
+  return `Contrato #${contrato.id} · ${contrato.persona_nombre} · ${contrato.tipo_evento_nombre} · ${formatDate(
     contrato.fecha_evento,
   )}`
 }
@@ -386,12 +386,12 @@ export function CostosDirectosPage() {
       ),
     },
     {
-      key: 'cliente',
+      key: 'persona',
       header: 'Cliente',
       render: (item) => (
         <div className="stacked-cell">
-          <strong>{item.cliente_nombre}</strong>
-          <span>{formatPhone(item.cliente_telefono)}</span>
+          <strong>{item.persona_nombre}</strong>
+          <span>{formatPhone(item.persona_telefono)}</span>
         </div>
       ),
     },

@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import Q
 
-from negocio.models import Cliente, Paquete, TimeStampedModel, TipoEvento
+from negocio.models import Paquete, Persona, TimeStampedModel, TipoEvento
 from negocio.validators import validate_non_negative, validate_positive_integer
 
 
@@ -22,8 +22,8 @@ class Cotizacion(TimeStampedModel):
         SERVICIO_COMPLETO = "servicio_completo", "Servicio completo"
         NO_SEGURO = "no_seguro", "Aun no estoy seguro"
 
-    cliente = models.ForeignKey(
-        Cliente,
+    persona = models.ForeignKey(
+        Persona,
         on_delete=models.PROTECT,
         related_name="cotizaciones",
     )
@@ -63,8 +63,6 @@ class Cotizacion(TimeStampedModel):
         choices=Origen.choices,
         default=Origen.COTIZACION_MANUAL,
     )
-    es_demo = models.BooleanField(default=False)
-
     class Meta:
         ordering = ["-creado_en"]
         constraints = [
@@ -83,4 +81,4 @@ class Cotizacion(TimeStampedModel):
         return self.estado == self.Estado.CONVERTIDA
 
     def __str__(self):
-        return f"Cotización #{self.pk or 'nueva'} - {self.cliente}"
+        return f"Cotización #{self.pk or 'nueva'} - {self.persona}"

@@ -64,7 +64,7 @@ const quickActions = [
   },
   {
     label: 'Pre-cotización pública',
-    description: 'Abrir la experiencia para clientes.',
+    description: 'Abrir la experiencia para personas interesadas.',
     path: '/pre-cotizacion',
     icon: Sparkles,
   },
@@ -155,7 +155,7 @@ function UpcomingEventItem({ event }) {
             {getEstadoPagoLabel(event.estado_pago)}
           </StatusBadge>
         </span>
-        <span className="home-event__client">{event.cliente_nombre}</span>
+        <span className="home-event__client">{event.persona_nombre}</span>
         <span className="home-event__meta">
           <span>{event.paquete_nombre || 'Sin paquete asignado'}</span>
           <span>Saldo: {formatCurrency(event.saldo_pendiente)}</span>

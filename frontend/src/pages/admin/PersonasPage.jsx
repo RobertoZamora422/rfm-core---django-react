@@ -15,7 +15,7 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { Pagination } from '../../components/ui/Pagination'
 import { useDebouncedValue } from '../../hooks/useDebouncedValue'
 import { useResource } from '../../hooks/useResource'
-import { clientesService } from '../../services/resourceService'
+import { personasService } from '../../services/resourceService'
 import { getApiErrorMessage, getApiFieldErrors } from '../../utils/apiErrors'
 import { formatPhone } from '../../utils/formatters'
 
@@ -43,17 +43,17 @@ function PersonActions({ listLocation, onEdit, person }) {
   const contractLabel = person.clasificacion === 'cliente' ? 'Nuevo contrato' : 'Crear contrato'
   return (
     <div className="table-actions table-actions--compact">
-      <Link className="button button--secondary" state={{ from: listLocation }} to={`/clientes/${person.id}`}>
+      <Link className="button button--secondary" state={{ from: listLocation }} to={`/personas/${person.id}`}>
         <Eye aria-hidden="true" size={18} /><span>Detalle</span>
       </Link>
       <ActionMenu label={`Más acciones para ${person.nombre}`}>
         <button className="action-menu__item" onClick={() => onEdit(person)} role="menuitem" type="button">
           <Edit3 aria-hidden="true" size={17} /> Editar
         </button>
-        <Link className="action-menu__item" role="menuitem" to={`/contratos/nuevo?cliente=${person.id}`}>
+        <Link className="action-menu__item" role="menuitem" to={`/contratos/nuevo?persona=${person.id}`}>
           <FilePlus2 aria-hidden="true" size={17} /> {contractLabel}
         </Link>
-        <Link className="action-menu__item" role="menuitem" to={`/cotizaciones/nueva?cliente=${person.id}`}>
+        <Link className="action-menu__item" role="menuitem" to={`/cotizaciones/nueva?persona=${person.id}`}>
           <Plus aria-hidden="true" size={17} /> Nueva cotización
         </Link>
       </ActionMenu>
@@ -61,7 +61,7 @@ function PersonActions({ listLocation, onEdit, person }) {
   )
 }
 
-export function ClientesPage() {
+export function PersonasPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(searchParams.get('buscar') ?? '')
@@ -82,13 +82,13 @@ export function ClientesPage() {
     page,
     page_size: 12,
   }), [classification, debouncedSearch, page])
-  const { error, isLoading, items, load, totalItems } = useResource(clientesService, queryParams)
+  const { error, isLoading, items, load, totalItems } = useResource(personasService, queryParams)
   const hasFilters = Boolean(search || classification)
-  const listLocation = `/clientes${searchParams.toString() ? `?${searchParams}` : ''}`
+  const listLocation = `/personas${searchParams.toString() ? `?${searchParams}` : ''}`
 
   const loadSummary = useCallback(async () => {
     try {
-      const data = await clientesService.resumen(
+      const data = await personasService.resumen(
         debouncedSearch ? { buscar: debouncedSearch } : undefined,
       )
       setSummary(data)
@@ -138,8 +138,8 @@ export function ClientesPage() {
     setFormError('')
     try {
       const saved = editingPerson
-        ? await clientesService.update(editingPerson.id, payload)
-        : await clientesService.create(payload)
+        ? await personasService.update(editingPerson.id, payload)
+        : await personasService.create(payload)
       closeForm()
       setActionMessage(
         editingPerson ? 'Persona actualizada correctamente.' : 'Persona registrada correctamente.',
@@ -298,7 +298,7 @@ export function ClientesPage() {
           onSubmit={savePerson}
           onUseExisting={(person) => {
             closeForm()
-            navigate(`/clientes/${person.id}`)
+            navigate(`/personas/${person.id}`)
           }}
           submitLabel={editingPerson ? 'Guardar cambios' : 'Registrar persona'}
         />

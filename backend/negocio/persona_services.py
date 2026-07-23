@@ -5,7 +5,7 @@ from collections import defaultdict
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from .models import Cliente, NombrePersona
+from .models import NombrePersona, Persona
 from .validators import normalizar_nombre, normalizar_telefono
 
 
@@ -38,7 +38,7 @@ def registrar_nombre_utilizado(persona, nombre, *, origen=None, fecha=None):
         return None
 
     alias, created = NombrePersona.objects.get_or_create(
-        cliente=persona,
+        persona=persona,
         nombre_normalizado=nombre_normalizado,
         defaults={
             "nombre": nombre,
@@ -60,13 +60,13 @@ def buscar_persona_existente(telefono):
         telefono_normalizado = normalizar_telefono(telefono)
     except ValidationError:
         return None
-    return Cliente.objects.filter(telefono_normalizado=telefono_normalizado).first()
+    return Persona.objects.filter(telefono_normalizado=telefono_normalizado).first()
 
 
 @transaction.atomic
-def crear_persona(*, nombre, telefono, correo="", observaciones="", origen, es_demo=False):
+def crear_persona(*, nombre, telefono, correo="", observaciones="", origen):
     telefono_normalizado = normalizar_telefono(telefono)
-    existente = Cliente.objects.select_for_update().filter(
+    existente = Persona.objects.select_for_update().filter(
         telefono_normalizado=telefono_normalizado
     ).first()
     if existente:
@@ -74,17 +74,16 @@ def crear_persona(*, nombre, telefono, correo="", observaciones="", origen, es_d
 
     try:
         with transaction.atomic():
-            return Cliente.objects.create(
+            return Persona.objects.create(
                 nombre=nombre,
                 telefono=telefono,
                 telefono_normalizado=telefono_normalizado,
                 correo=correo,
                 observaciones=observaciones,
                 origen=origen,
-                es_demo=es_demo,
             )
     except (IntegrityError, ValidationError) as exc:
-        existente = Cliente.objects.filter(
+        existente = Persona.objects.filter(
             telefono_normalizado=telefono_normalizado
         ).first()
         if existente:
@@ -97,7 +96,7 @@ def actualizar_persona(persona, **datos):
     nombre_anterior = persona.nombre
     telefono = datos.get("telefono", persona.telefono)
     telefono_normalizado = normalizar_telefono(telefono)
-    duplicada = Cliente.objects.select_for_update().filter(
+    duplicada = Persona.objects.select_for_update().filter(
         telefono_normalizado=telefono_normalizado
     ).exclude(pk=persona.pk).first()
     if duplicada:
@@ -121,31 +120,31 @@ def actualizar_persona(persona, **datos):
 @transaction.atomic
 def obtener_o_crear_persona_publica(*, nombre, telefono, correo="", observaciones=""):
     telefono_normalizado = normalizar_telefono(telefono)
-    persona = Cliente.objects.select_for_update().filter(
+    persona = Persona.objects.select_for_update().filter(
         telefono_normalizado=telefono_normalizado
     ).first()
 
     if persona is None:
         try:
             with transaction.atomic():
-                persona = Cliente.objects.create(
+                persona = Persona.objects.create(
                     nombre=nombre,
                     telefono=telefono,
                     telefono_normalizado=telefono_normalizado,
                     correo=correo,
                     observaciones=observaciones,
-                    origen=Cliente.Origen.FORMULARIO_PUBLICO,
+                    origen=Persona.Origen.FORMULARIO_PUBLICO,
                 )
                 return persona, True
         except (IntegrityError, ValidationError):
-            persona = Cliente.objects.select_for_update().get(
+            persona = Persona.objects.select_for_update().get(
                 telefono_normalizado=telefono_normalizado
             )
 
     registrar_nombre_utilizado(
         persona,
         nombre,
-        origen=Cliente.Origen.FORMULARIO_PUBLICO,
+        origen=Persona.Origen.FORMULARIO_PUBLICO,
     )
     campos_actualizados = []
     if correo and not persona.correo:
@@ -183,7 +182,7 @@ def _plan_consolidacion(personas):
 
 def planificar_consolidacion_personas():
     grupos = defaultdict(list)
-    for persona in Cliente.objects.all().prefetch_related("cotizaciones", "contratos"):
+    for persona in Persona.objects.all().prefetch_related("cotizaciones", "contratos"):
         grupos[normalizar_telefono(persona.telefono)].append(persona)
     return [
         _plan_consolidacion(personas)
@@ -197,7 +196,7 @@ def consolidar_personas_duplicadas():
     planes = planificar_consolidacion_personas()
     for plan in planes:
         personas = list(
-            Cliente.objects.select_for_update()
+            Persona.objects.select_for_update()
             .filter(id__in=[plan["canonica_id"], *plan["duplicados_ids"]])
             .order_by("creado_en", "id")
         )
@@ -225,14 +224,13 @@ def consolidar_personas_duplicadas():
                 duplicada.observaciones,
                 referencia=duplicada.id,
             )
-            duplicada.cotizaciones.update(cliente=canonica)
-            duplicada.contratos.update(cliente=canonica)
+            duplicada.cotizaciones.update(persona=canonica)
+            duplicada.contratos.update(persona=canonica)
 
-        canonica.es_demo = all(item.es_demo for item in personas)
         canonica.telefono_normalizado = plan["telefono_normalizado"]
         canonica.save()
-        Cliente.objects.filter(id__in=plan["duplicados_ids"]).delete()
-        Cliente.objects.filter(pk=canonica.pk).update(
+        Persona.objects.filter(id__in=plan["duplicados_ids"]).delete()
+        Persona.objects.filter(pk=canonica.pk).update(
             creado_en=fecha_creacion,
             actualizado_en=fecha_actualizacion,
         )

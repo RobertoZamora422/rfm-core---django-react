@@ -80,13 +80,13 @@ class CleanModelValidationMixin:
 class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     serializer_class = ContratoSerializer
     pagination_class = OptionalPageNumberPagination
-    search_fields = ["cliente__nombre", "cliente__telefono", "observaciones"]
+    search_fields = ["persona__nombre", "persona__telefono", "observaciones"]
 
     def get_queryset(self):
         queryset = contratos_con_relaciones()
         estado_contrato = self.request.query_params.get("estado_contrato")
         estado_pago = self.request.query_params.get("estado_pago")
-        cliente = self.request.query_params.get("cliente")
+        persona = self.request.query_params.get("persona")
         tipo_evento = self.request.query_params.get("tipo_evento")
         buscar = (
             self.request.query_params.get("buscar")
@@ -101,7 +101,6 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             self.request.query_params.get("hasta"),
             "hasta",
         )
-        es_demo = self.request.query_params.get("es_demo")
 
         if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
             raise ValidationError({"hasta": "La fecha hasta no puede ser anterior a desde."})
@@ -110,8 +109,8 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(estado_contrato=estado_contrato)
         if estado_pago:
             queryset = queryset.filter(estado_pago=estado_pago)
-        if cliente:
-            queryset = queryset.filter(cliente_id=cliente)
+        if persona:
+            queryset = queryset.filter(persona_id=persona)
         if tipo_evento:
             queryset = queryset.filter(tipo_evento_id=tipo_evento)
         if fecha_desde:
@@ -120,20 +119,18 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(fecha_evento__lte=fecha_hasta)
         if buscar:
             criteria = (
-                Q(cliente__nombre__icontains=buscar)
-                | Q(cliente__telefono__icontains=buscar)
+                Q(persona__nombre__icontains=buscar)
+                | Q(persona__telefono__icontains=buscar)
                 | Q(tipo_evento__nombre__icontains=buscar)
                 | Q(paquete__nombre__icontains=buscar)
             )
             if extraer_digitos_telefono(buscar):
                 criteria |= Q(
-                    cliente__telefono_normalizado__icontains=normalizar_telefono_parcial(
+                    persona__telefono_normalizado__icontains=normalizar_telefono_parcial(
                         buscar
                     )
                 )
             queryset = queryset.filter(criteria)
-        if es_demo is not None:
-            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
 
     @action(detail=True, methods=["post"], url_path="cancelar")
@@ -168,15 +165,15 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     serializer_class = CostoDirectoSerializer
     search_fields = [
         "concepto",
-        "contrato__cliente__nombre",
-        "contrato__cliente__telefono",
+        "contrato__persona__nombre",
+        "contrato__persona__telefono",
         "observaciones",
     ]
 
     def get_queryset(self):
         queryset = CostoDirecto.objects.select_related(
             "contrato",
-            "contrato__cliente",
+            "contrato__persona",
             "contrato__tipo_evento",
             "contrato__paquete",
         ).filter(eliminado=False)
@@ -198,7 +195,6 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             self.request.query_params.get("hasta"),
             "hasta",
         )
-        es_demo = self.request.query_params.get("es_demo")
 
         if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
             raise ValidationError({"hasta": "La fecha hasta no puede ser anterior a desde."})
@@ -208,15 +204,13 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
         if buscar:
             queryset = queryset.filter(
                 Q(concepto__icontains=buscar)
-                | Q(contrato__cliente__nombre__icontains=buscar)
-                | Q(contrato__cliente__telefono__icontains=buscar)
+                | Q(contrato__persona__nombre__icontains=buscar)
+                | Q(contrato__persona__telefono__icontains=buscar)
             )
         if fecha_desde:
             queryset = queryset.filter(fecha__gte=fecha_desde)
         if fecha_hasta:
             queryset = queryset.filter(fecha__lte=fecha_hasta)
-        if es_demo is not None:
-            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
 
     def perform_destroy(self, instance):
@@ -274,15 +268,12 @@ class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             or self.request.query_params.get("search")
             or ""
         ).strip()
-        es_demo = self.request.query_params.get("es_demo")
         if mes:
             queryset = queryset.filter(mes=mes)
         if anio:
             queryset = queryset.filter(anio=anio)
         if buscar:
             queryset = queryset.filter(concepto__icontains=buscar)
-        if es_demo is not None:
-            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
 
     def perform_destroy(self, instance):

@@ -58,8 +58,8 @@ const serviceOptions = [
 
 function buildPayload(form) {
   return {
-    nombre: form.nombre.trim(),
-    telefono: form.telefono.trim(),
+    nombre_persona: form.nombre.trim(),
+    telefono_persona: form.telefono.trim(),
     tipo_evento: Number(form.tipo_evento),
     fecha_tentativa: form.fecha_tentativa,
     numero_invitados: Number(form.numero_invitados),
@@ -208,8 +208,8 @@ export function PreCotizacionPage() {
     setResult(null)
 
     const relatedErrorKeys = {
-      nombre: ['nombre', 'nombre_cliente'],
-      telefono: ['telefono', 'telefono_cliente'],
+      nombre: ['nombre', 'nombre_persona'],
+      telefono: ['telefono', 'telefono_persona'],
     }
     const keysToClear = relatedErrorKeys[name] ?? [name]
 
@@ -417,7 +417,7 @@ export function PreCotizacionPage() {
                 <div className="public-form-grid">
                   <Input
                     autoComplete="name"
-                    error={errors.nombre || errors.nombre_cliente}
+                    error={errors.nombre || errors.nombre_persona}
                     icon={UserRound}
                     id="public-nombre"
                     label={<RequiredLabel>Nombre completo</RequiredLabel>}
@@ -429,7 +429,7 @@ export function PreCotizacionPage() {
                   />
                   <Input
                     autoComplete="tel"
-                    error={errors.telefono || errors.telefono_cliente}
+                    error={errors.telefono || errors.telefono_persona}
                     helpText="Ingresa el número donde deseas recibir información."
                     icon={Phone}
                     id="public-telefono"

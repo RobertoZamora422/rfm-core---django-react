@@ -1,139 +1,65 @@
-# Diseno UI/UX - RFM Core
+# Diseño UI/UX
 
-## Principios
+## Identidad
 
-- Claridad antes que decoracion.
-- Separacion visual entre experiencia publica y panel administrativo.
-- Backend-first en valores, estados y calculos.
-- Estados de carga, error y vacio visibles.
-- Responsive real para formularios, tablas y cards.
-- Sin datos quemados permanentes en frontend.
+RFM Core usa la calidez y elegancia de Rancho Flor María con superficies claras, acentos verdes y dorados controlados, bordes suaves e iconografía consistente. Inter y la pila del sistema se reservan para tablas, cifras, formularios y acciones.
 
-## PublicLayout
+## Estructura
 
-El flujo publico usa `PublicLayout`.
+El flujo público no muestra navegación administrativa. El panel protegido organiza:
 
-Caracteristicas:
+- Inicio;
+- Comercial: Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
+- Finanzas: Dashboard, Costos directos, Gastos fijos y Reportes;
+- Configuración.
 
-- No muestra Sidebar ni Topbar administrativo.
-- Presenta marca, acceso administrativo y contenido centrado.
-- Esta orientado a cliente/interesado.
-- No solicita correo ni registro de usuario.
-- Prioriza completar datos minimos y continuar por WhatsApp.
+## Personas
 
-Pantallas publicas:
+El sidebar usa `Personas`. La ruta general es `/personas`; el título visible es `Clientes & Interesados` porque explica la clasificación comercial al usuario final.
 
-- `/pre-cotizacion`: formulario inicial.
-- `/pre-cotizacion/alquiler`: resumen del evento, calculo de alquiler, advertencia y WhatsApp.
-- `/pre-cotizacion/servicio-completo`: resumen del evento, paquetes activos, totales por paquete y WhatsApp.
-- `/pre-cotizacion/comparacion`: resumen, comparacion de modalidades, advertencia y WhatsApp.
+La pantalla conserva:
 
-Opciones del formulario publico:
+- descripción: “Encuentra personas por nombre o teléfono y revisa rápidamente su relación con el negocio.”;
+- segmentos Todos, Clientes e Interesados;
+- búsqueda remota por nombre, teléfono o correo;
+- conteos de cotizaciones y contratos;
+- origen y clasificación visible;
+- acción primaria Detalle y menú contextual accesible;
+- creación y edición sin abandonar la página.
 
-- Alquiler del local.
-- Servicio completo.
-- Aun no estoy seguro.
+El detalle `/personas/:id` diferencia identidad, nombres utilizados, resumen, documentos relacionados e historial verificable.
 
-## AdminLayout
+## Selector de persona
 
-El panel administrativo usa `AdminLayout`.
+Cotizaciones y contratos reutilizan `PersonaSelector`:
 
-Caracteristicas:
+- debounce y estados de carga;
+- sugerencias por nombre;
+- coincidencia exacta por teléfono;
+- indicador Cliente o Interesado;
+- navegación por teclado;
+- creación rápida integrada;
+- conservación del formulario principal.
 
-- Protegido por `ProtectedRoute`.
-- Incluye Sidebar, Topbar y contenido administrativo.
-- Gestiona clientes, tipos de evento, paquetes, configuracion, cotizaciones, contratos, costos, gastos, dashboard y reportes.
-- No contiene la pre-cotizacion publica como modulo protegido.
+La interfaz ayuda a reutilizar, pero la validación definitiva permanece en backend.
 
-## Inicio administrativo
+## Cotizaciones y contratos
 
-`/inicio` es la primera pantalla operativa del panel administrativo.
+Las cotizaciones muestran “Persona”, porque pueden pertenecer a un interesado. Los contratos y vistas financieras pueden mostrar “Cliente”, porque toda persona con un contrato ya cumple esa clasificación histórica.
 
-Debe comunicar trabajo pendiente y proximas acciones:
+Los estados de contrato y pago se presentan por separado, con texto además de color. Las acciones imposibles se ocultan según estado y las delicadas piden confirmación.
 
-- Encabezado de bienvenida con fecha y accion de actualizar.
-- Cuatro KPIs operativos del resumen backend: cotizaciones nuevas, cotizaciones del mes, eventos del mes y eventos proximos.
-- Accesos rapidos agrupados en gestion comercial y finanzas/reportes.
-- Eventos proximos con enlace al detalle del contrato y datos minimos de cliente, tipo, paquete si aplica, fecha, estado de pago y saldo.
-- Pendientes importantes calculados en backend.
+## Responsive y accesibilidad
 
-Estados esperados:
+- tablas de escritorio con columnas priorizadas;
+- cards/listas legibles en móvil;
+- objetivos táctiles mínimos de 44 px;
+- labels visibles, errores junto al campo y foco en el primer error;
+- menús cerrables con Escape y clic exterior;
+- modales con foco inicial y restauración de foco;
+- estados vacíos distintos para ausencia de datos y filtros sin resultados;
+- carga y errores en lenguaje no técnico.
 
-- Loading mientras se consulta `GET /api/inicio-resumen/`.
-- Error visible si falla la consulta.
-- Empty state cuando no hay resumen, eventos o pendientes.
+## Actualización
 
-Limites de UX:
-
-- No debe mezclar graficas financieras ni reportes historicos.
-- No debe mostrar datos quemados permanentes.
-- No debe recalcular KPIs a partir de listas completas en React.
-
-## Dashboard financiero
-
-`/dashboard-financiero` es una pantalla ejecutiva de analisis mensual, separada de Inicio y Reportes.
-
-Estructura visual:
-
-- Header con titulo, descripcion, selector de mes/anio y accion de actualizar.
-- KPIs financieros principales en grid responsive: ingresos, costos directos, utilidad bruta/margen bruto, gastos fijos, utilidad neta/margen neto y ticket promedio.
-- Desempeno comercial separado de los KPIs: paquete mas vendido, paquete mas rentable, tipo de evento mas frecuente y tipo de evento mas rentable.
-- Analisis comparativo del negocio con graficos de evolucion mensual, mes actual vs mes anterior, rentabilidad por paquete, analisis por tipo de evento, top de eventos rentables y cobranza.
-- Tabla de rentabilidad por evento.
-- Pendientes financieros.
-- Interpretacion del periodo.
-
-Estados esperados:
-
-- Loading mientras se consulta `GET /api/dashboard-financiero/`.
-- Error visible si falla la consulta.
-- Empty states profesionales cuando no hay contratos confirmados, costos, gastos, comparacion o informacion suficiente para interpretar el periodo.
-
-Limites de UX:
-
-- No debe mostrar datos inventados ni mocks permanentes.
-- No debe mezclar las cards comerciales con los KPIs financieros principales.
-- No debe contar cotizaciones ni contratos cancelados como ingresos.
-- Debe renderizar metricas principales calculadas por backend y usar graficos solo como visualizacion.
-
-## Navegacion
-
-Publica:
-
-```text
-/
-/pre-cotizacion
-/pre-cotizacion/alquiler
-/pre-cotizacion/servicio-completo
-/pre-cotizacion/comparacion
-/login
-```
-
-Administrativa:
-
-```text
-/inicio
-/clientes
-/tipos-evento
-/paquetes
-/configuracion
-/cotizaciones
-/cotizaciones/:id
-/contratos
-/contratos/:id
-/costos-directos
-/gastos-fijos
-/dashboard-financiero
-/reportes
-```
-
-## Reglas UX
-
-- El resultado publico debe indicar que el valor es referencial.
-- WhatsApp debe llevar un mensaje prellenado con datos del evento y usar el numero normalizado recibido desde backend.
-- El servicio completo muestra solo paquetes activos.
-- La comparacion ayuda a entender diferencias, no reemplaza asesoria humana.
-- Las rutas administrativas redirigen a `/login` sin token.
-- La UI administrativa conserva tablas con fallback movil, filtros y acciones existentes.
-- Los calculos visibles deben venir del backend.
-- La pantalla administrativa de Configuracion permite editar el WhatsApp del negocio en formato `09XXXXXXXX`; el frontend valida el formato y el backend conserva la validacion final.
+Las operaciones exitosas refrescan los recursos sin recargar la página. La búsqueda usa debounce y no carga la colección completa. Los filtros se aplican automáticamente y se conservan en la URL cuando corresponde.

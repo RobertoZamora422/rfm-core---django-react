@@ -205,12 +205,12 @@ export function CotizacionesPage() {
 
   const columns = [
     {
-      key: 'cliente',
-      header: 'Cliente',
+      key: 'persona',
+      header: 'Persona',
       render: (item) => (
         <div className="stacked-cell">
-          <strong>{item.cliente_nombre}</strong>
-          <span>{formatPhone(item.cliente_telefono)}</span>
+          <strong>{item.persona_nombre}</strong>
+          <span>{formatPhone(item.persona_telefono)}</span>
         </div>
       ),
     },
@@ -296,7 +296,7 @@ export function CotizacionesPage() {
       }]} />
 
       <FiltersToolbar hasFilters={hasFilters} isLoading={isLoading} onClear={handleClearFilters} resultCount={totalItems}>
-        <Input icon={Search} id="cotizaciones-buscar" label="Buscar" name="buscar" onChange={handleFilterChange} placeholder="Cliente, teléfono, evento o paquete" type="search" value={filters.buscar} />
+        <Input icon={Search} id="cotizaciones-buscar" label="Buscar" name="buscar" onChange={handleFilterChange} placeholder="Persona, teléfono, evento o paquete" type="search" value={filters.buscar} />
         <Select id="cotizaciones-estado" label="Estado" name="estado" onChange={handleFilterChange} value={filters.estado}>
           {ESTADOS_FILTRO.map((estado) => <option key={estado.value || 'todos'} value={estado.value}>{estado.label}</option>)}
         </Select>
@@ -316,7 +316,7 @@ export function CotizacionesPage() {
             emptyAction={hasFilters ? <Button onClick={handleClearFilters} variant="secondary">Limpiar filtros</Button> : <Link className="button button--primary" to="/cotizaciones/nueva">Crear primera cotización</Link>}
             emptyMessage={hasFilters ? 'No hay cotizaciones que coincidan con la búsqueda o los filtros actuales.' : 'Crea la primera cotización para iniciar el seguimiento comercial.'}
             emptyTitle={hasFilters ? 'Sin coincidencias' : 'Aún no hay cotizaciones'}
-            mobileTitle={(item) => `${item.cliente_nombre} · Cotización #${item.id}`}
+            mobileTitle={(item) => `${item.persona_nombre} · Cotización #${item.id}`}
             rows={cotizaciones}
           />
         )}

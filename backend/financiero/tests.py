@@ -8,13 +8,13 @@ from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
 from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
-from negocio.models import Cliente, Paquete, TipoEvento
+from negocio.models import Persona, Paquete, TipoEvento
 
 
 class FinancieroModelTests(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(
-            nombre="Cliente Test",
+        self.persona = Persona.objects.create(
+            nombre="Persona Test",
             telefono="+593 999999999",
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
@@ -26,7 +26,7 @@ class FinancieroModelTests(TestCase):
 
     def crear_contrato(self, **overrides):
         data = {
-            "cliente": self.cliente,
+            "persona": self.persona,
             "tipo_evento": self.tipo_evento,
             "paquete": self.paquete,
             "fecha_evento": date(2026, 8, 1),
@@ -164,8 +164,8 @@ class FinancieroApiTests(APITestCase):
             password="test-pass",
         )
         self.client.force_authenticate(self.user)
-        self.cliente = Cliente.objects.create(
-            nombre="Cliente API",
+        self.persona = Persona.objects.create(
+            nombre="Persona API",
             telefono="+593 999999111",
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
@@ -177,7 +177,7 @@ class FinancieroApiTests(APITestCase):
 
     def crear_contrato(self, **overrides):
         data = {
-            "cliente": self.cliente,
+            "persona": self.persona,
             "tipo_evento": self.tipo_evento,
             "paquete": self.paquete,
             "fecha_evento": date(2026, 8, 1),
@@ -192,7 +192,7 @@ class FinancieroApiTests(APITestCase):
         response = self.client.post(
             "/api/contratos/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_evento": "2026-08-01",
@@ -206,7 +206,7 @@ class FinancieroApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["cliente_telefono"], "+593 999999111")
+        self.assertEqual(response.data["persona_telefono"], "+593 999999111")
         self.assertEqual(response.data["estado_pago"], Contrato.EstadoPago.ABONADO)
         self.assertEqual(response.data["saldo_pendiente"], "1500.00")
 
@@ -214,7 +214,7 @@ class FinancieroApiTests(APITestCase):
         response = self.client.post(
             "/api/contratos/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_evento": "2026-08-01",
@@ -235,7 +235,7 @@ class FinancieroApiTests(APITestCase):
         response = self.client.post(
             "/api/contratos/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_evento": "2026-08-01",
@@ -252,7 +252,7 @@ class FinancieroApiTests(APITestCase):
 
     def test_rechaza_valores_invalidos_de_contrato(self):
         base_payload = {
-            "cliente": self.cliente.id,
+            "persona": self.persona.id,
             "tipo_evento": self.tipo_evento.id,
             "paquete": self.paquete.id,
             "fecha_evento": "2026-08-01",
@@ -283,7 +283,7 @@ class FinancieroApiTests(APITestCase):
 
     def test_rechaza_contrato_con_cotizacion_no_convertida(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -297,7 +297,7 @@ class FinancieroApiTests(APITestCase):
             "/api/contratos/",
             {
                 "cotizacion": cotizacion.id,
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_evento": "2026-08-01",
@@ -321,7 +321,7 @@ class FinancieroApiTests(APITestCase):
             activo=False,
         )
         base_payload = {
-            "cliente": self.cliente.id,
+            "persona": self.persona.id,
             "tipo_evento": self.tipo_evento.id,
             "paquete": self.paquete.id,
             "fecha_evento": "2026-08-01",
@@ -348,12 +348,12 @@ class FinancieroApiTests(APITestCase):
 
     def test_filtra_contratos_por_busqueda_estado_pago_tipo_evento_y_fechas(self):
         cumpleanos = TipoEvento.objects.create(nombre="Cumpleanos")
-        otro_cliente = Cliente.objects.create(
-            nombre="Cliente Filtro",
+        otra_persona = Persona.objects.create(
+            nombre="Persona Filtro",
             telefono="+593 988888888",
         )
         contrato_objetivo = self.crear_contrato(
-            cliente=otro_cliente,
+            persona=otra_persona,
             tipo_evento=cumpleanos,
             fecha_evento=date(2026, 9, 10),
             monto_abonado=Decimal("2000.00"),
@@ -512,12 +512,12 @@ class FinancieroApiTests(APITestCase):
 
     def test_lista_costos_directos_con_datos_de_contrato_y_filtros(self):
         contrato_objetivo = self.crear_contrato()
-        otro_cliente = Cliente.objects.create(
-            nombre="Cliente Otro",
+        otra_persona = Persona.objects.create(
+            nombre="Persona Otra",
             telefono="+593 999999222",
         )
         otro_contrato = self.crear_contrato(
-            cliente=otro_cliente,
+            persona=otra_persona,
             fecha_evento=date(2026, 9, 1),
         )
         costo_objetivo = CostoDirecto.objects.create(
@@ -545,8 +545,8 @@ class FinancieroApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["id"] for item in response.data], [costo_objetivo.id])
-        self.assertEqual(response.data[0]["cliente_nombre"], "Cliente API")
-        self.assertEqual(response.data[0]["cliente_telefono"], "+593 999999111")
+        self.assertEqual(response.data[0]["persona_nombre"], "Persona API")
+        self.assertEqual(response.data[0]["persona_telefono"], "+593 999999111")
         self.assertEqual(response.data[0]["tipo_evento_nombre"], "Boda")
         self.assertEqual(
             response.data[0]["contrato_estado"],
@@ -739,7 +739,7 @@ class FinancieroApiTests(APITestCase):
 
     def test_dashboard_financiero_calcula_metricas_desde_backend(self):
         Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 12),

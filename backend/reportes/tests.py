@@ -6,7 +6,7 @@ from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
 from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
-from negocio.models import Cliente, Paquete, TipoEvento
+from negocio.models import Persona, Paquete, TipoEvento
 
 
 class ReportesApiTests(APITestCase):
@@ -16,12 +16,12 @@ class ReportesApiTests(APITestCase):
             password="test-pass",
         )
         self.client.force_authenticate(self.user)
-        self.cliente = Cliente.objects.create(
-            nombre="Cliente Reportes",
+        self.persona = Persona.objects.create(
+            nombre="Persona Reportes",
             telefono="+593 999555111",
         )
-        self.otro_cliente = Cliente.objects.create(
-            nombre="Cliente Extra",
+        self.otra_persona = Persona.objects.create(
+            nombre="Persona Extra",
             telefono="+593 999555222",
         )
         self.boda = TipoEvento.objects.create(nombre="Boda")
@@ -39,7 +39,7 @@ class ReportesApiTests(APITestCase):
 
     def crear_cotizacion(self, **overrides):
         data = {
-            "cliente": self.cliente,
+            "persona": self.persona,
             "tipo_evento": self.boda,
             "paquete": self.premium,
             "fecha_tentativa": date(2026, 8, 10),
@@ -53,7 +53,7 @@ class ReportesApiTests(APITestCase):
 
     def crear_contrato(self, **overrides):
         data = {
-            "cliente": self.cliente,
+            "persona": self.persona,
             "tipo_evento": self.boda,
             "paquete": self.premium,
             "fecha_evento": date(2026, 8, 10),
@@ -72,7 +72,7 @@ class ReportesApiTests(APITestCase):
         )
         self.crear_contrato(cotizacion=cotizacion_convertida)
         self.crear_cotizacion(
-            cliente=self.otro_cliente,
+            persona=self.otra_persona,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("2000.00"),
             fecha_tentativa=date(2026, 8, 20),
@@ -109,7 +109,7 @@ class ReportesApiTests(APITestCase):
             monto_abonado=Decimal("1000.00"),
         )
         cancelado = self.crear_contrato(
-            cliente=self.otro_cliente,
+            persona=self.otra_persona,
             valor_final=Decimal("5000.00"),
             monto_abonado=Decimal("5000.00"),
             estado_contrato=Contrato.EstadoContrato.CANCELADO,
@@ -171,7 +171,7 @@ class ReportesApiTests(APITestCase):
             numero_invitados=90,
         )
         cancelado = self.crear_contrato(
-            cliente=self.otro_cliente,
+            persona=self.otra_persona,
             fecha_evento=date(2026, 8, 15),
             valor_final=Decimal("4000.00"),
             monto_abonado=Decimal("0.00"),

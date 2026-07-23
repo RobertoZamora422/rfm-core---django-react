@@ -9,7 +9,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { useAutoRefresh } from '../../hooks/useAutoRefresh'
-import { clientesService } from '../../services/resourceService'
+import { personasService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { formatCurrency, formatDate, formatPhone } from '../../utils/formatters'
 
@@ -17,10 +17,10 @@ function DetailItem({ label, value }) {
   return <div><dt>{label}</dt><dd>{value || '-'}</dd></div>
 }
 
-export function DetalleClientePage() {
+export function DetallePersonaPage() {
   const { id } = useParams()
   const location = useLocation()
-  const returnPath = location.state?.from || '/clientes'
+  const returnPath = location.state?.from || '/personas'
   const [person, setPerson] = useState(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -28,7 +28,7 @@ export function DetalleClientePage() {
   const loadPerson = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setIsLoading(true)
     try {
-      setPerson(await clientesService.retrieve(id))
+      setPerson(await personasService.retrieve(id))
       setError('')
     } catch (requestError) {
       setError(getApiErrorMessage(requestError))
@@ -84,8 +84,8 @@ export function DetalleClientePage() {
         actions={
           <>
             <Link className="button button--secondary" to={returnPath}><ArrowLeft aria-hidden="true" size={18} /> Volver</Link>
-            <Link className="button button--secondary" to={`/cotizaciones/nueva?cliente=${person.id}`}><ClipboardList aria-hidden="true" size={18} /> Nueva cotización</Link>
-            <Link className="button button--primary" to={`/contratos/nuevo?cliente=${person.id}`}><FilePlus2 aria-hidden="true" size={18} /> Nuevo contrato</Link>
+            <Link className="button button--secondary" to={`/cotizaciones/nueva?persona=${person.id}`}><ClipboardList aria-hidden="true" size={18} /> Nueva cotización</Link>
+            <Link className="button button--primary" to={`/contratos/nuevo?persona=${person.id}`}><FilePlus2 aria-hidden="true" size={18} /> Nuevo contrato</Link>
           </>
         }
         description="Identidad, origen y relación comercial verificable de esta persona."

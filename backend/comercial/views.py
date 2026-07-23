@@ -64,17 +64,17 @@ class PreCotizacionAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        datos_cliente = {
-            "nombre": data.get("nombre_cliente", "").strip(),
-            "telefono": data.get("telefono_cliente", "").strip(),
-            "correo": data.get("correo_cliente", "").strip(),
-            "observaciones": data.get("observaciones_cliente", ""),
+        datos_persona = {
+            "nombre": data.get("nombre_persona", "").strip(),
+            "telefono": data.get("telefono_persona", "").strip(),
+            "correo": data.get("correo_persona", "").strip(),
+            "observaciones": data.get("observaciones_persona", ""),
         }
 
         try:
             cotizacion, calculo = crear_pre_cotizacion(
-                cliente=None,
-                datos_cliente=datos_cliente,
+                persona=None,
+                datos_persona=datos_persona,
                 tipo_evento=data["tipo_evento"],
                 paquete=data.get("paquete"),
                 fecha_tentativa=data["fecha_tentativa"],
@@ -97,12 +97,12 @@ class PreCotizacionAPIView(APIView):
 class CotizacionViewSet(viewsets.ModelViewSet):
     serializer_class = CotizacionSerializer
     pagination_class = OptionalPageNumberPagination
-    search_fields = ["cliente__nombre", "cliente__telefono", "observaciones"]
+    search_fields = ["persona__nombre", "persona__telefono", "observaciones"]
 
     def get_queryset(self):
         queryset = cotizaciones_con_relaciones()
         estado = self.request.query_params.get("estado")
-        cliente = self.request.query_params.get("cliente")
+        persona = self.request.query_params.get("persona")
         tipo_evento = self.request.query_params.get("tipo_evento")
         fecha_desde = _parse_query_date(
             self.request.query_params.get("desde"),
@@ -117,13 +117,12 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             or self.request.query_params.get("search")
             or ""
         ).strip()
-        es_demo = self.request.query_params.get("es_demo")
         if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
             raise ApiValidationError({"hasta": "La fecha hasta no puede ser anterior a desde."})
         if estado:
             queryset = queryset.filter(estado=estado)
-        if cliente:
-            queryset = queryset.filter(cliente_id=cliente)
+        if persona:
+            queryset = queryset.filter(persona_id=persona)
         if tipo_evento:
             queryset = queryset.filter(tipo_evento_id=tipo_evento)
         if fecha_desde:
@@ -132,21 +131,19 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(fecha_tentativa__lte=fecha_hasta)
         if buscar:
             criteria = (
-                Q(cliente__nombre__icontains=buscar)
-                | Q(cliente__telefono__icontains=buscar)
+                Q(persona__nombre__icontains=buscar)
+                | Q(persona__telefono__icontains=buscar)
                 | Q(tipo_evento__nombre__icontains=buscar)
                 | Q(paquete__nombre__icontains=buscar)
                 | Q(observaciones__icontains=buscar)
             )
             if extraer_digitos_telefono(buscar):
                 criteria |= Q(
-                    cliente__telefono_normalizado__icontains=normalizar_telefono_parcial(
+                    persona__telefono_normalizado__icontains=normalizar_telefono_parcial(
                         buscar
                     )
                 )
             queryset = queryset.filter(criteria)
-        if es_demo is not None:
-            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
 
     @action(detail=True, methods=["post"], url_path="cambiar-estado")

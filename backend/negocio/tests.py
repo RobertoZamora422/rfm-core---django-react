@@ -11,16 +11,16 @@ from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
 from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
-from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
+from .models import Persona, ConfiguracionNegocio, Paquete, TipoEvento
 from .validators import normalizar_whatsapp_ecuador
 
 
 class NegocioModelTests(TestCase):
-    def test_cliente_requiere_telefono_valido(self):
-        cliente = Cliente(nombre="Cliente Test", telefono="abc")
+    def test_persona_requiere_telefono_valido(self):
+        persona = Persona(nombre="Persona Test", telefono="abc")
 
         with self.assertRaises(ValidationError):
-            cliente.save()
+            persona.save()
 
     def test_tipo_evento_no_duplica_nombre(self):
         TipoEvento.objects.create(nombre="Boda")
@@ -112,54 +112,75 @@ class NegocioModelTests(TestCase):
         )
 
 
-class SeedCommandTests(TestCase):
+class LimpiarDatosOperativosCommandTests(TestCase):
     def call_command(self, name):
         output = StringIO()
         call_command(name, stdout=output)
         return output.getvalue()
 
-    def test_seed_base_es_idempotente(self):
-        self.call_command("seed_base")
-        self.call_command("seed_base")
-
-        self.assertEqual(TipoEvento.objects.count(), 5)
-        self.assertEqual(Paquete.objects.count(), 3)
-        self.assertEqual(ConfiguracionNegocio.objects.filter(activo=True).count(), 1)
-        self.assertEqual(
-            ConfiguracionNegocio.objects.get(activo=True).whatsapp_negocio,
-            "0991234567",
+    def test_simulacion_no_modifica_y_execute_conserva_datos_base(self):
+        usuario = get_user_model().objects.create_user("operador")
+        configuracion = ConfiguracionNegocio.objects.create(
+            nombre_negocio="Rancho Flor María",
+            tarifa_base_alquiler=Decimal("450.00"),
+            invitados_incluidos_alquiler=100,
+            costo_invitado_adicional=Decimal("3.50"),
+            whatsapp_negocio="0990494811",
+        )
+        tipo_evento = TipoEvento.objects.create(nombre="Boda")
+        paquete = Paquete.objects.create(
+            nombre="Paquete completo",
+            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            precio_por_persona=Decimal("25.00"),
+        )
+        persona = Persona.objects.create(nombre="Persona temporal", telefono="0991234567")
+        cotizacion = Cotizacion.objects.create(
+            persona=persona,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_tentativa=timezone.localdate() + timedelta(days=10),
+            numero_invitados=80,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            total_estimado=Decimal("2000.00"),
+        )
+        contrato = Contrato.objects.create(
+            persona=persona,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_evento=timezone.localdate() + timedelta(days=15),
+            numero_invitados=80,
+            valor_final=Decimal("2000.00"),
+            monto_abonado=Decimal("500.00"),
+        )
+        CostoDirecto.objects.create(
+            contrato=contrato,
+            concepto="Personal",
+            valor=Decimal("100.00"),
+            fecha=timezone.localdate(),
+        )
+        GastoFijoMensual.objects.create(
+            concepto="Internet",
+            valor=Decimal("30.00"),
+            mes=timezone.localdate().month,
+            anio=timezone.localdate().year,
         )
 
-    def test_seed_demo_es_idempotente(self):
-        self.call_command("seed_demo")
-        self.call_command("seed_demo")
+        salida_simulacion = self.call_command("limpiar_datos_operativos")
+        self.assertIn("No se modificaron datos", salida_simulacion)
+        self.assertEqual(Persona.objects.count(), 1)
 
-        self.assertEqual(Cliente.objects.filter(es_demo=True).count(), 7)
-        self.assertEqual(Cotizacion.objects.filter(es_demo=True).count(), 6)
-        self.assertEqual(Contrato.objects.filter(es_demo=True).count(), 3)
-        self.assertEqual(CostoDirecto.objects.filter(es_demo=True).count(), 4)
-        self.assertEqual(GastoFijoMensual.objects.filter(es_demo=True).count(), 3)
-        self.assertTrue(
-            CostoDirecto.objects.filter(
-                es_demo=True,
-                contrato__estado_contrato=Contrato.EstadoContrato.CANCELADO,
-            ).exists()
-        )
+        output = StringIO()
+        call_command("limpiar_datos_operativos", execute=True, stdout=output)
 
-    def test_clear_demo_no_elimina_datos_reales(self):
-        self.call_command("seed_demo")
-        Cliente.objects.create(
-            nombre="Cliente Real",
-            telefono="+593 988888888",
-            correo="real@example.com",
-        )
-
-        self.call_command("clear_demo")
-
-        self.assertEqual(Cliente.objects.filter(es_demo=True).count(), 0)
-        self.assertTrue(Cliente.objects.filter(nombre="Cliente Real").exists())
-        self.assertEqual(TipoEvento.objects.count(), 5)
-        self.assertEqual(Paquete.objects.count(), 3)
+        self.assertEqual(Persona.objects.count(), 0)
+        self.assertEqual(Cotizacion.objects.count(), 0)
+        self.assertEqual(Contrato.objects.count(), 0)
+        self.assertEqual(CostoDirecto.objects.count(), 0)
+        self.assertEqual(GastoFijoMensual.objects.count(), 0)
+        self.assertEqual(TipoEvento.objects.count(), 0)
+        self.assertEqual(Paquete.objects.count(), 0)
+        self.assertTrue(get_user_model().objects.filter(pk=usuario.pk).exists())
+        self.assertTrue(ConfiguracionNegocio.objects.filter(pk=configuracion.pk).exists())
 
 
 class NegocioApiTests(APITestCase):
@@ -207,9 +228,9 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(public_response.status_code, 200)
         self.assertEqual(public_response.data, {})
 
-    def test_catalogos_y_clientes_sin_registros_devuelven_lista_vacia(self):
+    def test_catalogos_y_personas_sin_registros_devuelven_lista_vacia(self):
         endpoints = [
-            "/api/clientes/",
+            "/api/personas/",
             "/api/paquetes/",
             "/api/tipos-evento/",
         ]
@@ -221,31 +242,31 @@ class NegocioApiTests(APITestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.data, [])
 
-    def test_cliente_crud_basico(self):
+    def test_persona_crud_basico(self):
         response = self.client.post(
-            "/api/clientes/",
+            "/api/personas/",
             {
-                "nombre": "Cliente API",
+                "nombre": "Persona API",
                 "telefono": "+593 999999111",
-                "correo": "cliente.api@example.com",
+                "correo": "persona.api@example.com",
                 "observaciones": "",
             },
             format="json",
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["nombre"], "Cliente API")
+        self.assertEqual(response.data["nombre"], "Persona API")
 
-        list_response = self.client.get("/api/clientes/")
+        list_response = self.client.get("/api/personas/")
 
         self.assertEqual(list_response.status_code, 200)
         self.assertEqual(len(list_response.data), 1)
 
-    def test_cliente_api_valida_telefono(self):
+    def test_persona_api_valida_telefono(self):
         response = self.client.post(
-            "/api/clientes/",
+            "/api/personas/",
             {
-                "nombre": "Cliente API",
+                "nombre": "Persona API",
                 "telefono": "telefono-invalido",
             },
             format="json",
@@ -254,24 +275,24 @@ class NegocioApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("telefono", response.data)
 
-    def test_cliente_evitar_duplicado_por_telefono_sin_importar_formato(self):
-        Cliente.objects.create(nombre="Cliente existente", telefono="+593 99 123 4567")
+    def test_persona_evita_duplicado_por_telefono_sin_importar_formato(self):
+        Persona.objects.create(nombre="Persona existente", telefono="+593 99 123 4567")
 
         response = self.client.post(
-            "/api/clientes/",
-            {"nombre": "Cliente duplicado", "telefono": "+593-99-123-4567"},
+            "/api/personas/",
+            {"nombre": "Persona duplicada", "telefono": "+593-99-123-4567"},
             format="json",
         )
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("telefono", response.data)
-        self.assertEqual(Cliente.objects.count(), 1)
+        self.assertEqual(Persona.objects.count(), 1)
 
-    def test_clientes_incluye_conteos_relacionados_sin_consultas_por_fila(self):
+    def test_personas_incluye_conteos_relacionados_sin_consultas_por_fila(self):
         tipo_evento = TipoEvento.objects.create(nombre="Boda")
-        cliente = Cliente.objects.create(nombre="Cliente resumen", telefono="0991234567")
+        persona = Persona.objects.create(nombre="Persona resumen", telefono="0991234567")
         cotizacion = Cotizacion.objects.create(
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             fecha_tentativa=timezone.localdate(),
             numero_invitados=50,
@@ -280,7 +301,7 @@ class NegocioApiTests(APITestCase):
         )
         Contrato.objects.create(
             cotizacion=cotizacion,
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             fecha_evento=timezone.localdate(),
             numero_invitados=50,
@@ -288,7 +309,7 @@ class NegocioApiTests(APITestCase):
         )
 
         with self.assertNumQueries(1):
-            response = self.client.get("/api/clientes/", {"buscar": "099123"})
+            response = self.client.get("/api/personas/", {"buscar": "099123"})
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data[0]["cotizaciones_count"], 1)
@@ -437,8 +458,8 @@ class NegocioApiTests(APITestCase):
 
     def test_inicio_resumen_usa_datos_reales_del_backend(self):
         hoy = timezone.localdate()
-        cliente = Cliente.objects.create(
-            nombre="Cliente Inicio",
+        persona = Persona.objects.create(
+            nombre="Persona Inicio",
             telefono="+593 999111222",
             correo="inicio@example.com",
         )
@@ -450,7 +471,7 @@ class NegocioApiTests(APITestCase):
         )
 
         Cotizacion.objects.create(
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
             fecha_tentativa=hoy + timedelta(days=15),
@@ -460,7 +481,7 @@ class NegocioApiTests(APITestCase):
             total_estimado=Decimal("2500.00"),
         )
         Cotizacion.objects.create(
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
             fecha_tentativa=hoy + timedelta(days=30),
@@ -471,7 +492,7 @@ class NegocioApiTests(APITestCase):
         )
 
         contrato_proximo = Contrato.objects.create(
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
             fecha_evento=hoy,
@@ -489,7 +510,7 @@ class NegocioApiTests(APITestCase):
             eliminado_en=timezone.now(),
         )
         Contrato.objects.create(
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
             fecha_evento=hoy + timedelta(days=8),
@@ -499,7 +520,7 @@ class NegocioApiTests(APITestCase):
             estado_contrato=Contrato.EstadoContrato.CANCELADO,
         )
         contrato_sin_costos_activos = Contrato.objects.create(
-            cliente=cliente,
+            persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
             fecha_evento=hoy - timedelta(days=40),

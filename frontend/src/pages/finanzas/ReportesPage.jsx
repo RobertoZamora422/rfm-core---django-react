@@ -115,8 +115,8 @@ function buildExportRows(activeReport, data) {
   if (activeReport === 'comercial') {
     return (data.cotizaciones ?? []).map((row) => ({
       'Cotización': row.id,
-      'Cliente': row.cliente_nombre,
-      'Teléfono': row.cliente_telefono,
+      'Cliente': row.persona_nombre,
+      'Teléfono': row.persona_telefono,
       'Tipo de evento': row.tipo_evento_nombre,
       'Fecha tentativa': formatDate(row.fecha_tentativa),
       'Estado comercial': getStatusLabel(row.estado, quoteStatusLabels),
@@ -128,7 +128,7 @@ function buildExportRows(activeReport, data) {
   if (activeReport === 'financiero') {
     return (data.rentabilidad_eventos ?? []).map((row) => ({
       'Contrato': row.contrato_id,
-      'Cliente': row.cliente_nombre,
+      'Cliente': row.persona_nombre,
       'Tipo de evento': row.tipo_evento_nombre,
       'Fecha del evento': formatDate(row.fecha_evento),
       'Ingresos confirmados (USD)': row.valor_final,
@@ -143,8 +143,8 @@ function buildExportRows(activeReport, data) {
   if (activeReport === 'eventos') {
     return (data.eventos ?? []).map((row) => ({
       'Contrato': row.contrato_id,
-      'Cliente': row.cliente_nombre,
-      'Teléfono': row.cliente_telefono,
+      'Cliente': row.persona_nombre,
+      'Teléfono': row.persona_telefono,
       'Tipo de evento': row.tipo_evento_nombre,
       'Fecha del evento': formatDate(row.fecha_evento),
       'Invitados': row.numero_invitados,
@@ -307,12 +307,12 @@ function CommercialReport({ data }) {
       ),
     },
     {
-      key: 'cliente_nombre',
+      key: 'persona_nombre',
       header: 'Cliente',
       render: (row) => (
         <div className="stacked-cell">
-          <strong>{row.cliente_nombre}</strong>
-          <span>{row.cliente_telefono}</span>
+          <strong>{row.persona_nombre}</strong>
+          <span>{row.persona_telefono}</span>
         </div>
       ),
     },
@@ -392,11 +392,11 @@ function FinancialReport({ data }) {
       ),
     },
     {
-      key: 'cliente_nombre',
+      key: 'persona_nombre',
       header: 'Cliente / evento',
       render: (row) => (
         <div className="stacked-cell">
-          <strong>{row.cliente_nombre}</strong>
+          <strong>{row.persona_nombre}</strong>
           <span>{row.tipo_evento_nombre}</span>
         </div>
       ),
@@ -479,11 +479,11 @@ function EventsReport({ data }) {
       ),
     },
     {
-      key: 'cliente_nombre',
+      key: 'persona_nombre',
       header: 'Cliente / evento',
       render: (row) => (
         <div className="stacked-cell">
-          <strong>{row.cliente_nombre}</strong>
+          <strong>{row.persona_nombre}</strong>
           <span>{row.tipo_evento_nombre}</span>
         </div>
       ),

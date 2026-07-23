@@ -41,8 +41,8 @@ export function PersonaForm({
     correo: initialValues?.correo ?? '',
     observaciones: initialValues?.observaciones ?? '',
   })
-  const [nameLookup, setNameLookup] = useState('')
-  const [phoneLookup, setPhoneLookup] = useState('')
+  const [nameLookup, setNameLookup] = useState(initialValues?.nombre ?? '')
+  const [phoneLookup, setPhoneLookup] = useState(initialValues?.telefono ?? '')
   const nameMatches = usePersonaMatches(nameLookup, { exclude: initialValues?.id })
   const phoneMatches = usePersonaMatches(phoneLookup, { exclude: initialValues?.id })
 

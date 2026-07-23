@@ -1,21 +1,21 @@
 from django.contrib import admin
 
-from .models import Cliente, ConfiguracionNegocio, NombrePersona, Paquete, TipoEvento
+from .models import ConfiguracionNegocio, NombrePersona, Paquete, Persona, TipoEvento
 
 
-@admin.register(Cliente)
-class ClienteAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "telefono", "origen", "correo", "es_demo", "creado_en")
-    list_filter = ("origen", "es_demo", "creado_en")
+@admin.register(Persona)
+class PersonaAdmin(admin.ModelAdmin):
+    list_display = ("nombre", "telefono", "origen", "correo", "creado_en")
+    list_filter = ("origen", "creado_en")
     search_fields = ("nombre", "telefono", "telefono_normalizado", "correo")
     readonly_fields = ("telefono_normalizado", "creado_en", "actualizado_en")
 
 
 @admin.register(NombrePersona)
 class NombrePersonaAdmin(admin.ModelAdmin):
-    list_display = ("nombre", "cliente", "origen", "creado_en")
+    list_display = ("nombre", "persona", "origen", "creado_en")
     list_filter = ("origen",)
-    search_fields = ("nombre", "cliente__nombre", "cliente__telefono")
+    search_fields = ("nombre", "persona__nombre", "persona__telefono")
     readonly_fields = ("nombre_normalizado", "creado_en", "actualizado_en")
 
 

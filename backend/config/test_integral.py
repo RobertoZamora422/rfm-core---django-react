@@ -47,8 +47,8 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         pre_cotizacion = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre_cliente": "Cliente Integral",
-                "telefono_cliente": "+593 999111333",
+                "nombre_persona": "Persona Integral",
+                "telefono_persona": "+593 999111333",
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_tentativa": fecha_evento.isoformat(),
@@ -128,7 +128,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.assertEqual(gasto.status_code, 201)
 
         contrato_cancelado = Contrato.objects.create(
-            cliente_id=conversion.data["contrato"]["cliente"],
+            persona_id=conversion.data["contrato"]["persona"],
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_evento=fecha_evento + timedelta(days=3),
@@ -193,8 +193,8 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         pre_cotizacion = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre_cliente": "Cliente Descartado",
-                "telefono_cliente": "+593 999111444",
+                "nombre_persona": "Persona Descartada",
+                "telefono_persona": "+593 999111444",
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_tentativa": fecha_evento.isoformat(),

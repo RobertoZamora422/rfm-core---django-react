@@ -7,15 +7,15 @@ from django.test import TestCase
 from rest_framework.test import APITestCase
 
 from financiero.models import Contrato
-from negocio.models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
+from negocio.models import Persona, ConfiguracionNegocio, Paquete, TipoEvento
 
 from .models import Cotizacion
 
 
 class CotizacionModelTests(TestCase):
     def setUp(self):
-        self.cliente = Cliente.objects.create(
-            nombre="Cliente Test",
+        self.persona = Persona.objects.create(
+            nombre="Persona Test",
             telefono="+593 999999999",
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
@@ -27,7 +27,7 @@ class CotizacionModelTests(TestCase):
 
     def test_numero_invitados_debe_ser_positivo(self):
         cotizacion = Cotizacion(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -61,8 +61,8 @@ class CotizacionCleanDatabaseApiTests(APITestCase):
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre_cliente": "Cliente Publico",
-                "telefono_cliente": "0991234567",
+                "nombre_persona": "Persona Pública",
+                "telefono_persona": "0991234567",
                 "tipo_evento": tipo_evento.id,
                 "fecha_tentativa": "2026-05-20",
                 "numero_invitados": 80,
@@ -83,8 +83,8 @@ class CotizacionApiTests(APITestCase):
             password="test-pass",
         )
         self.client.force_authenticate(self.user)
-        self.cliente = Cliente.objects.create(
-            nombre="Cliente API",
+        self.persona = Persona.objects.create(
+            nombre="Persona API",
             telefono="+593 999999111",
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
@@ -106,7 +106,7 @@ class CotizacionApiTests(APITestCase):
         response = self.client.post(
             "/api/cotizaciones/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
                 "fecha_tentativa": "2026-08-01",
@@ -120,7 +120,7 @@ class CotizacionApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["cliente_nombre"], "Cliente API")
+        self.assertEqual(response.data["persona_nombre"], "Persona API")
 
     def test_rechaza_paquete_de_otro_tipo_servicio(self):
         paquete_alquiler = Paquete.objects.create(
@@ -131,7 +131,7 @@ class CotizacionApiTests(APITestCase):
         response = self.client.post(
             "/api/cotizaciones/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": paquete_alquiler.id,
                 "fecha_tentativa": "2026-08-01",
@@ -150,7 +150,7 @@ class CotizacionApiTests(APITestCase):
         response = self.client.post(
             "/api/cotizaciones/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": None,
                 "fecha_tentativa": "2026-08-01",
@@ -174,7 +174,7 @@ class CotizacionApiTests(APITestCase):
             activo=False,
         )
         base_payload = {
-            "cliente": self.cliente.id,
+            "persona": self.persona.id,
             "tipo_evento": self.tipo_evento.id,
             "paquete": self.paquete.id,
             "fecha_tentativa": "2026-08-01",
@@ -202,7 +202,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_total_estimado_no_puede_ser_negativo(self):
         cotizacion = Cotizacion(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -219,8 +219,8 @@ class CotizacionApiTests(APITestCase):
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre": "Cliente Nuevo",
-                "telefono": "+593 999999222",
+                "nombre_persona": "Persona Nueva",
+                "telefono_persona": "+593 999999222",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 80,
@@ -233,16 +233,16 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["calculo"]["total_estimado"], "1300.00")
         self.assertEqual(response.data["cotizacion"]["estado"], Cotizacion.Estado.NUEVA)
-        cliente = Cliente.objects.get(nombre="Cliente Nuevo")
-        self.assertEqual(cliente.correo, "")
+        persona = Persona.objects.get(nombre="Persona Nueva")
+        self.assertEqual(persona.correo, "")
 
     def test_pre_cotizacion_acepta_invitados_altos_sin_tope_de_configuracion(self):
         self.client.force_authenticate(user=None)
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre": "Cliente Sin Tope",
-                "telefono": "+593 999999223",
+                "nombre_persona": "Persona Sin Tope",
+                "telefono_persona": "+593 999999223",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 201,
@@ -254,12 +254,12 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["calculo"]["total_estimado"], "2510.00")
 
-    def test_pre_cotizacion_publica_rechaza_cliente_existente(self):
+    def test_pre_cotizacion_publica_rechaza_persona_existente(self):
         self.client.force_authenticate(user=None)
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "cliente": self.cliente.id,
+                "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 80,
@@ -269,7 +269,7 @@ class CotizacionApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("cliente", response.data)
+        self.assertIn("persona", response.data)
 
     def test_pre_cotizacion_servicio_completo_calcula_paquetes_activos(self):
         self.client.force_authenticate(user=None)
@@ -283,8 +283,8 @@ class CotizacionApiTests(APITestCase):
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre": "Cliente Servicio",
-                "telefono": "+593 999999224",
+                "nombre_persona": "Persona Servicio",
+                "telefono_persona": "+593 999999224",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-10-01",
                 "numero_invitados": 80,
@@ -306,8 +306,8 @@ class CotizacionApiTests(APITestCase):
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre": "Cliente Indeciso",
-                "telefono": "+593 999999225",
+                "nombre_persona": "Persona Indecisa",
+                "telefono_persona": "+593 999999225",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-11-01",
                 "numero_invitados": 80,
@@ -374,7 +374,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_cambiar_estado_cotizacion(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -394,13 +394,13 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.data["estado"], Cotizacion.Estado.CONFIRMADA)
 
     def test_filtra_cotizaciones_por_pipeline_comercial(self):
-        otro_cliente = Cliente.objects.create(
-            nombre="Otro Cliente",
+        otra_persona = Persona.objects.create(
+            nombre="Otra Persona",
             telefono="+593 999999333",
         )
         otro_tipo_evento = TipoEvento.objects.create(nombre="Corporativo")
         cotizacion_objetivo = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 15),
@@ -411,7 +411,7 @@ class CotizacionApiTests(APITestCase):
             observaciones="Seguimiento por WhatsApp",
         )
         Cotizacion.objects.create(
-            cliente=otro_cliente,
+            persona=otra_persona,
             tipo_evento=otro_tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 9, 1),
@@ -440,7 +440,7 @@ class CotizacionApiTests(APITestCase):
     def test_listado_paginado_y_resumen_conservan_totales_filtrados(self):
         for index in range(3):
             Cotizacion.objects.create(
-                cliente=self.cliente,
+                persona=self.persona,
                 tipo_evento=self.tipo_evento,
                 fecha_tentativa=date(2026, 8, index + 1),
                 numero_invitados=50,
@@ -479,7 +479,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_cotizacion_descartada_debe_reactivarse_antes_de_continuar(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
@@ -505,7 +505,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_estado_no_se_cambia_desde_patch_generico(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
@@ -522,15 +522,15 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("estado", response.data)
 
-    def test_pre_cotizacion_reutiliza_cliente_con_mismo_telefono(self):
+    def test_pre_cotizacion_reutiliza_persona_con_mismo_telefono(self):
         self.client.force_authenticate(user=None)
-        initial_count = Cliente.objects.count()
+        initial_count = Persona.objects.count()
 
         response = self.client.post(
             "/api/pre-cotizacion/",
             {
-                "nombre": "Cliente API",
-                "telefono": "+593-999999111",
+                "nombre_persona": "Persona API",
+                "telefono_persona": "+593-999999111",
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 80,
@@ -540,12 +540,12 @@ class CotizacionApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(Cliente.objects.count(), initial_count)
-        self.assertEqual(response.data["cotizacion"]["cliente"], self.cliente.id)
+        self.assertEqual(Persona.objects.count(), initial_count)
+        self.assertEqual(response.data["cotizacion"]["persona"], self.persona.id)
 
     def test_crud_no_marca_cotizacion_como_convertida(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -566,7 +566,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_cotizacion_convertida_bloquea_datos_criticos_pero_permite_observaciones(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -577,7 +577,7 @@ class CotizacionApiTests(APITestCase):
         )
         Contrato.objects.create(
             cotizacion=cotizacion,
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_evento=date(2026, 8, 1),
@@ -609,7 +609,7 @@ class CotizacionApiTests(APITestCase):
             precio_por_persona=Decimal("35.00"),
         )
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -647,7 +647,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_convertir_rechaza_cotizacion_no_confirmada(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -673,7 +673,7 @@ class CotizacionApiTests(APITestCase):
             precio_por_persona=Decimal("0.00"),
         )
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
@@ -694,7 +694,7 @@ class CotizacionApiTests(APITestCase):
 
     def test_convertir_rechaza_conversion_doble(self):
         cotizacion = Cotizacion.objects.create(
-            cliente=self.cliente,
+            persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),

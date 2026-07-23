@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { clientesService } from '../services/resourceService'
+import { personasService } from '../services/resourceService'
 import { getApiErrorMessage } from '../utils/apiErrors'
 import { useDebouncedValue } from './useDebouncedValue'
 
@@ -10,7 +10,7 @@ function loadMatches(params) {
   if (!inFlightRequests.has(key)) {
     inFlightRequests.set(
       key,
-      clientesService.coincidencias(params).finally(() => inFlightRequests.delete(key)),
+      personasService.coincidencias(params).finally(() => inFlightRequests.delete(key)),
     )
   }
   return inFlightRequests.get(key)

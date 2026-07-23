@@ -166,8 +166,8 @@ export function DetalleContratoPage() {
               <h2>Datos de la persona</h2>
             </div>
             <dl className="detail-list">
-              <DetailItem label="Cliente" value={<Link className="detail-inline-link" to={`/clientes/${contrato.cliente}`}>{contrato.cliente_nombre}</Link>} />
-              <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${contrato.cliente_telefono}`}>{formatPhone(contrato.cliente_telefono)}</a>} />
+              <DetailItem label="Cliente" value={<Link className="detail-inline-link" to={`/personas/${contrato.persona}`}>{contrato.persona_nombre}</Link>} />
+              <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${contrato.persona_telefono}`}>{formatPhone(contrato.persona_telefono)}</a>} />
             </dl>
           </div>
         </Card>

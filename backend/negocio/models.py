@@ -30,7 +30,7 @@ class TimeStampedModel(CleanOnSaveModel):
         abstract = True
 
 
-class Cliente(TimeStampedModel):
+class Persona(TimeStampedModel):
     class Origen(models.TextChoices):
         FORMULARIO_PUBLICO = "formulario_publico", "Formulario público"
         COTIZACION_MANUAL = "cotizacion_manual", "Cotización manual"
@@ -47,8 +47,6 @@ class Cliente(TimeStampedModel):
         choices=Origen.choices,
         default=Origen.REGISTRO_MANUAL,
     )
-    es_demo = models.BooleanField(default=False)
-
     class Meta:
         ordering = ["nombre"]
 
@@ -64,8 +62,8 @@ class Cliente(TimeStampedModel):
 
 
 class NombrePersona(TimeStampedModel):
-    cliente = models.ForeignKey(
-        Cliente,
+    persona = models.ForeignKey(
+        Persona,
         on_delete=models.CASCADE,
         related_name="nombres_utilizados",
     )
@@ -73,16 +71,16 @@ class NombrePersona(TimeStampedModel):
     nombre_normalizado = models.CharField(max_length=150, editable=False)
     origen = models.CharField(
         max_length=30,
-        choices=Cliente.Origen.choices,
-        default=Cliente.Origen.REGISTRO_MANUAL,
+        choices=Persona.Origen.choices,
+        default=Persona.Origen.REGISTRO_MANUAL,
     )
 
     class Meta:
         ordering = ["creado_en", "id"]
         constraints = [
             models.UniqueConstraint(
-                fields=["cliente", "nombre_normalizado"],
-                name="nombre_persona_unico_por_cliente",
+                fields=["persona", "nombre_normalizado"],
+                name="nombre_persona_unico_por_persona",
             )
         ]
 
@@ -94,7 +92,7 @@ class NombrePersona(TimeStampedModel):
             raise ValidationError({"nombre": "El nombre es obligatorio."})
 
     def __str__(self):
-        return f"{self.nombre} ({self.cliente})"
+        return f"{self.nombre} ({self.persona})"
 
 
 class TipoEvento(TimeStampedModel):
