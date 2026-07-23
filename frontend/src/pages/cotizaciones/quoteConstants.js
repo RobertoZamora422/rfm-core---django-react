@@ -23,9 +23,9 @@ export const ESTADOS_CAMBIO = [
 ]
 
 export const TIPO_SERVICIO_LABELS = {
-  alquiler: 'Alquiler',
+  alquiler: 'Alquiler del local',
   servicio_completo: 'Servicio completo',
-  no_seguro: 'Aun no estoy seguro',
+  no_estoy_seguro: 'No estoy seguro',
 }
 
 export function getEstadoLabel(estado) {

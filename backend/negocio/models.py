@@ -108,47 +108,126 @@ class TipoEvento(TimeStampedModel):
 
 
 class Paquete(TimeStampedModel):
-    class TipoServicio(models.TextChoices):
-        ALQUILER = "alquiler", "Alquiler"
-        SERVICIO_COMPLETO = "servicio_completo", "Servicio completo"
+    class Categoria(models.TextChoices):
+        ESTANDAR = "estandar", "Estándar"
+        PREMIUM = "premium", "Premium"
+        VIP = "vip", "VIP"
 
     nombre = models.CharField(max_length=120)
-    tipo_servicio = models.CharField(
-        max_length=30,
-        choices=TipoServicio.choices,
+    categoria = models.CharField(
+        max_length=20,
+        choices=Categoria.choices,
+        default=Categoria.ESTANDAR,
     )
+    orden = models.PositiveSmallIntegerField(default=0)
+    resumen_corto = models.CharField(max_length=240, blank=True)
+    etiqueta_comercial = models.CharField(max_length=80, blank=True)
+    destacado = models.BooleanField(default=False)
     precio_por_persona = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        default=0,
         validators=[validate_non_negative],
     )
-    descripcion = models.TextField(blank=True)
     activo = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["nombre"]
+        ordering = ["categoria", "orden", "precio_por_persona", "nombre"]
         constraints = [
             models.CheckConstraint(
-                condition=Q(precio_por_persona__gte=0),
-                name="paquete_precio_por_persona_no_negativo",
+                condition=Q(precio_por_persona__gt=0),
+                name="paquete_precio_por_persona_positivo",
             ),
         ]
 
     def clean(self):
         super().clean()
-        if (
-            self.tipo_servicio == self.TipoServicio.SERVICIO_COMPLETO
-            and self.precio_por_persona <= 0
-        ):
+        self.nombre = " ".join((self.nombre or "").strip().split())
+        self.resumen_corto = " ".join((self.resumen_corto or "").strip().split())
+        self.etiqueta_comercial = " ".join(
+            (self.etiqueta_comercial or "").strip().split()
+        )
+        if self.precio_por_persona is not None and self.precio_por_persona <= 0:
             raise ValidationError(
                 {
-                    "precio_por_persona": "El servicio completo debe tener precio por persona mayor que cero."
+                    "precio_por_persona": "El paquete debe tener un precio por persona mayor que cero."
                 }
             )
 
     def __str__(self):
         return self.nombre
+
+
+class BeneficioPaquete(TimeStampedModel):
+    class Tipo(models.TextChoices):
+        PRINCIPAL = "principal", "Beneficio principal"
+        DETALLE = "detalle", "Detalle adicional"
+        CONDICION = "condicion", "Condición"
+
+    paquete = models.ForeignKey(
+        Paquete,
+        on_delete=models.CASCADE,
+        related_name="beneficios",
+        blank=True,
+        null=True,
+        help_text="Vacío cuando el beneficio está incluido en todos los paquetes.",
+    )
+    tipo = models.CharField(
+        max_length=20,
+        choices=Tipo.choices,
+        default=Tipo.PRINCIPAL,
+    )
+    titulo = models.CharField(max_length=180)
+    detalle = models.CharField(max_length=300, blank=True)
+    orden = models.PositiveSmallIntegerField(default=0)
+    minimo_invitados = models.PositiveIntegerField(blank=True, null=True)
+    maximo_invitados = models.PositiveIntegerField(blank=True, null=True)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["orden", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(minimo_invitados__isnull=True)
+                | Q(minimo_invitados__gt=0),
+                name="beneficio_minimo_invitados_positivo",
+            ),
+            models.CheckConstraint(
+                condition=Q(maximo_invitados__isnull=True)
+                | Q(maximo_invitados__gt=0),
+                name="beneficio_maximo_invitados_positivo",
+            ),
+            models.CheckConstraint(
+                condition=Q(minimo_invitados__isnull=True)
+                | Q(maximo_invitados__isnull=True)
+                | Q(maximo_invitados__gte=models.F("minimo_invitados")),
+                name="beneficio_rango_invitados_valido",
+            ),
+        ]
+
+    @property
+    def es_comun(self):
+        return self.paquete_id is None
+
+    def clean(self):
+        super().clean()
+        self.titulo = " ".join((self.titulo or "").strip().split())
+        self.detalle = " ".join((self.detalle or "").strip().split())
+        if not self.titulo:
+            raise ValidationError({"titulo": "El beneficio debe tener un título."})
+        if (
+            self.minimo_invitados
+            and self.maximo_invitados
+            and self.maximo_invitados < self.minimo_invitados
+        ):
+            raise ValidationError(
+                {
+                    "maximo_invitados": "El máximo no puede ser menor que el mínimo de invitados."
+                }
+            )
+
+    def __str__(self):
+        alcance = self.paquete.nombre if self.paquete_id else "Todos los paquetes"
+        return f"{self.titulo} · {alcance}"
 
 
 class ConfiguracionNegocio(TimeStampedModel):

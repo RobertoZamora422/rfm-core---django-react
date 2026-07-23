@@ -7,11 +7,16 @@ import { Textarea } from '../../components/ui/Textarea'
 import { paquetesService } from '../../services/resourceService'
 import { getApiErrorMessage } from '../../utils/apiErrors'
 import { useFocusFirstError } from '../../hooks/useFocusFirstError'
+import { TIPO_SERVICIO_LABELS } from '../contratos/contractConstants'
 
 function buildInitialForm(cotizacion) {
   return {
     fecha_evento: cotizacion?.fecha_tentativa ?? '',
     numero_invitados: cotizacion?.numero_invitados ?? '',
+    tipo_servicio:
+      cotizacion?.tipo_servicio === 'no_estoy_seguro'
+        ? ''
+        : cotizacion?.tipo_servicio ?? '',
     paquete: cotizacion?.paquete ?? '',
     valor_final: cotizacion?.total_estimado ?? '0.00',
     monto_abonado: '0.00',
@@ -67,14 +72,16 @@ export function ConversionModal({
   }, [])
 
   const paqueteOptions = useMemo(() => {
-    if (!cotizacion || cotizacion.tipo_servicio === 'no_seguro') return paquetes
-    return paquetes.filter((paquete) => paquete.tipo_servicio === cotizacion.tipo_servicio)
-  }, [cotizacion, paquetes])
+    if (form.tipo_servicio !== 'servicio_completo') return []
+    return paquetes
+  }, [form.tipo_servicio, paquetes])
 
   const handleChange = (event) => {
+    const { name, value } = event.target
     setForm((current) => ({
       ...current,
-      [event.target.name]: event.target.value,
+      [name]: value,
+      ...(name === 'tipo_servicio' ? { paquete: '' } : {}),
     }))
   }
 
@@ -83,6 +90,7 @@ export function ConversionModal({
     onSubmit({
       fecha_evento: form.fecha_evento,
       numero_invitados: form.numero_invitados ? Number(form.numero_invitados) : '',
+      tipo_servicio: form.tipo_servicio,
       paquete: form.paquete ? Number(form.paquete) : null,
       valor_final: form.valor_final,
       monto_abonado: form.monto_abonado,
@@ -120,7 +128,22 @@ export function ConversionModal({
           value={form.numero_invitados}
         />
         <Select
-          disabled={isLoadingPaquetes}
+          disabled={cotizacion?.tipo_servicio !== 'no_estoy_seguro'}
+          error={errors.tipo_servicio}
+          id="conversion-tipo-servicio"
+          label="Tipo de servicio final"
+          name="tipo_servicio"
+          onChange={handleChange}
+          required
+          value={form.tipo_servicio}
+        >
+          <option value="">Resuelve el tipo de servicio</option>
+          {Object.entries(TIPO_SERVICIO_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </Select>
+        <Select
+          disabled={isLoadingPaquetes || form.tipo_servicio !== 'servicio_completo'}
           error={errors.paquete || catalogError}
           id="conversion-paquete"
           label="Paquete final"
@@ -128,7 +151,9 @@ export function ConversionModal({
           onChange={handleChange}
           value={form.paquete}
         >
-          <option value="">Sin paquete</option>
+          <option value="">
+            {form.tipo_servicio === 'alquiler' ? 'No aplica' : 'Seleccione un paquete'}
+          </option>
           {paqueteOptions.map((paquete) => (
             <option key={paquete.id} value={paquete.id}>
               {paquete.nombre}

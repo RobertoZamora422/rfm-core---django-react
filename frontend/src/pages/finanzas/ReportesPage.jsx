@@ -32,7 +32,7 @@ const reportOptions = [
   { key: 'comercial', label: 'Comercial', icon: FileText },
   { key: 'financiero', label: 'Financiero', icon: BarChart3 },
   { key: 'eventos', label: 'Eventos', icon: CalendarDays },
-  { key: 'paquetes', label: 'Paquetes', icon: Package },
+  { key: 'paquetes', label: 'Servicios y paquetes', icon: Package },
 ]
 
 const initialRangeFilters = {
@@ -118,6 +118,8 @@ function buildExportRows(activeReport, data) {
       'Cliente': row.persona_nombre,
       'Teléfono': row.persona_telefono,
       'Tipo de evento': row.tipo_evento_nombre,
+      'Tipo de servicio': row.tipo_servicio_display,
+      'Paquete / oferta': row.paquete_nombre,
       'Fecha tentativa': formatDate(row.fecha_tentativa),
       'Estado comercial': getStatusLabel(row.estado, quoteStatusLabels),
       'Estimado referencial (USD)': row.total_estimado,
@@ -197,7 +199,7 @@ function buildExportRows(activeReport, data) {
 
   return (data.paquetes ?? []).map((row) => ({
     'Paquete': row.paquete_nombre,
-    'Tipo de servicio': row.tipo_servicio,
+    'Tipo de servicio': row.tipo_servicio_display,
     'Cotizaciones': row.cotizaciones,
     'Cotizaciones convertidas': row.cotizaciones_convertidas,
     'Contratos confirmados': row.contratos_confirmados,
@@ -448,6 +450,16 @@ function FinancialReport({ data }) {
       render: (row) => formatDate(row.fecha_evento),
     },
     {
+      key: 'tipo_servicio',
+      header: 'Servicio / paquete',
+      render: (row) => (
+        <div className="stacked-cell">
+          <strong>{row.tipo_servicio_display}</strong>
+          <span>{row.paquete_nombre}</span>
+        </div>
+      ),
+    },
+    {
       key: 'valor_final',
       header: 'Ingresos',
       align: 'right',
@@ -589,6 +601,16 @@ function EventsReport({ data }) {
     },
     { key: 'numero_invitados', header: 'Invitados' },
     {
+      key: 'tipo_servicio',
+      header: 'Servicio / paquete',
+      render: (row) => (
+        <div className="stacked-cell">
+          <strong>{row.tipo_servicio_display}</strong>
+          <span>{row.paquete_nombre}</span>
+        </div>
+      ),
+    },
+    {
       key: 'estado_contrato',
       header: 'Contrato',
       render: (row) => <ReportStatusBadge labels={contractStatusLabels} value={row.estado_contrato} />,
@@ -655,7 +677,16 @@ function PackagesReport({ data }) {
   const summary = data.resumen
   const rows = (data.paquetes ?? []).map((row) => ({ ...row, id: row.key }))
   const columns = [
-    { key: 'paquete_nombre', header: 'Paquete' },
+    {
+      key: 'paquete_nombre',
+      header: 'Servicio / paquete',
+      render: (row) => (
+        <div className="stacked-cell">
+          <strong>{row.paquete_nombre}</strong>
+          <span>{row.tipo_servicio_display}</span>
+        </div>
+      ),
+    },
     { key: 'cotizaciones', header: 'Cotizaciones' },
     { key: 'contratos_confirmados', header: 'Contratos' },
     {
@@ -690,7 +721,7 @@ function PackagesReport({ data }) {
         items={[
           {
             key: 'paquetes',
-            label: 'Paquetes con actividad',
+            label: 'Ofertas con actividad',
             value: summary.paquetes_con_actividad,
             detail: 'Cotizaciones o contratos',
           },
@@ -716,9 +747,9 @@ function PackagesReport({ data }) {
       />
       <Card>
         <DataTable
-          caption="Actividad comercial y rentabilidad por paquete"
+          caption="Actividad comercial y rentabilidad por tipo de servicio y paquete"
           columns={columns}
-          emptyMessage="No hay actividad por paquete en el periodo seleccionado."
+          emptyMessage="No hay actividad de servicios o paquetes en el periodo seleccionado."
           mobileTitle={(row) => row.paquete_nombre}
           rows={rows}
         />

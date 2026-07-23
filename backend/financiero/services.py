@@ -9,6 +9,8 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
+from negocio.ofertas import presentacion_paquete
+
 from .models import (
     Contrato,
     GastoRecurrente,
@@ -454,7 +456,15 @@ def _serialize_contract_profitability(contrato):
         "tipo_evento_id": contrato.tipo_evento_id,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
         "paquete_id": contrato.paquete_id,
-        "paquete_nombre": contrato.paquete.nombre if contrato.paquete else "",
+        "paquete_nombre": presentacion_paquete(
+            tipo_servicio=contrato.tipo_servicio,
+            snapshot=contrato.oferta_snapshot,
+            paquete=contrato.paquete,
+        ),
+        "tipo_servicio": contrato.tipo_servicio,
+        "tipo_servicio_display": contrato.get_tipo_servicio_display()
+        if contrato.tipo_servicio
+        else "Requiere revisión",
         "fecha_evento": contrato.fecha_evento.isoformat(),
         "numero_invitados": contrato.numero_invitados,
         "valor_final": _money(contrato.valor_final),
@@ -604,7 +614,18 @@ def _group_profitability(rows, group_id_key, group_name_key, empty_name):
 
 
 def _commercial_performance(rows):
-    paquetes = _group_profitability(rows, "paquete_id", "paquete_nombre", "Sin paquete")
+    filas_paquetes = [
+        row
+        for row in rows
+        if row.get("tipo_servicio") == Contrato.TipoServicio.SERVICIO_COMPLETO
+        and row.get("paquete_id") is not None
+    ]
+    paquetes = _group_profitability(
+        filas_paquetes,
+        "paquete_id",
+        "paquete_nombre",
+        "Paquete no identificado",
+    )
     tipos_evento = _group_profitability(
         rows,
         "tipo_evento_id",
@@ -937,10 +958,21 @@ def dashboard_financiero(mes=None, anio=None):
     event_rows = _event_profitability(mes, anio)
     commercial_performance = _commercial_performance(event_rows)
     rentabilidad_paquetes = _group_profitability(
-        event_rows,
+        [
+            row
+            for row in event_rows
+            if row.get("tipo_servicio") == Contrato.TipoServicio.SERVICIO_COMPLETO
+            and row.get("paquete_id") is not None
+        ],
         "paquete_id",
         "paquete_nombre",
-        "Sin paquete",
+        "Paquete no identificado",
+    )
+    rentabilidad_tipos_servicio = _group_profitability(
+        event_rows,
+        "tipo_servicio",
+        "tipo_servicio_display",
+        "Requiere revisión",
     )
     rentabilidad_tipos_evento = _group_profitability(
         event_rows,
@@ -1030,6 +1062,7 @@ def dashboard_financiero(mes=None, anio=None):
             "mensaje_vacio": "No hay suficiente información para comparar con el mes anterior.",
         },
         "rentabilidad_por_paquete": rentabilidad_paquetes,
+        "rentabilidad_por_tipo_servicio": rentabilidad_tipos_servicio,
         "analisis_por_tipo_evento": rentabilidad_tipos_evento,
         "top_eventos_rentables": event_rows[:5],
         "rentabilidad_eventos": event_rows,

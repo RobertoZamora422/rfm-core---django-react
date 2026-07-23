@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -20,7 +21,7 @@ class Cotizacion(TimeStampedModel):
     class TipoServicioInteres(models.TextChoices):
         ALQUILER = "alquiler", "Alquiler del local"
         SERVICIO_COMPLETO = "servicio_completo", "Servicio completo"
-        NO_SEGURO = "no_seguro", "Aun no estoy seguro"
+        NO_ESTOY_SEGURO = "no_estoy_seguro", "No estoy seguro"
 
     persona = models.ForeignKey(
         Persona,
@@ -47,6 +48,8 @@ class Cotizacion(TimeStampedModel):
         max_length=30,
         choices=TipoServicioInteres.choices,
     )
+    oferta_snapshot = models.JSONField(default=dict, blank=True)
+    oferta_requiere_revision = models.BooleanField(default=False)
     estado = models.CharField(
         max_length=20,
         choices=Estado.choices,
@@ -74,11 +77,33 @@ class Cotizacion(TimeStampedModel):
                 condition=Q(total_estimado__gte=0),
                 name="cotizacion_total_estimado_no_negativo",
             ),
+            models.CheckConstraint(
+                condition=Q(oferta_requiere_revision=True)
+                | Q(tipo_servicio="alquiler", paquete__isnull=True)
+                | Q(tipo_servicio="servicio_completo", paquete__isnull=False)
+                | Q(tipo_servicio="no_estoy_seguro"),
+                name="cotizacion_tipo_servicio_paquete_coherente",
+            ),
         ]
 
     @property
     def esta_convertida(self):
         return self.estado == self.Estado.CONVERTIDA
+
+    def clean(self):
+        super().clean()
+        if self.tipo_servicio == self.TipoServicioInteres.ALQUILER and self.paquete_id:
+            raise ValidationError(
+                {"paquete": "El alquiler del local no utiliza un paquete."}
+            )
+        if (
+            self.tipo_servicio == self.TipoServicioInteres.SERVICIO_COMPLETO
+            and not self.paquete_id
+            and not self.oferta_requiere_revision
+        ):
+            raise ValidationError(
+                {"paquete": "El servicio completo requiere seleccionar un paquete."}
+            )
 
     def __str__(self):
         return f"Cotización #{self.pk or 'nueva'} - {self.persona}"

@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import ConfiguracionNegocio, NombrePersona, Paquete, Persona, TipoEvento
+from .models import (
+    BeneficioPaquete,
+    ConfiguracionNegocio,
+    NombrePersona,
+    Paquete,
+    Persona,
+    TipoEvento,
+)
 
 
 @admin.register(Persona)
@@ -31,13 +38,24 @@ class TipoEventoAdmin(admin.ModelAdmin):
 class PaqueteAdmin(admin.ModelAdmin):
     list_display = (
         "nombre",
-        "tipo_servicio",
+        "categoria",
+        "orden",
         "precio_por_persona",
+        "destacado",
         "activo",
         "creado_en",
     )
-    list_filter = ("tipo_servicio", "activo")
-    search_fields = ("nombre", "descripcion")
+    list_filter = ("categoria", "destacado", "activo")
+    search_fields = ("nombre", "resumen_corto", "etiqueta_comercial")
+    readonly_fields = ("creado_en", "actualizado_en")
+
+
+@admin.register(BeneficioPaquete)
+class BeneficioPaqueteAdmin(admin.ModelAdmin):
+    list_display = ("titulo", "paquete", "tipo", "orden", "activo")
+    list_filter = ("tipo", "activo")
+    search_fields = ("titulo", "detalle", "paquete__nombre")
+    autocomplete_fields = ("paquete",)
     readonly_fields = ("creado_en", "actualizado_en")
 
 

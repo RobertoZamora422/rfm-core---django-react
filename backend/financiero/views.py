@@ -102,6 +102,7 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
         estado_pago = self.request.query_params.get("estado_pago")
         persona = self.request.query_params.get("persona")
         tipo_evento = self.request.query_params.get("tipo_evento")
+        tipo_servicio = self.request.query_params.get("tipo_servicio")
         buscar = (
             self.request.query_params.get("buscar")
             or self.request.query_params.get("search")
@@ -127,6 +128,8 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(persona_id=persona)
         if tipo_evento:
             queryset = queryset.filter(tipo_evento_id=tipo_evento)
+        if tipo_servicio:
+            queryset = queryset.filter(tipo_servicio=tipo_servicio)
         if fecha_desde:
             queryset = queryset.filter(fecha_evento__gte=fecha_desde)
         if fecha_hasta:
@@ -137,6 +140,7 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
                 | Q(persona__telefono__icontains=buscar)
                 | Q(tipo_evento__nombre__icontains=buscar)
                 | Q(paquete__nombre__icontains=buscar)
+                | Q(oferta_snapshot__paquete__nombre__icontains=buscar)
             )
             if extraer_digitos_telefono(buscar):
                 criteria |= Q(

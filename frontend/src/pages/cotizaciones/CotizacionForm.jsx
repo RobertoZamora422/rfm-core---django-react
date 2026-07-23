@@ -8,7 +8,7 @@ import { PERSON_ORIGIN_LABELS } from '../../components/personas/personaConstants
 import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 import { TIPO_SERVICIO_LABELS } from './quoteConstants'
 
-const TIPOS_SERVICIO = ['alquiler', 'servicio_completo', 'no_seguro']
+const TIPOS_SERVICIO = ['alquiler', 'servicio_completo', 'no_estoy_seguro']
 
 function buildInitialForm(initialValues) {
   return {
@@ -50,8 +50,8 @@ export function CotizacionForm({
   useFocusFirstError(errors)
 
   const paqueteOptions = useMemo(() => {
-    if (form.tipo_servicio === 'no_seguro') return []
-    return paquetes.filter((paquete) => paquete.tipo_servicio === form.tipo_servicio)
+    if (form.tipo_servicio === 'alquiler') return []
+    return paquetes
   }, [form.tipo_servicio, paquetes])
 
   const handleChange = (event) => {
@@ -148,7 +148,7 @@ export function CotizacionForm({
             {TIPOS_SERVICIO.map((tipo) => <option key={tipo} value={tipo}>{TIPO_SERVICIO_LABELS[tipo]}</option>)}
           </Select>
           <Select
-            disabled={isLoadingCatalogs || isConverted || form.tipo_servicio === 'no_seguro'}
+            disabled={isLoadingCatalogs || isConverted || form.tipo_servicio === 'alquiler'}
             error={errors.paquete}
             id="cotizacion-paquete"
             label="Paquete"
@@ -157,7 +157,13 @@ export function CotizacionForm({
             required={form.tipo_servicio === 'servicio_completo'}
             value={form.paquete}
           >
-            <option value="">{form.tipo_servicio === 'servicio_completo' ? 'Seleccione un paquete' : 'Sin paquete'}</option>
+            <option value="">
+              {form.tipo_servicio === 'servicio_completo'
+                ? 'Seleccione un paquete'
+                : form.tipo_servicio === 'no_estoy_seguro'
+                  ? 'Aún por definir'
+                  : 'No aplica'}
+            </option>
             {paqueteOptions.map((paquete) => <option key={paquete.id} value={paquete.id}>{paquete.nombre}</option>)}
           </Select>
         </div>

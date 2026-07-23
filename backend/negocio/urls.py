@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from .views import (
+    BeneficioPaqueteViewSet,
     PersonaViewSet,
     ConfiguracionNegocioViewSet,
     InicioResumenAPIView,
@@ -16,6 +17,11 @@ router = SimpleRouter()
 router.register("personas", PersonaViewSet, basename="persona")
 router.register("tipos-evento", TipoEventoViewSet, basename="tipo-evento")
 router.register("paquetes", PaqueteViewSet, basename="paquete")
+router.register(
+    "beneficios-paquetes",
+    BeneficioPaqueteViewSet,
+    basename="beneficio-paquete",
+)
 router.register(
     "configuracion-negocio",
     ConfiguracionNegocioViewSet,

@@ -12,6 +12,10 @@ from negocio.validators import validate_positive_integer
 
 
 class Contrato(TimeStampedModel):
+    class TipoServicio(models.TextChoices):
+        ALQUILER = "alquiler", "Alquiler del local"
+        SERVICIO_COMPLETO = "servicio_completo", "Servicio completo"
+
     class EstadoContrato(models.TextChoices):
         CONFIRMADO = "confirmado", "Confirmado"
         CANCELADO = "cancelado", "Cancelado"
@@ -45,6 +49,14 @@ class Contrato(TimeStampedModel):
         blank=True,
         null=True,
     )
+    tipo_servicio = models.CharField(
+        max_length=30,
+        choices=TipoServicio.choices,
+        blank=True,
+        null=True,
+    )
+    oferta_snapshot = models.JSONField(default=dict, blank=True)
+    oferta_requiere_revision = models.BooleanField(default=False)
     fecha_evento = models.DateField()
     numero_invitados = models.PositiveIntegerField(
         validators=[validate_positive_integer],
@@ -90,6 +102,12 @@ class Contrato(TimeStampedModel):
                 condition=Q(monto_abonado__lte=models.F("valor_final")),
                 name="contrato_monto_abonado_no_supera_valor_final",
             ),
+            models.CheckConstraint(
+                condition=Q(oferta_requiere_revision=True)
+                | Q(tipo_servicio="alquiler", paquete__isnull=True)
+                | Q(tipo_servicio="servicio_completo", paquete__isnull=False),
+                name="contrato_tipo_servicio_paquete_coherente",
+            ),
         ]
 
     @property
@@ -133,6 +151,22 @@ class Contrato(TimeStampedModel):
                 }
             )
         self.estado_pago = self.calcular_estado_pago()
+        if not self.oferta_requiere_revision:
+            if not self.tipo_servicio:
+                raise ValidationError(
+                    {"tipo_servicio": "Selecciona el tipo de servicio del contrato."}
+                )
+            if self.tipo_servicio == self.TipoServicio.ALQUILER and self.paquete_id:
+                raise ValidationError(
+                    {"paquete": "El alquiler del local no utiliza un paquete."}
+                )
+            if (
+                self.tipo_servicio == self.TipoServicio.SERVICIO_COMPLETO
+                and not self.paquete_id
+            ):
+                raise ValidationError(
+                    {"paquete": "El servicio completo requiere seleccionar un paquete."}
+                )
 
     def __str__(self):
         return f"Contrato #{self.pk or 'nuevo'} - {self.persona}"

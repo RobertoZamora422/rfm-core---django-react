@@ -157,7 +157,7 @@ function UpcomingEventItem({ event }) {
         </span>
         <span className="home-event__client">{event.persona_nombre}</span>
         <span className="home-event__meta">
-          <span>{event.paquete_nombre || 'Sin paquete asignado'}</span>
+          <span>{event.tipo_servicio_display} · {event.paquete_nombre}</span>
           <span>Saldo: {formatCurrency(event.saldo_pendiente)}</span>
         </span>
       </span>

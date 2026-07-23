@@ -41,6 +41,7 @@ import {
 const initialFilters = {
   buscar: '',
   estado: '',
+  tipo_servicio: '',
   tipo_evento: '',
   desde: '',
   hasta: '',
@@ -215,6 +216,11 @@ export function CotizacionesPage() {
       ),
     },
     {
+      key: 'tipo_servicio',
+      header: 'Tipo de servicio',
+      render: (item) => TIPO_SERVICIO_LABELS[item.tipo_servicio] ?? item.tipo_servicio,
+    },
+    {
       key: 'oportunidad',
       header: 'Evento / servicio',
       render: (item) => (
@@ -299,6 +305,10 @@ export function CotizacionesPage() {
         <Input icon={Search} id="cotizaciones-buscar" label="Buscar" name="buscar" onChange={handleFilterChange} placeholder="Persona, teléfono, evento o paquete" type="search" value={filters.buscar} />
         <Select id="cotizaciones-estado" label="Estado" name="estado" onChange={handleFilterChange} value={filters.estado}>
           {ESTADOS_FILTRO.map((estado) => <option key={estado.value || 'todos'} value={estado.value}>{estado.label}</option>)}
+        </Select>
+        <Select id="cotizaciones-tipo-servicio" label="Tipo de servicio" name="tipo_servicio" onChange={handleFilterChange} value={filters.tipo_servicio}>
+          <option value="">Todos los servicios</option>
+          {Object.entries(TIPO_SERVICIO_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </Select>
         <Select disabled={isLoadingCatalogs} id="cotizaciones-tipo-evento" label="Tipo de evento" name="tipo_evento" onChange={handleFilterChange} value={filters.tipo_evento}>
           <option value="">Todos los eventos</option>

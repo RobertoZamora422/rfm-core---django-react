@@ -9,12 +9,19 @@ from rest_framework.views import APIView
 
 from config.pagination import OptionalPageNumberPagination
 
-from .models import ConfiguracionNegocio, Paquete, Persona, TipoEvento
+from .models import BeneficioPaquete, ConfiguracionNegocio, Paquete, Persona, TipoEvento
+from .ofertas import (
+    beneficios_comunes_activos,
+    recomendar_paquetes,
+    serializar_beneficio,
+    serializar_paquete,
+)
 from .serializers import (
     PersonaDetalleSerializer,
     PersonaSerializer,
     ConfiguracionNegocioSerializer,
     PaqueteSerializer,
+    BeneficioPaqueteSerializer,
     PublicConfiguracionNegocioSerializer,
     PublicPaqueteSerializer,
     PublicTipoEventoSerializer,
@@ -150,16 +157,16 @@ class TipoEventoViewSet(DeactivateInsteadOfDeleteMixin, viewsets.ModelViewSet):
 
 
 class PaqueteViewSet(DeactivateInsteadOfDeleteMixin, viewsets.ModelViewSet):
-    queryset = Paquete.objects.all()
+    queryset = Paquete.objects.prefetch_related("beneficios")
     serializer_class = PaqueteSerializer
-    search_fields = ["nombre", "descripcion"]
+    search_fields = ["nombre", "resumen_corto", "etiqueta_comercial"]
     resource_label = "paquete"
     pagination_class = OptionalPageNumberPagination
 
     def get_queryset(self):
         queryset = super().get_queryset()
         activo = self.request.query_params.get("activo")
-        tipo_servicio = self.request.query_params.get("tipo_servicio")
+        categoria = self.request.query_params.get("categoria")
         buscar = (
             self.request.query_params.get("buscar")
             or self.request.query_params.get("search")
@@ -167,12 +174,36 @@ class PaqueteViewSet(DeactivateInsteadOfDeleteMixin, viewsets.ModelViewSet):
         ).strip()
         if buscar:
             queryset = queryset.filter(
-                Q(nombre__icontains=buscar) | Q(descripcion__icontains=buscar)
+                Q(nombre__icontains=buscar)
+                | Q(resumen_corto__icontains=buscar)
+                | Q(etiqueta_comercial__icontains=buscar)
+                | Q(beneficios__titulo__icontains=buscar)
             )
         if activo is not None:
             queryset = queryset.filter(activo=activo.lower() == "true")
-        if tipo_servicio:
-            queryset = queryset.filter(tipo_servicio=tipo_servicio)
+        if categoria:
+            queryset = queryset.filter(categoria=categoria)
+        return queryset.distinct()
+
+
+class BeneficioPaqueteViewSet(viewsets.ModelViewSet):
+    serializer_class = BeneficioPaqueteSerializer
+    pagination_class = OptionalPageNumberPagination
+    search_fields = ["titulo", "detalle"]
+
+    def get_queryset(self):
+        queryset = BeneficioPaquete.objects.select_related("paquete")
+        alcance = self.request.query_params.get("alcance")
+        paquete = self.request.query_params.get("paquete")
+        activo = self.request.query_params.get("activo")
+        if alcance == "comunes":
+            queryset = queryset.filter(paquete__isnull=True)
+        elif alcance == "paquete":
+            queryset = queryset.filter(paquete__isnull=False)
+        if paquete:
+            queryset = queryset.filter(paquete_id=paquete)
+        if activo is not None:
+            queryset = queryset.filter(activo=activo.lower() == "true")
         return queryset
 
 
@@ -215,11 +246,55 @@ class PublicPaquetesAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        queryset = Paquete.objects.filter(activo=True).order_by("nombre")
-        tipo_servicio = request.query_params.get("tipo_servicio")
-        if tipo_servicio:
-            queryset = queryset.filter(tipo_servicio=tipo_servicio)
-        return Response(PublicPaqueteSerializer(queryset, many=True).data)
+        numero_invitados = request.query_params.get("numero_invitados")
+        if numero_invitados:
+            try:
+                numero_invitados = int(numero_invitados)
+            except (TypeError, ValueError):
+                raise ValidationError(
+                    {"numero_invitados": "Ingresa un número de invitados válido."}
+                )
+            if numero_invitados <= 0:
+                raise ValidationError(
+                    {"numero_invitados": "El número de invitados debe ser mayor que cero."}
+                )
+
+        queryset = (
+            Paquete.objects.filter(activo=True)
+            .prefetch_related("beneficios")
+            .order_by("categoria", "orden", "precio_por_persona", "id")
+        )
+        paquetes = list(queryset)
+        comunes = beneficios_comunes_activos()
+        recomendados = recomendar_paquetes(
+            paquetes,
+            {
+                "nivel_experiencia": request.query_params.get(
+                    "nivel_experiencia",
+                    "equilibrado",
+                ),
+                "entretenimiento": request.query_params.get(
+                    "entretenimiento",
+                    "indiferente",
+                ),
+            },
+        )
+        return Response(
+            {
+                "incluidos_en_todos": [
+                    serializar_beneficio(item) for item in comunes
+                ],
+                "paquetes": [
+                    serializar_paquete(
+                        paquete,
+                        numero_invitados=numero_invitados,
+                        comunes=[],
+                    )
+                    for paquete in paquetes
+                ],
+                "recomendados": [paquete.id for paquete in recomendados],
+            }
+        )
 
 
 class PublicConfiguracionAPIView(APIView):

@@ -1,4 +1,4 @@
-"""Estrategias de calculo para pre-cotizacion."""
+"""Estrategias de cálculo para pre-cotización."""
 
 from abc import ABC, abstractmethod
 from decimal import Decimal
@@ -6,18 +6,50 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 from negocio.models import Paquete
+from negocio.ofertas import (
+    beneficios_comunes_activos,
+    recomendar_paquetes,
+    serializar_beneficio,
+    serializar_paquete,
+)
 
 from .models import Cotizacion
 
 
+def paquetes_activos():
+    return list(
+        Paquete.objects.filter(activo=True)
+        .prefetch_related("beneficios")
+        .order_by("categoria", "orden", "precio_por_persona", "id")
+    )
+
+
 class PreCotizacionStrategy(ABC):
     @abstractmethod
-    def calcular(self, *, configuracion, numero_invitados, paquete=None):
+    def calcular(
+        self,
+        *,
+        configuracion,
+        numero_invitados,
+        paquete=None,
+        preferencias=None,
+    ):
         raise NotImplementedError
 
 
 class AlquilerPreCotizacionStrategy(PreCotizacionStrategy):
-    def calcular(self, *, configuracion, numero_invitados, paquete=None):
+    def calcular(
+        self,
+        *,
+        configuracion,
+        numero_invitados,
+        paquete=None,
+        preferencias=None,
+    ):
+        if paquete:
+            raise ValidationError(
+                {"paquete": "El alquiler del local no utiliza un paquete."}
+            )
         invitados_adicionales = max(
             numero_invitados - configuracion.invitados_incluidos_alquiler,
             0,
@@ -39,61 +71,74 @@ class AlquilerPreCotizacionStrategy(PreCotizacionStrategy):
 
 
 class ServicioCompletoPreCotizacionStrategy(PreCotizacionStrategy):
-    def calcular(self, *, configuracion, numero_invitados, paquete=None):
-        paquetes = [paquete] if paquete else list(
-            Paquete.objects.filter(
-                activo=True,
-                tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
-            ).order_by("nombre")
-        )
-
+    def calcular(
+        self,
+        *,
+        configuracion,
+        numero_invitados,
+        paquete=None,
+        preferencias=None,
+    ):
+        paquetes = paquetes_activos()
+        if paquete and all(item.id != paquete.id for item in paquetes):
+            raise ValidationError(
+                {"paquete": "El paquete seleccionado no está disponible."}
+            )
         if not paquetes:
             raise ValidationError(
-                {
-                    "paquete": "Debe existir al menos un paquete activo de servicio completo."
-                }
+                {"paquete": "Debe existir al menos un paquete activo."}
             )
 
-        paquetes_calculados = []
-        for paquete_item in paquetes:
-            total_paquete = paquete_item.precio_por_persona * Decimal(numero_invitados)
-            paquetes_calculados.append(
-                {
-                    "id": paquete_item.id,
-                    "nombre": paquete_item.nombre,
-                    "descripcion": paquete_item.descripcion,
-                    "precio_por_persona": paquete_item.precio_por_persona,
-                    "total_estimado": total_paquete,
-                }
+        comunes = beneficios_comunes_activos()
+        paquetes_calculados = [
+            serializar_paquete(
+                paquete_item,
+                numero_invitados=numero_invitados,
+                comunes=[],
             )
-
-        total_estimado = min(item["total_estimado"] for item in paquetes_calculados)
-        resultado = {
+            for paquete_item in paquetes
+        ]
+        seleccionado = next(
+            (
+                item
+                for item in paquetes_calculados
+                if paquete and item["id"] == paquete.id
+            ),
+            None,
+        )
+        total_minimo = min(
+            Decimal(item["total_estimado"]) for item in paquetes_calculados
+        )
+        total_estimado = (
+            Decimal(seleccionado["total_estimado"]) if seleccionado else total_minimo
+        )
+        return {
             "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             "numero_invitados": numero_invitados,
             "total_estimado": total_estimado,
-            "total_estimado_minimo": total_estimado,
+            "total_estimado_minimo": total_minimo,
+            "paquete": paquete.id if paquete else None,
+            "paquete_seleccionado": seleccionado,
+            "incluidos_en_todos": [
+                serializar_beneficio(item) for item in comunes
+            ],
             "paquetes": paquetes_calculados,
         }
 
-        if paquete:
-            resultado.update(
-                {
-                    "paquete": paquete.pk,
-                    "paquete_nombre": paquete.nombre,
-                    "precio_por_persona": paquete.precio_por_persona,
-                }
-            )
 
-        return resultado
-
-
-class NoSeguroPreCotizacionStrategy(PreCotizacionStrategy):
+class NoEstoySeguroPreCotizacionStrategy(PreCotizacionStrategy):
     def __init__(self, alquiler_strategy, servicio_completo_strategy):
         self.alquiler_strategy = alquiler_strategy
         self.servicio_completo_strategy = servicio_completo_strategy
 
-    def calcular(self, *, configuracion, numero_invitados, paquete=None):
+    def calcular(
+        self,
+        *,
+        configuracion,
+        numero_invitados,
+        paquete=None,
+        preferencias=None,
+    ):
         alquiler = self.alquiler_strategy.calcular(
             configuracion=configuracion,
             numero_invitados=numero_invitados,
@@ -101,13 +146,18 @@ class NoSeguroPreCotizacionStrategy(PreCotizacionStrategy):
         servicio_completo = self.servicio_completo_strategy.calcular(
             configuracion=configuracion,
             numero_invitados=numero_invitados,
+            paquete=paquete,
         )
+        activos = paquetes_activos()
+        recomendados = recomendar_paquetes(activos, preferencias)
         return {
-            "tipo_servicio": Cotizacion.TipoServicioInteres.NO_SEGURO,
+            "tipo_servicio": Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
             "numero_invitados": numero_invitados,
             "total_estimado": alquiler["total_estimado"],
             "alquiler": alquiler,
             "servicio_completo": servicio_completo,
+            "recomendados": [item.id for item in recomendados],
+            "preferencias": preferencias or {},
         }
 
 
@@ -117,7 +167,7 @@ servicio_completo_strategy = ServicioCompletoPreCotizacionStrategy()
 PRE_COTIZACION_STRATEGIES = {
     Cotizacion.TipoServicioInteres.ALQUILER: alquiler_strategy,
     Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO: servicio_completo_strategy,
-    Cotizacion.TipoServicioInteres.NO_SEGURO: NoSeguroPreCotizacionStrategy(
+    Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO: NoEstoySeguroPreCotizacionStrategy(
         alquiler_strategy,
         servicio_completo_strategy,
     ),
@@ -127,5 +177,7 @@ PRE_COTIZACION_STRATEGIES = {
 def obtener_estrategia_pre_cotizacion(tipo_servicio):
     try:
         return PRE_COTIZACION_STRATEGIES[tipo_servicio]
-    except KeyError:
-        raise ValidationError({"tipo_servicio": "Tipo de servicio no soportado."})
+    except KeyError as exc:
+        raise ValidationError(
+            {"tipo_servicio": "Tipo de servicio no soportado."}
+        ) from exc

@@ -7,6 +7,13 @@ from django.db import transaction
 
 from financiero.models import Contrato
 from negocio.persona_services import obtener_o_crear_persona_publica
+from negocio.ofertas import (
+    snapshot_alquiler,
+    snapshot_alquiler_desde_oferta,
+    snapshot_no_estoy_seguro,
+    snapshot_paquete,
+    snapshot_paquete_desde_oferta,
+)
 from negocio.selectors import obtener_configuracion_activa
 
 from .models import Cotizacion
@@ -17,13 +24,20 @@ _UNSET = object()
 
 
 def _validar_tipo_servicio_y_paquete(tipo_servicio, paquete):
-    if paquete and paquete.tipo_servicio != tipo_servicio:
+    if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER and paquete:
         raise ValidationError(
-            {"paquete": "El paquete no corresponde al tipo de servicio indicado."}
+            {"paquete": "El alquiler del local no utiliza un paquete."}
         )
+    if paquete and not paquete.activo:
+        raise ValidationError({"paquete": "El paquete seleccionado no está disponible."})
 
 
-def calcular_pre_cotizacion(tipo_servicio, numero_invitados, paquete=None):
+def calcular_pre_cotizacion(
+    tipo_servicio,
+    numero_invitados,
+    paquete=None,
+    preferencias=None,
+):
     configuracion = obtener_configuracion_activa()
     if configuracion is None:
         raise ValidationError(
@@ -39,6 +53,7 @@ def calcular_pre_cotizacion(tipo_servicio, numero_invitados, paquete=None):
         configuracion=configuracion,
         numero_invitados=numero_invitados,
         paquete=paquete,
+        preferencias=preferencias,
     )
 
 
@@ -53,11 +68,13 @@ def crear_pre_cotizacion(
     numero_invitados,
     tipo_servicio,
     observaciones="",
+    preferencias=None,
 ):
     calculo = calcular_pre_cotizacion(
         tipo_servicio=tipo_servicio,
         numero_invitados=numero_invitados,
         paquete=paquete,
+        preferencias=preferencias,
     )
 
     if persona is None:
@@ -70,9 +87,31 @@ def crear_pre_cotizacion(
         )
 
     observaciones_finales = observaciones
-    if tipo_servicio == Cotizacion.TipoServicioInteres.NO_SEGURO:
-        nota = "Interes inicial: aun no estoy seguro."
+    if tipo_servicio == Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO:
+        nota = "Interés inicial: no estoy seguro."
         observaciones_finales = f"{observaciones}\n{nota}".strip()
+
+    configuracion = obtener_configuracion_activa()
+    if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER:
+        oferta_snapshot = snapshot_alquiler(
+            configuracion,
+            numero_invitados=numero_invitados,
+            total_estimado=calculo["total_estimado"],
+        )
+    elif tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO:
+        oferta_snapshot = snapshot_paquete(
+            paquete,
+            numero_invitados=numero_invitados,
+            total_estimado=calculo["total_estimado"],
+        )
+    else:
+        oferta_snapshot = snapshot_no_estoy_seguro(
+            numero_invitados=numero_invitados,
+            total_estimado=calculo["total_estimado"],
+            paquete=paquete,
+            configuracion=configuracion,
+            preferencias=preferencias,
+        )
 
     cotizacion = Cotizacion.objects.create(
         persona=persona,
@@ -85,6 +124,8 @@ def crear_pre_cotizacion(
         total_estimado=calculo["total_estimado"],
         observaciones=observaciones_finales,
         origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
+        oferta_snapshot=oferta_snapshot,
+        oferta_requiere_revision=False,
     )
 
     return cotizacion, calculo
@@ -141,6 +182,7 @@ def convertir_cotizacion_a_contrato(
     fecha_evento=None,
     numero_invitados=None,
     paquete=_UNSET,
+    tipo_servicio=_UNSET,
     valor_final=None,
     monto_abonado=None,
     observaciones="",
@@ -164,28 +206,90 @@ def convertir_cotizacion_a_contrato(
             {"cotizacion": "La cotizacion ya tiene un contrato asociado."}
         )
 
-    paquete_final = cotizacion.paquete if paquete is _UNSET else paquete
+    if cotizacion.tipo_servicio == Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO:
+        if tipo_servicio is _UNSET or not tipo_servicio:
+            raise ValidationError(
+                {
+                    "tipo_servicio": "Resuelve si el contrato será de alquiler o de servicio completo."
+                }
+            )
+        tipo_servicio_final = tipo_servicio
+    else:
+        tipo_servicio_final = cotizacion.tipo_servicio
+        if tipo_servicio is not _UNSET and tipo_servicio != tipo_servicio_final:
+            raise ValidationError(
+                {
+                    "tipo_servicio": "El tipo de servicio debe coincidir con la cotización confirmada."
+                }
+            )
 
-    if (
-        paquete_final
-        and cotizacion.tipo_servicio != Cotizacion.TipoServicioInteres.NO_SEGURO
-        and paquete_final.tipo_servicio != cotizacion.tipo_servicio
-    ):
+    if tipo_servicio_final not in {
+        Contrato.TipoServicio.ALQUILER,
+        Contrato.TipoServicio.SERVICIO_COMPLETO,
+    }:
         raise ValidationError(
-            {"paquete": "El paquete final no corresponde al tipo de servicio de la cotizacion."}
+            {"tipo_servicio": "Selecciona un tipo de servicio final válido."}
         )
+
+    paquete_final = cotizacion.paquete if paquete is _UNSET else paquete
+    if tipo_servicio_final == Contrato.TipoServicio.ALQUILER:
+        if paquete is not _UNSET and paquete:
+            raise ValidationError(
+                {"paquete": "El alquiler del local no utiliza un paquete."}
+            )
+        paquete_final = None
+    elif not paquete_final:
+        raise ValidationError(
+            {"paquete": "El servicio completo requiere seleccionar un paquete."}
+        )
+
+    invitados_finales = numero_invitados or cotizacion.numero_invitados
+    valor_final_resuelto = (
+        valor_final if valor_final is not None else cotizacion.total_estimado
+    )
+    if tipo_servicio_final == Contrato.TipoServicio.ALQUILER:
+        oferta_snapshot = snapshot_alquiler_desde_oferta(
+            cotizacion.oferta_snapshot,
+            numero_invitados=invitados_finales,
+            total_estimado=valor_final_resuelto,
+        )
+        if oferta_snapshot is None:
+            oferta_snapshot = snapshot_alquiler(
+                obtener_configuracion_activa(),
+                numero_invitados=invitados_finales,
+                total_estimado=valor_final_resuelto,
+                origen="conversion",
+            )
+    else:
+        oferta_snapshot = snapshot_paquete_desde_oferta(
+            cotizacion.oferta_snapshot,
+            paquete=paquete_final,
+            numero_invitados=invitados_finales,
+            total_estimado=valor_final_resuelto,
+            origen="conversion",
+        )
+        if oferta_snapshot is None:
+            oferta_snapshot = snapshot_paquete(
+                paquete_final,
+                numero_invitados=invitados_finales,
+                total_estimado=valor_final_resuelto,
+                origen="conversion",
+            )
 
     contrato = Contrato.objects.create(
         cotizacion=cotizacion,
         persona=cotizacion.persona,
         tipo_evento=cotizacion.tipo_evento,
         paquete=paquete_final,
+        tipo_servicio=tipo_servicio_final,
         fecha_evento=fecha_evento or cotizacion.fecha_tentativa,
-        numero_invitados=numero_invitados or cotizacion.numero_invitados,
-        valor_final=valor_final if valor_final is not None else cotizacion.total_estimado,
+        numero_invitados=invitados_finales,
+        valor_final=valor_final_resuelto,
         monto_abonado=monto_abonado if monto_abonado is not None else Decimal("0.00"),
         estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
         observaciones=observaciones,
+        oferta_snapshot=oferta_snapshot,
+        oferta_requiere_revision=False,
     )
 
     cotizacion.estado = Cotizacion.Estado.CONVERTIDA

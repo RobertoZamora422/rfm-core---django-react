@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, ClipboardList, Edit3, Plus } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
+import { OfertaAplicada } from '../../components/comercial/OfertaAplicada'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -180,7 +181,8 @@ export function DetalleContratoPage() {
             <dl className="detail-list">
               <DetailItem label="Tipo de evento" value={contrato.tipo_evento_nombre} />
               <DetailItem label="Número de invitados" value={contrato.numero_invitados} />
-              <DetailItem label="Paquete" value={contrato.paquete_nombre || 'Sin paquete'} />
+              <DetailItem label="Tipo de servicio" value={contrato.tipo_servicio_display || 'Requiere revisión'} />
+              <DetailItem label="Paquete" value={contrato.paquete_nombre} />
             </dl>
           </div>
         </Card>
@@ -201,6 +203,15 @@ export function DetalleContratoPage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <div className="detail-section">
+          <div className="detail-section__header">
+            <h2>Oferta aplicada</h2>
+          </div>
+          <OfertaAplicada record={contrato} />
+        </div>
+      </Card>
 
       <Card>
         <div className="detail-section">

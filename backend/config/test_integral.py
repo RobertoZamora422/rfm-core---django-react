@@ -20,7 +20,6 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda integral")
         self.paquete = Paquete.objects.create(
             nombre="Servicio integral",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("42.00"),
         )
         ConfiguracionNegocio.objects.create(
@@ -53,7 +52,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
                 "paquete": self.paquete.id,
                 "fecha_tentativa": fecha_evento.isoformat(),
                 "numero_invitados": 100,
-                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
                 "observaciones": "Validacion integral Fase 17",
             },
             format="json",
@@ -130,6 +129,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
             persona_id=conversion.data["contrato"]["persona"],
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
+            tipo_servicio=Contrato.TipoServicio.SERVICIO_COMPLETO,
             fecha_evento=fecha_evento + timedelta(days=3),
             numero_invitados=120,
             valor_final=Decimal("6000.00"),
@@ -201,7 +201,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
                 "paquete": self.paquete.id,
                 "fecha_tentativa": fecha_evento.isoformat(),
                 "numero_invitados": 70,
-                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             },
             format="json",
         )

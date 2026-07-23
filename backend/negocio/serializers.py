@@ -1,7 +1,16 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 
-from .models import ConfiguracionNegocio, NombrePersona, Paquete, Persona, TipoEvento
+from .models import (
+    BeneficioPaquete,
+    ConfiguracionNegocio,
+    NombrePersona,
+    Paquete,
+    Persona,
+    TipoEvento,
+)
+from .ofertas import presentacion_paquete, serializar_paquete
 from .persona_services import (
     PersonaDuplicadaError,
     actualizar_persona,
@@ -202,6 +211,13 @@ class PersonaDetalleSerializer(PersonaSerializer):
             {
                 "id": item.id,
                 "tipo_evento": item.tipo_evento.nombre,
+                "tipo_servicio": item.tipo_servicio,
+                "tipo_servicio_display": item.get_tipo_servicio_display(),
+                "paquete_nombre": presentacion_paquete(
+                    tipo_servicio=item.tipo_servicio,
+                    snapshot=item.oferta_snapshot,
+                    paquete=item.paquete,
+                ),
                 "fecha_tentativa": item.fecha_tentativa,
                 "estado": item.estado,
                 "estado_display": item.get_estado_display(),
@@ -218,6 +234,15 @@ class PersonaDetalleSerializer(PersonaSerializer):
             {
                 "id": item.id,
                 "tipo_evento": item.tipo_evento.nombre,
+                "tipo_servicio": item.tipo_servicio,
+                "tipo_servicio_display": item.get_tipo_servicio_display()
+                if item.tipo_servicio
+                else "Requiere revisión",
+                "paquete_nombre": presentacion_paquete(
+                    tipo_servicio=item.tipo_servicio,
+                    snapshot=item.oferta_snapshot,
+                    paquete=item.paquete,
+                ),
                 "fecha_evento": item.fecha_evento,
                 "estado_contrato": item.estado_contrato,
                 "estado_contrato_display": item.get_estado_contrato_display(),
@@ -308,56 +333,143 @@ class PublicTipoEventoSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class BeneficioPaqueteSerializer(serializers.ModelSerializer):
+    tipo_display = serializers.CharField(source="get_tipo_display", read_only=True)
+    es_comun = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = BeneficioPaquete
+        fields = [
+            "id",
+            "paquete",
+            "tipo",
+            "tipo_display",
+            "titulo",
+            "detalle",
+            "orden",
+            "minimo_invitados",
+            "maximo_invitados",
+            "activo",
+            "es_comun",
+            "creado_en",
+            "actualizado_en",
+        ]
+        read_only_fields = [
+            "id",
+            "tipo_display",
+            "es_comun",
+            "creado_en",
+            "actualizado_en",
+        ]
+
+    def validate(self, attrs):
+        minimo = attrs.get(
+            "minimo_invitados",
+            getattr(self.instance, "minimo_invitados", None),
+        )
+        maximo = attrs.get(
+            "maximo_invitados",
+            getattr(self.instance, "maximo_invitados", None),
+        )
+        if minimo and maximo and maximo < minimo:
+            raise serializers.ValidationError(
+                {
+                    "maximo_invitados": "El máximo no puede ser menor que el mínimo de invitados."
+                }
+            )
+        return attrs
+
+
 class PaqueteSerializer(serializers.ModelSerializer):
+    categoria_display = serializers.CharField(
+        source="get_categoria_display",
+        read_only=True,
+    )
+    beneficios = BeneficioPaqueteSerializer(many=True, required=False)
+
     class Meta:
         model = Paquete
         fields = [
             "id",
             "nombre",
-            "tipo_servicio",
+            "categoria",
+            "categoria_display",
+            "orden",
+            "resumen_corto",
+            "etiqueta_comercial",
+            "destacado",
             "precio_por_persona",
-            "descripcion",
+            "beneficios",
             "activo",
             "creado_en",
             "actualizado_en",
         ]
         read_only_fields = ["id", "creado_en", "actualizado_en"]
 
-    def validate(self, attrs):
-        tipo_servicio = attrs.get(
-            "tipo_servicio",
-            getattr(self.instance, "tipo_servicio", None),
-        )
-        precio_por_persona = attrs.get(
-            "precio_por_persona",
-            getattr(self.instance, "precio_por_persona", None),
-        )
+    def validate_nombre(self, value):
+        value = " ".join((value or "").strip().split())
+        queryset = Paquete.objects.filter(nombre__iexact=value)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError("Ya existe un paquete con este nombre.")
+        return value
 
-        if (
-            tipo_servicio == Paquete.TipoServicio.SERVICIO_COMPLETO
-            and precio_por_persona is not None
-            and precio_por_persona <= 0
-        ):
+    def validate_precio_por_persona(self, value):
+        if value <= 0:
             raise serializers.ValidationError(
-                {
-                    "precio_por_persona": "El servicio completo debe tener precio por persona mayor que cero."
-                }
+                "El precio por persona debe ser mayor que cero."
             )
+        return value
 
-        return attrs
+    def _guardar_beneficios(self, paquete, beneficios):
+        if beneficios is None:
+            return
+        paquete.beneficios.all().delete()
+        for data in beneficios:
+            data.pop("paquete", None)
+            BeneficioPaquete.objects.create(paquete=paquete, **data)
+
+    @transaction.atomic
+    def create(self, validated_data):
+        beneficios = validated_data.pop("beneficios", [])
+        paquete = super().create(validated_data)
+        self._guardar_beneficios(paquete, beneficios)
+        return paquete
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        beneficios = validated_data.pop("beneficios", None)
+        paquete = super().update(instance, validated_data)
+        self._guardar_beneficios(paquete, beneficios)
+        return paquete
 
 
 class PublicPaqueteSerializer(serializers.ModelSerializer):
+    categoria_display = serializers.CharField(
+        source="get_categoria_display",
+        read_only=True,
+    )
+    beneficios = serializers.SerializerMethodField()
+
     class Meta:
         model = Paquete
         fields = [
             "id",
             "nombre",
-            "tipo_servicio",
+            "categoria",
+            "categoria_display",
+            "orden",
+            "resumen_corto",
+            "etiqueta_comercial",
+            "destacado",
             "precio_por_persona",
-            "descripcion",
+            "beneficios",
         ]
         read_only_fields = fields
+
+    def get_beneficios(self, obj):
+        return serializar_paquete(obj)["beneficios"]
 
 
 class ConfiguracionNegocioSerializer(serializers.ModelSerializer):

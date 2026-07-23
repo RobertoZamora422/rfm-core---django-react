@@ -7,7 +7,15 @@ from rest_framework import serializers
 
 from comercial.models import Cotizacion
 from negocio.models import Persona
+from negocio.ofertas import (
+    presentacion_paquete,
+    snapshot_alquiler,
+    snapshot_alquiler_desde_oferta,
+    snapshot_paquete,
+    snapshot_paquete_desde_oferta,
+)
 from negocio.persona_services import PersonaDuplicadaError, crear_persona
+from negocio.selectors import obtener_configuracion_activa
 from negocio.serializers import PersonaNuevaSerializer
 from negocio.validators import validate_non_negative, validate_positive_integer
 
@@ -34,7 +42,11 @@ class ContratoSerializer(serializers.ModelSerializer):
         source="tipo_evento.nombre",
         read_only=True,
     )
-    paquete_nombre = serializers.CharField(source="paquete.nombre", read_only=True)
+    paquete_nombre = serializers.SerializerMethodField()
+    tipo_servicio_display = serializers.CharField(
+        source="get_tipo_servicio_display",
+        read_only=True,
+    )
     saldo_pendiente = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -69,6 +81,10 @@ class ContratoSerializer(serializers.ModelSerializer):
             "tipo_evento_nombre",
             "paquete",
             "paquete_nombre",
+            "tipo_servicio",
+            "tipo_servicio_display",
+            "oferta_snapshot",
+            "oferta_requiere_revision",
             "fecha_evento",
             "numero_invitados",
             "valor_final",
@@ -91,6 +107,8 @@ class ContratoSerializer(serializers.ModelSerializer):
             "total_costos_directos",
             "utilidad_bruta",
             "margen_bruto",
+            "oferta_snapshot",
+            "oferta_requiere_revision",
             "creado_en",
             "actualizado_en",
         ]
@@ -109,6 +127,10 @@ class ContratoSerializer(serializers.ModelSerializer):
             getattr(self.instance, "tipo_evento", None),
         )
         paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))
+        tipo_servicio = attrs.get(
+            "tipo_servicio",
+            getattr(self.instance, "tipo_servicio", None),
+        )
         errors = {}
 
         if self.instance is None and bool(persona) == bool(persona_nueva):
@@ -133,6 +155,13 @@ class ContratoSerializer(serializers.ModelSerializer):
             if self.instance is None or paquete.id != current_paquete_id:
                 errors["paquete"] = "El paquete debe estar activo."
 
+        if not tipo_servicio:
+            errors["tipo_servicio"] = "Selecciona el tipo de servicio del contrato."
+        elif tipo_servicio == Contrato.TipoServicio.ALQUILER and paquete:
+            errors["paquete"] = "El alquiler del local no utiliza un paquete."
+        elif tipo_servicio == Contrato.TipoServicio.SERVICIO_COMPLETO and not paquete:
+            errors["paquete"] = "El servicio completo requiere seleccionar un paquete."
+
         if cotizacion and cotizacion.estado != Cotizacion.Estado.CONVERTIDA:
             errors["cotizacion"] = (
                 "La cotizacion asociada debe convertirse desde la accion comercial correspondiente."
@@ -142,6 +171,63 @@ class ContratoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return attrs
+
+    def get_paquete_nombre(self, obj):
+        return presentacion_paquete(
+            tipo_servicio=obj.tipo_servicio,
+            snapshot=obj.oferta_snapshot,
+            paquete=obj.paquete,
+        )
+
+    def _snapshot(self, validated_data):
+        tipo_servicio = validated_data.get(
+            "tipo_servicio",
+            getattr(self.instance, "tipo_servicio", None),
+        )
+        paquete = validated_data.get(
+            "paquete",
+            getattr(self.instance, "paquete", None),
+        )
+        numero_invitados = validated_data.get(
+            "numero_invitados",
+            getattr(self.instance, "numero_invitados", None),
+        )
+        valor_final = validated_data.get(
+            "valor_final",
+            getattr(self.instance, "valor_final", None),
+        )
+        if tipo_servicio == Contrato.TipoServicio.ALQUILER:
+            if self.instance:
+                snapshot = snapshot_alquiler_desde_oferta(
+                    self.instance.oferta_snapshot,
+                    numero_invitados=numero_invitados,
+                    total_estimado=valor_final,
+                    origen="contrato_manual",
+                )
+                if snapshot:
+                    return snapshot
+            return snapshot_alquiler(
+                obtener_configuracion_activa(),
+                numero_invitados=numero_invitados,
+                total_estimado=valor_final,
+                origen="contrato_manual",
+            )
+        if self.instance:
+            snapshot = snapshot_paquete_desde_oferta(
+                self.instance.oferta_snapshot,
+                paquete=paquete,
+                numero_invitados=numero_invitados,
+                total_estimado=valor_final,
+                origen="contrato_manual",
+            )
+            if snapshot:
+                return snapshot
+        return snapshot_paquete(
+            paquete,
+            numero_invitados=numero_invitados,
+            total_estimado=valor_final,
+            origen="contrato_manual",
+        )
 
     @transaction.atomic
     def create(self, validated_data):
@@ -163,7 +249,24 @@ class ContratoSerializer(serializers.ModelSerializer):
                 ) from exc
             except DjangoValidationError as exc:
                 raise serializers.ValidationError(exc.message_dict) from exc
+        validated_data["oferta_snapshot"] = self._snapshot(validated_data)
+        validated_data["oferta_requiere_revision"] = False
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        critical_fields = {
+            "tipo_servicio",
+            "paquete",
+            "numero_invitados",
+            "valor_final",
+        }
+        if (
+            instance.oferta_requiere_revision
+            or critical_fields.intersection(validated_data)
+        ):
+            validated_data["oferta_snapshot"] = self._snapshot(validated_data)
+            validated_data["oferta_requiere_revision"] = False
+        return super().update(instance, validated_data)
 
     def validate_valor_final(self, value):
         validate_non_negative(value)

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { OfertaAplicada } from '../../components/comercial/OfertaAplicada'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { Modal } from '../../components/ui/Modal'
@@ -169,7 +170,7 @@ export function DetalleCotizacionPage() {
               <DetailItem label="Fecha tentativa" value={formatDate(cotizacion.fecha_tentativa)} />
               <DetailItem label="Invitados" value={cotizacion.numero_invitados} />
               <DetailItem label="Servicio" value={TIPO_SERVICIO_LABELS[cotizacion.tipo_servicio] ?? cotizacion.tipo_servicio} />
-              <DetailItem label="Paquete" value={cotizacion.paquete_nombre || 'Sin paquete'} />
+              <DetailItem label="Paquete" value={cotizacion.paquete_nombre} />
               <DetailItem label="Total estimado" value={formatCurrency(cotizacion.total_estimado)} />
               <DetailItem label="Origen" value={cotizacion.origen_display} />
               <DetailItem label="Creado" value={formatDate(cotizacion.creado_en)} />
@@ -186,6 +187,13 @@ export function DetalleCotizacionPage() {
           </div>
         </Card>
       </div>
+
+      <Card>
+        <div className="detail-section">
+          <div className="detail-section__header"><h2>Oferta cotizada</h2></div>
+          <OfertaAplicada record={cotizacion} />
+        </div>
+      </Card>
 
       <Card>
         <div className="detail-section">

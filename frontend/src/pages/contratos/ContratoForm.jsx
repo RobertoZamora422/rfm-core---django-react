@@ -6,10 +6,12 @@ import { Textarea } from '../../components/ui/Textarea'
 import { PersonaSelector } from '../../components/personas/PersonaSelector'
 import { PERSON_ORIGIN_LABELS } from '../../components/personas/personaConstants'
 import { useFocusFirstError } from '../../hooks/useFocusFirstError'
+import { TIPO_SERVICIO_LABELS } from './contractConstants'
 
 function buildInitialForm(initialValues) {
   return {
     tipo_evento: initialValues?.tipo_evento ?? '',
+    tipo_servicio: initialValues?.tipo_servicio ?? 'alquiler',
     paquete: initialValues?.paquete ?? '',
     fecha_evento: initialValues?.fecha_evento ?? '',
     numero_invitados: initialValues?.numero_invitados ?? '',
@@ -47,7 +49,11 @@ export function ContratoForm({
 
   const handleChange = (event) => {
     const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+      ...(name === 'tipo_servicio' ? { paquete: '' } : {}),
+    }))
   }
 
   const handleSubmit = (event) => {
@@ -66,6 +72,7 @@ export function ContratoForm({
     onSubmit({
       ...personPayload,
       tipo_evento: form.tipo_evento ? Number(form.tipo_evento) : '',
+      tipo_servicio: form.tipo_servicio,
       paquete: form.paquete ? Number(form.paquete) : null,
       fecha_evento: form.fecha_evento,
       numero_invitados: form.numero_invitados ? Number(form.numero_invitados) : '',
@@ -110,10 +117,36 @@ export function ContratoForm({
 
       <fieldset className="form-section">
         <legend>Servicio contratado</legend>
-        <Select disabled={isLoadingCatalogs} error={errors.paquete} id="contrato-paquete" label="Paquete" name="paquete" onChange={handleChange} value={form.paquete}>
-          <option value="">Sin paquete</option>
-          {paquetes.map((paquete) => <option key={paquete.id} value={paquete.id}>{paquete.nombre}</option>)}
-        </Select>
+        <div className="form-grid">
+          <Select
+            error={errors.tipo_servicio}
+            id="contrato-tipo-servicio"
+            label="Tipo de servicio"
+            name="tipo_servicio"
+            onChange={handleChange}
+            required
+            value={form.tipo_servicio}
+          >
+            {Object.entries(TIPO_SERVICIO_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+          <Select
+            disabled={isLoadingCatalogs || form.tipo_servicio === 'alquiler'}
+            error={errors.paquete}
+            id="contrato-paquete"
+            label="Paquete"
+            name="paquete"
+            onChange={handleChange}
+            required={form.tipo_servicio === 'servicio_completo'}
+            value={form.paquete}
+          >
+            <option value="">
+              {form.tipo_servicio === 'alquiler' ? 'No aplica' : 'Seleccione un paquete'}
+            </option>
+            {paquetes.map((paquete) => <option key={paquete.id} value={paquete.id}>{paquete.nombre}</option>)}
+          </Select>
+        </div>
       </fieldset>
 
       <fieldset className="form-section">

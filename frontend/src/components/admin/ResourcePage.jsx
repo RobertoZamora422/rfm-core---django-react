@@ -26,6 +26,7 @@ function cleanParams(filters) {
 }
 
 export function ResourcePage({
+  beforeList,
   columns,
   createLabel,
   description,
@@ -192,6 +193,8 @@ export function ResourcePage({
         {error}
       </ErrorMessage>
       {actionMessage ? <div className="success-message" role="status">{actionMessage}</div> : null}
+
+      {beforeList}
 
       {filterDefinitions.length ? (
         <FiltersToolbar

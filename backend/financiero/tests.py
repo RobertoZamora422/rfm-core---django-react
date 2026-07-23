@@ -19,9 +19,8 @@ class FinancieroModelTests(TestCase):
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
         self.paquete = Paquete.objects.create(
-            nombre="Alquiler base",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
+            nombre="Servicio base",
+            precio_por_persona=Decimal("25.00"),
         )
 
     def crear_contrato(self, **overrides):
@@ -29,6 +28,7 @@ class FinancieroModelTests(TestCase):
             "persona": self.persona,
             "tipo_evento": self.tipo_evento,
             "paquete": self.paquete,
+            "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
             "fecha_evento": date(2026, 8, 1),
             "numero_invitados": 80,
             "valor_final": Decimal("2000.00"),
@@ -171,9 +171,8 @@ class FinancieroApiTests(APITestCase):
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
         self.paquete = Paquete.objects.create(
-            nombre="Alquiler",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
+            nombre="Servicio completo",
+            precio_por_persona=Decimal("25.00"),
         )
 
     def crear_contrato(self, **overrides):
@@ -181,6 +180,7 @@ class FinancieroApiTests(APITestCase):
             "persona": self.persona,
             "tipo_evento": self.tipo_evento,
             "paquete": self.paquete,
+            "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
             "fecha_evento": date(2026, 8, 1),
             "numero_invitados": 80,
             "valor_final": Decimal("2000.00"),
@@ -196,6 +196,7 @@ class FinancieroApiTests(APITestCase):
                 "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
+                "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
                 "fecha_evento": "2026-08-01",
                 "numero_invitados": 80,
                 "valor_final": "2000.00",
@@ -218,6 +219,7 @@ class FinancieroApiTests(APITestCase):
                 "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
+                "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
                 "fecha_evento": "2026-08-01",
                 "numero_invitados": 80,
                 "valor_final": "2000.00",
@@ -239,6 +241,7 @@ class FinancieroApiTests(APITestCase):
                 "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
+                "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
                 "fecha_evento": "2026-08-01",
                 "numero_invitados": 80,
                 "valor_final": "2000.00",
@@ -256,6 +259,7 @@ class FinancieroApiTests(APITestCase):
             "persona": self.persona.id,
             "tipo_evento": self.tipo_evento.id,
             "paquete": self.paquete.id,
+            "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
             "fecha_evento": "2026-08-01",
             "numero_invitados": 80,
             "valor_final": "2000.00",
@@ -289,7 +293,7 @@ class FinancieroApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("2000.00"),
         )
@@ -301,6 +305,7 @@ class FinancieroApiTests(APITestCase):
                 "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
                 "paquete": self.paquete.id,
+                "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
                 "fecha_evento": "2026-08-01",
                 "numero_invitados": 80,
                 "valor_final": "2000.00",
@@ -317,14 +322,14 @@ class FinancieroApiTests(APITestCase):
         tipo_inactivo = TipoEvento.objects.create(nombre="Evento inactivo", activo=False)
         paquete_inactivo = Paquete.objects.create(
             nombre="Paquete inactivo",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
+            precio_por_persona=Decimal("25.00"),
             activo=False,
         )
         base_payload = {
             "persona": self.persona.id,
             "tipo_evento": self.tipo_evento.id,
             "paquete": self.paquete.id,
+            "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
             "fecha_evento": "2026-08-01",
             "numero_invitados": 80,
             "valor_final": "2000.00",
@@ -740,7 +745,7 @@ class FinancieroApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 12),
             numero_invitados=120,
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("9999.00"),
         )
@@ -868,7 +873,7 @@ class FinancieroApiTests(APITestCase):
         )
         self.assertEqual(
             response.data["desempeno_comercial"]["paquete_mas_vendido"]["nombre"],
-            "Alquiler",
+            "Servicio completo",
         )
         self.assertEqual(
             response.data["desempeno_comercial"]["paquete_mas_vendido"]["contratos"],
@@ -880,7 +885,7 @@ class FinancieroApiTests(APITestCase):
         )
         self.assertEqual(
             response.data["desempeno_comercial"]["paquete_mas_rentable"]["nombre"],
-            "Alquiler",
+            "Servicio completo",
         )
         self.assertEqual(
             response.data["desempeno_comercial"]["tipo_evento_mas_rentable"]["nombre"],

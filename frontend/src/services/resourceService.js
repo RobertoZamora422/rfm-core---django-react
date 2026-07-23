@@ -43,6 +43,7 @@ export const personasService = {
 }
 export const tiposEventoService = createResourceService('/tipos-evento/')
 export const paquetesService = createResourceService('/paquetes/')
+export const beneficiosPaquetesService = createResourceService('/beneficios-paquetes/')
 export const configuracionNegocioService = createResourceService('/configuracion-negocio/')
 
 export const inicioService = {

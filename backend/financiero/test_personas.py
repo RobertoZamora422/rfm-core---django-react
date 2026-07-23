@@ -17,6 +17,7 @@ class DirectContractPersonFlowTests(APITestCase):
     def contract_payload(self):
         return {
             "tipo_evento": self.tipo_evento.id,
+            "tipo_servicio": Contrato.TipoServicio.ALQUILER,
             "fecha_evento": "2026-12-10",
             "numero_invitados": 60,
             "valor_final": "1500.00",

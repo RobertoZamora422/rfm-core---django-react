@@ -16,12 +16,19 @@ class ContratoAdmin(admin.ModelAdmin):
         "id",
         "persona",
         "fecha_evento",
+        "tipo_servicio",
         "valor_final",
         "monto_abonado",
         "estado_contrato",
         "estado_pago",
     )
-    list_filter = ("estado_contrato", "estado_pago", "fecha_evento")
+    list_filter = (
+        "tipo_servicio",
+        "oferta_requiere_revision",
+        "estado_contrato",
+        "estado_pago",
+        "fecha_evento",
+    )
     search_fields = ("persona__nombre", "persona__telefono", "observaciones")
     autocomplete_fields = ("cotizacion", "persona", "tipo_evento", "paquete")
     readonly_fields = ("creado_en", "actualizado_en", "saldo_pendiente")

@@ -66,6 +66,7 @@ class PersonaApiTests(APITestCase):
         Contrato.objects.create(
             persona=persona,
             tipo_evento=self.tipo_evento,
+            tipo_servicio=Contrato.TipoServicio.ALQUILER,
             fecha_evento=date(2026, 10, 10),
             numero_invitados=50,
             valor_final=Decimal("1000.00"),
@@ -115,6 +116,7 @@ class PersonaApiTests(APITestCase):
         contract = Contrato.objects.create(
             persona=persona,
             tipo_evento=self.tipo_evento,
+            tipo_servicio=Contrato.TipoServicio.ALQUILER,
             fecha_evento=date(2026, 9, 1),
             numero_invitados=80,
             valor_final=Decimal("1200.00"),
@@ -165,6 +167,7 @@ class PersonaConsolidationCommandTests(TestCase):
         self.contract = Contrato.objects.create(
             persona=self.duplicate,
             tipo_evento=self.tipo_evento,
+            tipo_servicio=Contrato.TipoServicio.ALQUILER,
             fecha_evento=date(2026, 11, 1),
             numero_invitados=40,
             valor_final=Decimal("800.00"),

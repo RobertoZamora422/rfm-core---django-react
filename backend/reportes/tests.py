@@ -26,14 +26,8 @@ class ReportesApiTests(APITestCase):
         )
         self.boda = TipoEvento.objects.create(nombre="Boda")
         self.corporativo = TipoEvento.objects.create(nombre="Corporativo")
-        self.alquiler = Paquete.objects.create(
-            nombre="Alquiler",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
-        )
         self.premium = Paquete.objects.create(
             nombre="Premium",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("35.00"),
         )
 
@@ -42,9 +36,10 @@ class ReportesApiTests(APITestCase):
             "persona": self.persona,
             "tipo_evento": self.boda,
             "paquete": self.premium,
+            "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
             "fecha_tentativa": date(2026, 8, 10),
             "numero_invitados": 100,
-            "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+            "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             "estado": Cotizacion.Estado.NUEVA,
             "total_estimado": Decimal("3500.00"),
         }
@@ -56,6 +51,7 @@ class ReportesApiTests(APITestCase):
             "persona": self.persona,
             "tipo_evento": self.boda,
             "paquete": self.premium,
+            "tipo_servicio": Contrato.TipoServicio.SERVICIO_COMPLETO,
             "fecha_evento": date(2026, 8, 10),
             "numero_invitados": 100,
             "valor_final": Decimal("3500.00"),
@@ -203,8 +199,8 @@ class ReportesApiTests(APITestCase):
             total_estimado=Decimal("3500.00"),
         )
         self.crear_cotizacion(
-            paquete=self.alquiler,
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            paquete=None,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
             estado=Cotizacion.Estado.NUEVA,
             total_estimado=Decimal("1200.00"),
             fecha_tentativa=date(2026, 8, 22),
@@ -215,7 +211,8 @@ class ReportesApiTests(APITestCase):
             monto_abonado=Decimal("3500.00"),
         )
         contrato_alquiler_cancelado = self.crear_contrato(
-            paquete=self.alquiler,
+            paquete=None,
+            tipo_servicio=Contrato.TipoServicio.ALQUILER,
             valor_final=Decimal("1200.00"),
             monto_abonado=Decimal("0.00"),
             estado_contrato=Contrato.EstadoContrato.CANCELADO,
@@ -254,8 +251,8 @@ class ReportesApiTests(APITestCase):
         paquetes = {item["paquete_nombre"]: item for item in response.data["paquetes"]}
         self.assertEqual(paquetes["Premium"]["contratos_confirmados"], 1)
         self.assertEqual(paquetes["Premium"]["utilidad_bruta"], "2600.00")
-        self.assertEqual(paquetes["Alquiler"]["contratos_confirmados"], 0)
-        self.assertEqual(paquetes["Alquiler"]["ingresos_confirmados"], "0.00")
+        self.assertEqual(paquetes["Alquiler del local"]["contratos_confirmados"], 0)
+        self.assertEqual(paquetes["Alquiler del local"]["ingresos_confirmados"], "0.00")
 
     def test_reportes_validan_periodos(self):
         invalid_range = self.client.get(

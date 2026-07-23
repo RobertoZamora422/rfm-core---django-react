@@ -8,6 +8,7 @@ from django.db.models import Count, Q, Sum
 from comercial.models import Cotizacion
 from financiero.models import Contrato, CostoDirecto
 from financiero.services import dashboard_financiero
+from negocio.ofertas import presentacion_paquete
 
 
 ZERO = Decimal("0.00")
@@ -52,10 +53,15 @@ def _quote_row(cotizacion):
         "persona_nombre": cotizacion.persona.nombre,
         "persona_telefono": cotizacion.persona.telefono,
         "tipo_evento_nombre": cotizacion.tipo_evento.nombre,
-        "paquete_nombre": cotizacion.paquete.nombre if cotizacion.paquete else "",
+        "paquete_nombre": presentacion_paquete(
+            tipo_servicio=cotizacion.tipo_servicio,
+            snapshot=cotizacion.oferta_snapshot,
+            paquete=cotizacion.paquete,
+        ),
         "fecha_tentativa": cotizacion.fecha_tentativa.isoformat(),
         "numero_invitados": cotizacion.numero_invitados,
         "tipo_servicio": cotizacion.tipo_servicio,
+        "tipo_servicio_display": cotizacion.get_tipo_servicio_display(),
         "estado": cotizacion.estado,
         "total_estimado": _money(cotizacion.total_estimado),
         "contrato_id": _cotizacion_contrato_id(cotizacion),
@@ -134,7 +140,15 @@ def _contract_row(contrato):
         "persona_nombre": contrato.persona.nombre,
         "persona_telefono": contrato.persona.telefono,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
-        "paquete_nombre": contrato.paquete.nombre if contrato.paquete else "",
+        "paquete_nombre": presentacion_paquete(
+            tipo_servicio=contrato.tipo_servicio,
+            snapshot=contrato.oferta_snapshot,
+            paquete=contrato.paquete,
+        ),
+        "tipo_servicio": contrato.tipo_servicio,
+        "tipo_servicio_display": contrato.get_tipo_servicio_display()
+        if contrato.tipo_servicio
+        else "Requiere revisión",
         "fecha_evento": contrato.fecha_evento.isoformat(),
         "numero_invitados": contrato.numero_invitados,
         "estado_contrato": contrato.estado_contrato,
@@ -204,12 +218,13 @@ def reporte_eventos(desde, hasta):
     }
 
 
-def _empty_package_row(key, nombre, tipo_servicio):
+def _empty_package_row(key, paquete_id, nombre, tipo_servicio, tipo_servicio_display):
     return {
         "key": str(key),
-        "paquete_id": key if isinstance(key, int) else None,
+        "paquete_id": paquete_id,
         "paquete_nombre": nombre,
         "tipo_servicio": tipo_servicio,
+        "tipo_servicio_display": tipo_servicio_display,
         "cotizaciones": 0,
         "cotizaciones_convertidas": 0,
         "contratos_confirmados": 0,
@@ -219,91 +234,81 @@ def _empty_package_row(key, nombre, tipo_servicio):
     }
 
 
-def _package_key(paquete_id):
-    return paquete_id if paquete_id is not None else "sin_paquete"
-
-
-def _package_name(paquete_id, paquete_nombre):
-    if paquete_id is None:
-        return "Sin paquete"
-    return paquete_nombre or f"Paquete #{paquete_id}"
+def _offer_identity(instance):
+    snapshot = instance.oferta_snapshot or {}
+    paquete_snapshot = snapshot.get("paquete", {})
+    paquete_id = paquete_snapshot.get("id") or instance.paquete_id
+    nombre = presentacion_paquete(
+        tipo_servicio=instance.tipo_servicio,
+        snapshot=snapshot,
+        paquete=instance.paquete,
+    )
+    if paquete_id:
+        key = f"paquete:{paquete_id}"
+    else:
+        key = f"servicio:{instance.tipo_servicio or 'revision'}"
+    display = (
+        instance.get_tipo_servicio_display()
+        if instance.tipo_servicio
+        else "Requiere revisión"
+    )
+    return key, paquete_id, nombre, instance.tipo_servicio or "", display
 
 
 def reporte_paquetes(desde, hasta):
     rows = {}
-
-    cotizaciones = (
-        Cotizacion.objects.filter(
-            fecha_tentativa__gte=desde,
-            fecha_tentativa__lte=hasta,
-        )
-        .values("paquete_id", "paquete__nombre", "paquete__tipo_servicio")
-        .annotate(
-            cotizaciones=Count("id"),
-            convertidas=Count("id", filter=Q(estado=Cotizacion.Estado.CONVERTIDA)),
-        )
-    )
-    for item in cotizaciones:
-        key = _package_key(item["paquete_id"])
+    cotizaciones = Cotizacion.objects.filter(
+        fecha_tentativa__gte=desde,
+        fecha_tentativa__lte=hasta,
+    ).select_related("paquete")
+    for cotizacion in cotizaciones:
+        key, paquete_id, nombre, tipo, tipo_display = _offer_identity(cotizacion)
         rows.setdefault(
             key,
             _empty_package_row(
                 key,
-                _package_name(item["paquete_id"], item["paquete__nombre"]),
-                item["paquete__tipo_servicio"] or "",
+                paquete_id,
+                nombre,
+                tipo,
+                tipo_display,
             ),
         )
-        rows[key]["cotizaciones"] += item["cotizaciones"]
-        rows[key]["cotizaciones_convertidas"] += item["convertidas"]
+        rows[key]["cotizaciones"] += 1
+        if cotizacion.estado == Cotizacion.Estado.CONVERTIDA:
+            rows[key]["cotizaciones_convertidas"] += 1
 
-    contratos = (
+    contratos = list(
         Contrato.objects.filter(
             estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
             fecha_evento__gte=desde,
             fecha_evento__lte=hasta,
         )
-        .values("paquete_id", "paquete__nombre", "paquete__tipo_servicio")
-        .annotate(contratos=Count("id"), ingresos=Sum("valor_final"))
+        .select_related("paquete")
     )
-    for item in contratos:
-        key = _package_key(item["paquete_id"])
-        rows.setdefault(
-            key,
-            _empty_package_row(
-                key,
-                _package_name(item["paquete_id"], item["paquete__nombre"]),
-                item["paquete__tipo_servicio"] or "",
-            ),
-        )
-        rows[key]["contratos_confirmados"] += item["contratos"]
-        rows[key]["ingresos_confirmados"] += item["ingresos"] or ZERO
-
-    costos = (
-        CostoDirecto.objects.filter(
-            contrato__estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+    costos_por_contrato = {
+        item["contrato_id"]: item["costos"] or ZERO
+        for item in CostoDirecto.objects.filter(
+            contrato_id__in=[contrato.id for contrato in contratos],
             eliminado=False,
-            contrato__fecha_evento__gte=desde,
-            contrato__fecha_evento__lte=hasta,
         )
-        .values(
-            "contrato__paquete_id",
-            "contrato__paquete__nombre",
-            "contrato__paquete__tipo_servicio",
-        )
+        .values("contrato_id")
         .annotate(costos=Sum("valor"))
-    )
-    for item in costos:
-        paquete_id = item["contrato__paquete_id"]
-        key = _package_key(paquete_id)
+    }
+    for contrato in contratos:
+        key, paquete_id, nombre, tipo, tipo_display = _offer_identity(contrato)
         rows.setdefault(
             key,
             _empty_package_row(
                 key,
-                _package_name(paquete_id, item["contrato__paquete__nombre"]),
-                item["contrato__paquete__tipo_servicio"] or "",
+                paquete_id,
+                nombre,
+                tipo,
+                tipo_display,
             ),
         )
-        rows[key]["costos_directos"] += item["costos"] or ZERO
+        rows[key]["contratos_confirmados"] += 1
+        rows[key]["ingresos_confirmados"] += contrato.valor_final
+        rows[key]["costos_directos"] += costos_por_contrato.get(contrato.id, ZERO)
 
     paquetes = []
     for row in rows.values():

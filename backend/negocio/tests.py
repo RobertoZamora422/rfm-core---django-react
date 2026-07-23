@@ -31,7 +31,6 @@ class NegocioModelTests(TestCase):
     def test_servicio_completo_requiere_precio_por_persona(self):
         paquete = Paquete(
             nombre="Paquete completo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("0.00"),
         )
 
@@ -130,7 +129,6 @@ class LimpiarDatosOperativosCommandTests(TestCase):
         tipo_evento = TipoEvento.objects.create(nombre="Boda")
         paquete = Paquete.objects.create(
             nombre="Paquete completo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("25.00"),
         )
         persona = Persona.objects.create(nombre="Persona temporal", telefono="0991234567")
@@ -147,6 +145,7 @@ class LimpiarDatosOperativosCommandTests(TestCase):
             persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
+            tipo_servicio=Contrato.TipoServicio.SERVICIO_COMPLETO,
             fecha_evento=timezone.localdate() + timedelta(days=15),
             numero_invitados=80,
             valor_final=Decimal("2000.00"),
@@ -302,6 +301,7 @@ class NegocioApiTests(APITestCase):
             cotizacion=cotizacion,
             persona=persona,
             tipo_evento=tipo_evento,
+            tipo_servicio=Contrato.TipoServicio.ALQUILER,
             fecha_evento=timezone.localdate(),
             numero_invitados=50,
             valor_final=Decimal("1000.00"),
@@ -318,7 +318,6 @@ class NegocioApiTests(APITestCase):
         tipo = TipoEvento.objects.create(nombre="Evento Corporativo", activo=False)
         paquete = Paquete.objects.create(
             nombre="Paquete Corporativo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("35.00"),
             activo=False,
         )
@@ -331,7 +330,7 @@ class NegocioApiTests(APITestCase):
             {
                 "buscar": "Corporativo",
                 "activo": "false",
-                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "categoria": Paquete.Categoria.ESTANDAR,
             },
         )
         delete_tipo = self.client.delete(f"/api/tipos-evento/{tipo.id}/")
@@ -465,7 +464,6 @@ class NegocioApiTests(APITestCase):
         tipo_evento = TipoEvento.objects.create(nombre="Boda inicio")
         paquete = Paquete.objects.create(
             nombre="Completo inicio",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("25.00"),
         )
 
@@ -475,7 +473,7 @@ class NegocioApiTests(APITestCase):
             paquete=paquete,
             fecha_tentativa=hoy + timedelta(days=15),
             numero_invitados=100,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.NUEVA,
             total_estimado=Decimal("2500.00"),
         )
@@ -485,7 +483,7 @@ class NegocioApiTests(APITestCase):
             paquete=paquete,
             fecha_tentativa=hoy + timedelta(days=30),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("2000.00"),
         )
@@ -494,6 +492,7 @@ class NegocioApiTests(APITestCase):
             persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
+            tipo_servicio=Contrato.TipoServicio.SERVICIO_COMPLETO,
             fecha_evento=hoy,
             numero_invitados=100,
             valor_final=Decimal("2500.00"),
@@ -512,6 +511,7 @@ class NegocioApiTests(APITestCase):
             persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
+            tipo_servicio=Contrato.TipoServicio.SERVICIO_COMPLETO,
             fecha_evento=hoy + timedelta(days=8),
             numero_invitados=60,
             valor_final=Decimal("1500.00"),
@@ -522,6 +522,7 @@ class NegocioApiTests(APITestCase):
             persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,
+            tipo_servicio=Contrato.TipoServicio.SERVICIO_COMPLETO,
             fecha_evento=hoy - timedelta(days=40),
             numero_invitados=90,
             valor_final=Decimal("2200.00"),

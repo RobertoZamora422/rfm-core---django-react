@@ -19,7 +19,7 @@ import { LoadingState } from '../ui/LoadingState'
 const serviceLabels = {
   alquiler: 'Alquiler del local',
   servicio_completo: 'Servicio completo',
-  no_seguro: 'Comparación de modalidades',
+  no_estoy_seguro: 'Comparación de modalidades',
 }
 
 function hasValue(value) {
@@ -161,6 +161,7 @@ function ServicePackageOption({ isSelected, onSelect, paquete }) {
     <label className={isSelected ? 'package-option package-option--selected' : 'package-option'}>
       <input
         checked={isSelected}
+        disabled
         name="paquete_interes"
         onChange={onSelect}
         type="radio"
@@ -168,7 +169,7 @@ function ServicePackageOption({ isSelected, onSelect, paquete }) {
       />
       <span className="package-option__copy">
         <strong>{paquete.nombre}</strong>
-        {paquete.descripcion ? <small>{paquete.descripcion}</small> : null}
+        {paquete.resumen_corto ? <small>{paquete.resumen_corto}</small> : null}
       </span>
       <span className="package-option__price">
         <small>Por persona</small>
@@ -317,7 +318,7 @@ function buildResultMessage(result, nombreNegocio, selectedPackage) {
     )
   }
 
-  if (calculo.tipo_servicio === 'no_seguro') {
+  if (calculo.tipo_servicio === 'no_estoy_seguro') {
     lines.push(
       hasValue(calculo.alquiler?.total_estimado)
         ? `Alquiler del local: ${formatCurrency(calculo.alquiler.total_estimado)}`
@@ -400,7 +401,9 @@ export function PreCotizacionSummary({
   const paquetes = result?.calculo?.paquetes ?? []
   const resultId = result?.cotizacion?.id ?? null
   const selectedPackageId =
-    packageSelection.resultId === resultId ? packageSelection.packageId : ''
+    packageSelection.resultId === resultId && packageSelection.packageId
+      ? packageSelection.packageId
+      : String(result?.cotizacion?.paquete ?? '')
   const selectedPackage = paquetes.find(
     (paquete) => String(paquete.id) === selectedPackageId,
   )

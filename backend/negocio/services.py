@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from comercial.models import Cotizacion
 from financiero.models import Contrato
+from negocio.ofertas import presentacion_paquete
 
 
 def _money(value):
@@ -30,7 +31,15 @@ def _event_summary(contrato):
         "persona_nombre": contrato.persona.nombre,
         "persona_telefono": contrato.persona.telefono,
         "tipo_evento_nombre": contrato.tipo_evento.nombre,
-        "paquete_nombre": contrato.paquete.nombre if contrato.paquete_id else "",
+        "tipo_servicio": contrato.tipo_servicio,
+        "tipo_servicio_display": contrato.get_tipo_servicio_display()
+        if contrato.tipo_servicio
+        else "Requiere revisión",
+        "paquete_nombre": presentacion_paquete(
+            tipo_servicio=contrato.tipo_servicio,
+            snapshot=contrato.oferta_snapshot,
+            paquete=contrato.paquete,
+        ),
         "fecha_evento": contrato.fecha_evento.isoformat(),
         "estado_pago": contrato.estado_pago,
         "saldo_pendiente": _money(contrato.saldo_pendiente),

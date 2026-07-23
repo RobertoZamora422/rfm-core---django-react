@@ -81,6 +81,16 @@ class PreCotizacionAPIView(APIView):
                 numero_invitados=data["numero_invitados"],
                 tipo_servicio=data["tipo_servicio"],
                 observaciones=data.get("observaciones", ""),
+                preferencias={
+                    "nivel_experiencia": data.get(
+                        "nivel_experiencia",
+                        "equilibrado",
+                    ),
+                    "entretenimiento": data.get(
+                        "entretenimiento",
+                        "indiferente",
+                    ),
+                },
             )
         except DjangoValidationError as exc:
             _raise_api_validation_error(exc)
@@ -104,6 +114,7 @@ class CotizacionViewSet(viewsets.ModelViewSet):
         estado = self.request.query_params.get("estado")
         persona = self.request.query_params.get("persona")
         tipo_evento = self.request.query_params.get("tipo_evento")
+        tipo_servicio = self.request.query_params.get("tipo_servicio")
         fecha_desde = _parse_query_date(
             self.request.query_params.get("desde"),
             "desde",
@@ -125,6 +136,8 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(persona_id=persona)
         if tipo_evento:
             queryset = queryset.filter(tipo_evento_id=tipo_evento)
+        if tipo_servicio:
+            queryset = queryset.filter(tipo_servicio=tipo_servicio)
         if fecha_desde:
             queryset = queryset.filter(fecha_tentativa__gte=fecha_desde)
         if fecha_hasta:
@@ -135,6 +148,7 @@ class CotizacionViewSet(viewsets.ModelViewSet):
                 | Q(persona__telefono__icontains=buscar)
                 | Q(tipo_evento__nombre__icontains=buscar)
                 | Q(paquete__nombre__icontains=buscar)
+                | Q(oferta_snapshot__paquete__nombre__icontains=buscar)
                 | Q(observaciones__icontains=buscar)
             )
             if extraer_digitos_telefono(buscar):
@@ -190,6 +204,10 @@ class CotizacionViewSet(viewsets.ModelViewSet):
             }
             if "paquete" in serializer.validated_data:
                 conversion_data["paquete"] = serializer.validated_data["paquete"]
+            if "tipo_servicio" in serializer.validated_data:
+                conversion_data["tipo_servicio"] = serializer.validated_data[
+                    "tipo_servicio"
+                ]
 
             contrato = convertir_cotizacion_a_contrato(
                 cotizacion,

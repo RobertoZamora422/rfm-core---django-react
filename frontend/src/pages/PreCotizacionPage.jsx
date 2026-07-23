@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
 import { PreCotizacionSummary } from '../components/preCotizacion/PreCotizacionSummary'
+import { PackageSelector } from '../components/preCotizacion/PackageSelector'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
@@ -22,6 +23,7 @@ import { LoadingState } from '../components/ui/LoadingState'
 import { Select } from '../components/ui/Select'
 import {
   crearPreCotizacion,
+  listarPaquetesPublicos,
   listarTiposEventoPublicos,
 } from '../services/preCotizacionService'
 import { getApiFieldErrors } from '../utils/apiErrors'
@@ -33,6 +35,9 @@ const initialForm = {
   fecha_tentativa: '',
   numero_invitados: '',
   tipo_servicio: 'alquiler',
+  paquete: '',
+  nivel_experiencia: 'equilibrado',
+  entretenimiento: 'indiferente',
 }
 
 const serviceOptions = [
@@ -49,9 +54,9 @@ const serviceOptions = [
     icon: Sparkles,
   },
   {
-    value: 'no_seguro',
-    label: 'Comparar opciones',
-    detail: 'Muestra ambas modalidades y sus valores disponibles.',
+    value: 'no_estoy_seguro',
+    label: 'No estoy seguro',
+    detail: 'Responde dos preguntas y revisa recomendaciones sin cerrar otras opciones.',
     icon: Scale,
   },
 ]
@@ -64,6 +69,9 @@ function buildPayload(form) {
     fecha_tentativa: form.fecha_tentativa,
     numero_invitados: Number(form.numero_invitados),
     tipo_servicio: form.tipo_servicio,
+    paquete: form.paquete ? Number(form.paquete) : null,
+    nivel_experiencia: form.nivel_experiencia,
+    entretenimiento: form.entretenimiento,
   }
 }
 
@@ -88,6 +96,10 @@ function validateForm(form) {
 
   if (!form.telefono.trim()) {
     validationErrors.telefono = 'Ingresa un teléfono de contacto.'
+  }
+
+  if (form.tipo_servicio === 'servicio_completo' && !form.paquete) {
+    validationErrors.paquete = 'Selecciona el paquete que deseas cotizar.'
   }
 
   return validationErrors
@@ -154,11 +166,18 @@ function OrnamentalDivider() {
 
 export function PreCotizacionPage() {
   const [tiposEvento, setTiposEvento] = useState([])
+  const [packageCatalog, setPackageCatalog] = useState({
+    incluidos_en_todos: [],
+    paquetes: [],
+    recomendados: [],
+  })
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
   const [pageError, setPageError] = useState('')
   const [result, setResult] = useState(null)
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
+  const [isLoadingPackages, setIsLoadingPackages] = useState(true)
+  const [showAllPackages, setShowAllPackages] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isSubmittingRef = useRef(false)
   const formHeadingRef = useRef(null)
@@ -199,12 +218,44 @@ export function PreCotizacionPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let isActive = true
+
+    async function loadPackages() {
+      setIsLoadingPackages(true)
+      try {
+        const data = await listarPaquetesPublicos({
+          ...(Number(form.numero_invitados) > 0
+            ? { numero_invitados: Number(form.numero_invitados) }
+            : {}),
+          nivel_experiencia: form.nivel_experiencia,
+          entretenimiento: form.entretenimiento,
+        })
+        if (isActive) setPackageCatalog(data)
+      } catch (error) {
+        if (isActive) setPageError(getPublicErrorMessage(error, 'catalog'))
+      } finally {
+        if (isActive) setIsLoadingPackages(false)
+      }
+    }
+
+    const timeoutId = window.setTimeout(loadPackages, 250)
+    return () => {
+      isActive = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [form.entretenimiento, form.nivel_experiencia, form.numero_invitados])
+
   const handleChange = (event) => {
     const { name, value } = event.target
     setForm((current) => ({
       ...current,
       [name]: value,
+      ...(name === 'tipo_servicio' ? { paquete: '' } : {}),
     }))
+    if (name === 'nivel_experiencia' || name === 'entretenimiento') {
+      setShowAllPackages(false)
+    }
     setResult(null)
 
     const relatedErrorKeys = {
@@ -262,6 +313,7 @@ export function PreCotizacionPage() {
 
   const handleReset = () => {
     setForm({ ...initialForm })
+    setShowAllPackages(false)
     setErrors({})
     setPageError('')
     setResult(null)
@@ -275,7 +327,9 @@ export function PreCotizacionPage() {
     isConfigLoading ||
     configError ||
     !hasBusinessConfig ||
-    !tiposEvento.length
+    !tiposEvento.length ||
+    ((form.tipo_servicio === 'servicio_completo' || form.tipo_servicio === 'no_estoy_seguro')
+      && isLoadingPackages)
 
   return (
     <section className="public-precotizacion-page" aria-labelledby="public-prequote-title">
@@ -412,8 +466,76 @@ export function PreCotizacionPage() {
                 ) : null}
               </fieldset>
 
+              {form.tipo_servicio === 'no_estoy_seguro' ? (
+                <section className="public-guidance-questions" aria-labelledby="guidance-title">
+                  <FormSectionHeading
+                    description="Estas respuestas solo ordenan recomendaciones; siempre puedes revisar los seis paquetes."
+                    id="guidance-title"
+                    number="3"
+                    title="Cuéntanos qué priorizas"
+                  />
+                  <div className="public-form-grid">
+                    <Select
+                      id="public-nivel-experiencia"
+                      label="¿Qué nivel de experiencia buscas?"
+                      name="nivel_experiencia"
+                      onChange={handleChange}
+                      value={form.nivel_experiencia}
+                    >
+                      <option value="esencial">Algo esencial y funcional</option>
+                      <option value="equilibrado">Equilibrio entre menú y experiencia</option>
+                      <option value="completo">Una experiencia lo más completa posible</option>
+                    </Select>
+                    <Select
+                      id="public-entretenimiento"
+                      label="¿El entretenimiento es importante?"
+                      name="entretenimiento"
+                      onChange={handleChange}
+                      value={form.entretenimiento}
+                    >
+                      <option value="indiferente">Todavía no es decisivo</option>
+                      <option value="importante">Sí, quiero opciones con entretenimiento</option>
+                    </Select>
+                  </div>
+                </section>
+              ) : null}
+
+              {form.tipo_servicio !== 'alquiler' ? (
+                <section className="public-package-section" aria-labelledby="package-section-title">
+                  <FormSectionHeading
+                    description="El precio total se calcula en el backend con el número de invitados ingresado."
+                    id="package-section-title"
+                    number={form.tipo_servicio === 'no_estoy_seguro' ? '4' : '3'}
+                    title={form.tipo_servicio === 'no_estoy_seguro' ? 'Paquetes recomendados' : 'Elige tu paquete'}
+                  />
+                  {isLoadingPackages ? (
+                    <LoadingState label="Actualizando precios y recomendaciones" />
+                  ) : (
+                    <PackageSelector
+                      catalog={packageCatalog}
+                      isGuided={form.tipo_servicio === 'no_estoy_seguro'}
+                      onSelect={handleChange}
+                      onToggleAll={() => setShowAllPackages((current) => !current)}
+                      selectedId={form.paquete}
+                      showAll={showAllPackages}
+                    />
+                  )}
+                  {errors.paquete ? <span className="field__error" role="alert">{errors.paquete}</span> : null}
+                </section>
+              ) : null}
+
               <section className="public-form-section" aria-labelledby="contact-section-title">
-                <FormSectionHeading id="contact-section-title" number="3" title="Datos de contacto" />
+                <FormSectionHeading
+                  id="contact-section-title"
+                  number={
+                    form.tipo_servicio === 'alquiler'
+                      ? '3'
+                      : form.tipo_servicio === 'no_estoy_seguro'
+                        ? '5'
+                        : '4'
+                  }
+                  title="Datos de contacto"
+                />
                 <div className="public-form-grid">
                   <Input
                     autoComplete="name"

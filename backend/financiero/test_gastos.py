@@ -304,6 +304,7 @@ class GastosDomainApiTests(APITestCase):
         contract = Contrato.objects.create(
             persona=persona,
             tipo_evento=event_type,
+            tipo_servicio=Contrato.TipoServicio.ALQUILER,
             fecha_evento=self.current.replace(day=20),
             numero_invitados=20,
             valor_final=Decimal("1000.00"),

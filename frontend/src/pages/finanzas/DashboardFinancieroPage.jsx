@@ -552,7 +552,16 @@ function EventProfitabilityTable({ events, periodLabel }) {
         </div>
       ),
     },
-    { key: 'paquete_nombre', header: 'Paquete' },
+    {
+      key: 'paquete_nombre',
+      header: 'Servicio / paquete',
+      render: (row) => (
+        <div className="stacked-cell">
+          <strong>{row.tipo_servicio_display}</strong>
+          <span>{row.paquete_nombre}</span>
+        </div>
+      ),
+    },
     { key: 'fecha_evento', header: 'Fecha', render: (row) => formatDate(row.fecha_evento) },
     { key: 'valor_final', header: 'Ingresos', render: (row) => formatCurrency(row.valor_final) },
     { key: 'costos_directos', header: 'Costos', render: (row) => formatCurrency(row.costos_directos) },

@@ -20,19 +20,18 @@ class CotizacionModelTests(TestCase):
         )
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
         self.paquete = Paquete.objects.create(
-            nombre="Alquiler base",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
+            nombre="Servicio base",
+            precio_por_persona=Decimal("10.00"),
         )
 
     def test_numero_invitados_debe_ser_positivo(self):
         cotizacion = Cotizacion(
             persona=self.persona,
             tipo_evento=self.tipo_evento,
-            paquete=self.paquete,
+            paquete=None,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=0,
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
             total_estimado=Decimal("1000.00"),
         )
 
@@ -90,7 +89,6 @@ class CotizacionApiTests(APITestCase):
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda")
         self.paquete = Paquete.objects.create(
             nombre="Servicio completo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("30.00"),
         )
         self.configuracion = ConfiguracionNegocio.objects.create(
@@ -111,7 +109,7 @@ class CotizacionApiTests(APITestCase):
                 "paquete": self.paquete.id,
                 "fecha_tentativa": "2026-08-01",
                 "numero_invitados": 80,
-                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
                 "estado": Cotizacion.Estado.NUEVA,
                 "total_estimado": "2400.00",
                 "observaciones": "",
@@ -122,23 +120,18 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["persona_nombre"], "Persona API")
 
-    def test_rechaza_paquete_de_otro_tipo_servicio(self):
-        paquete_alquiler = Paquete.objects.create(
-            nombre="Alquiler",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
-        )
+    def test_rechaza_paquete_en_cotizacion_de_alquiler(self):
         response = self.client.post(
             "/api/cotizaciones/",
             {
                 "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
-                "paquete": paquete_alquiler.id,
+                "paquete": self.paquete.id,
                 "fecha_tentativa": "2026-08-01",
                 "numero_invitados": 80,
-                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
                 "estado": Cotizacion.Estado.NUEVA,
-                "total_estimado": "2400.00",
+                "total_estimado": "1300.00",
             },
             format="json",
         )
@@ -155,7 +148,7 @@ class CotizacionApiTests(APITestCase):
                 "paquete": None,
                 "fecha_tentativa": "2026-08-01",
                 "numero_invitados": 80,
-                "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
                 "estado": Cotizacion.Estado.NUEVA,
                 "total_estimado": "2400.00",
             },
@@ -169,7 +162,6 @@ class CotizacionApiTests(APITestCase):
         tipo_inactivo = TipoEvento.objects.create(nombre="Inactivo", activo=False)
         paquete_inactivo = Paquete.objects.create(
             nombre="Paquete inactivo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("25.00"),
             activo=False,
         )
@@ -179,7 +171,7 @@ class CotizacionApiTests(APITestCase):
             "paquete": self.paquete.id,
             "fecha_tentativa": "2026-08-01",
             "numero_invitados": 80,
-            "tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO,
+            "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             "estado": Cotizacion.Estado.NUEVA,
             "total_estimado": "2400.00",
         }
@@ -207,7 +199,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=50,
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
             total_estimado=Decimal("-1.00"),
         )
 
@@ -224,7 +216,7 @@ class CotizacionApiTests(APITestCase):
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 80,
-                "tipo_servicio": Paquete.TipoServicio.ALQUILER,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
                 "observaciones": "Solicitud inicial",
             },
             format="json",
@@ -246,7 +238,7 @@ class CotizacionApiTests(APITestCase):
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 201,
-                "tipo_servicio": Paquete.TipoServicio.ALQUILER,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             },
             format="json",
         )
@@ -263,7 +255,7 @@ class CotizacionApiTests(APITestCase):
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-09-01",
                 "numero_invitados": 80,
-                "tipo_servicio": Paquete.TipoServicio.ALQUILER,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             },
             format="json",
         )
@@ -275,7 +267,6 @@ class CotizacionApiTests(APITestCase):
         self.client.force_authenticate(user=None)
         Paquete.objects.create(
             nombre="Servicio inactivo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("99.00"),
             activo=False,
         )
@@ -289,12 +280,13 @@ class CotizacionApiTests(APITestCase):
                 "fecha_tentativa": "2026-10-01",
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+                "paquete": self.paquete.id,
             },
             format="json",
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["cotizacion"]["paquete"], None)
+        self.assertEqual(response.data["cotizacion"]["paquete"], self.paquete.id)
         self.assertEqual(response.data["cotizacion"]["total_estimado"], "2400.00")
         paquetes = response.data["calculo"]["paquetes"]
         self.assertEqual(len(paquetes), 1)
@@ -311,7 +303,7 @@ class CotizacionApiTests(APITestCase):
                 "tipo_evento": self.tipo_evento.id,
                 "fecha_tentativa": "2026-11-01",
                 "numero_invitados": 80,
-                "tipo_servicio": Cotizacion.TipoServicioInteres.NO_SEGURO,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
             },
             format="json",
         )
@@ -320,7 +312,7 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.data["cotizacion"]["estado"], Cotizacion.Estado.NUEVA)
         self.assertEqual(
             response.data["cotizacion"]["tipo_servicio"],
-            Cotizacion.TipoServicioInteres.NO_SEGURO,
+            Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
         )
         self.assertEqual(response.data["calculo"]["alquiler"]["total_estimado"], "1300.00")
         self.assertEqual(
@@ -340,7 +332,6 @@ class CotizacionApiTests(APITestCase):
         TipoEvento.objects.create(nombre="Evento inactivo", activo=False)
         Paquete.objects.create(
             nombre="Paquete inactivo",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("60.00"),
             activo=False,
         )
@@ -348,7 +339,7 @@ class CotizacionApiTests(APITestCase):
         tipos_response = self.client.get("/api/public/tipos-evento/")
         paquetes_response = self.client.get(
             "/api/public/paquetes/",
-            {"tipo_servicio": Paquete.TipoServicio.SERVICIO_COMPLETO},
+            {"numero_invitados": 80},
         )
         configuracion_response = self.client.get("/api/public/configuracion/")
 
@@ -360,7 +351,7 @@ class CotizacionApiTests(APITestCase):
             {"Boda"},
         )
         self.assertEqual(
-            {item["nombre"] for item in paquetes_response.data},
+            {item["nombre"] for item in paquetes_response.data["paquetes"]},
             {"Servicio completo"},
         )
         self.assertEqual(
@@ -379,7 +370,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.NUEVA,
             total_estimado=Decimal("2400.00"),
         )
@@ -405,7 +396,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 15),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONTACTADA,
             total_estimado=Decimal("2400.00"),
             observaciones="Seguimiento por WhatsApp",
@@ -416,7 +407,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 9, 1),
             numero_invitados=60,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.NUEVA,
             total_estimado=Decimal("1800.00"),
             observaciones="Solicitud distinta",
@@ -550,7 +541,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("2400.00"),
         )
@@ -571,7 +562,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONVERTIDA,
             total_estimado=Decimal("2400.00"),
         )
@@ -580,6 +571,7 @@ class CotizacionApiTests(APITestCase):
             persona=self.persona,
             tipo_evento=self.tipo_evento,
             paquete=self.paquete,
+            tipo_servicio=Contrato.TipoServicio.SERVICIO_COMPLETO,
             fecha_evento=date(2026, 8, 1),
             numero_invitados=80,
             valor_final=Decimal("2400.00"),
@@ -605,7 +597,6 @@ class CotizacionApiTests(APITestCase):
     def test_convertir_cotizacion_confirmada_a_contrato(self):
         paquete_final = Paquete.objects.create(
             nombre="Servicio final",
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
             precio_por_persona=Decimal("35.00"),
         )
         cotizacion = Cotizacion.objects.create(
@@ -614,7 +605,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("2400.00"),
         )
@@ -652,7 +643,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.NUEVA,
             total_estimado=Decimal("2400.00"),
         )
@@ -666,26 +657,21 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("estado", response.data)
 
-    def test_convertir_rechaza_paquete_final_de_otro_tipo_servicio(self):
-        paquete_alquiler = Paquete.objects.create(
-            nombre="Alquiler final",
-            tipo_servicio=Paquete.TipoServicio.ALQUILER,
-            precio_por_persona=Decimal("0.00"),
-        )
+    def test_convertir_alquiler_rechaza_paquete_final(self):
         cotizacion = Cotizacion.objects.create(
             persona=self.persona,
             tipo_evento=self.tipo_evento,
-            paquete=self.paquete,
+            paquete=None,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
             estado=Cotizacion.Estado.CONFIRMADA,
-            total_estimado=Decimal("2400.00"),
+            total_estimado=Decimal("1300.00"),
         )
 
         response = self.client.post(
             f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
-            {"paquete": paquete_alquiler.id},
+            {"paquete": self.paquete.id},
             format="json",
         )
 
@@ -699,7 +685,7 @@ class CotizacionApiTests(APITestCase):
             paquete=self.paquete,
             fecha_tentativa=date(2026, 8, 1),
             numero_invitados=80,
-            tipo_servicio=Paquete.TipoServicio.SERVICIO_COMPLETO,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             estado=Cotizacion.Estado.CONFIRMADA,
             total_estimado=Decimal("2400.00"),
         )

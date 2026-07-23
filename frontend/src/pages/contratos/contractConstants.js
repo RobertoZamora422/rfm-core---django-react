@@ -22,6 +22,21 @@ export const ESTADO_PAGO_LABELS = {
   pagado: 'Pagado',
 }
 
+export const TIPO_SERVICIO_LABELS = {
+  alquiler: 'Alquiler del local',
+  servicio_completo: 'Servicio completo',
+}
+
+export const TIPOS_SERVICIO_FILTRO = [
+  { value: '', label: 'Todos los servicios' },
+  { value: 'alquiler', label: TIPO_SERVICIO_LABELS.alquiler },
+  { value: 'servicio_completo', label: TIPO_SERVICIO_LABELS.servicio_completo },
+]
+
+export function getTipoServicioLabel(value) {
+  return TIPO_SERVICIO_LABELS[value] ?? 'Requiere revisión'
+}
+
 export function getEstadoContratoLabel(status) {
   return ESTADO_CONTRATO_LABELS[status] ?? status
 }

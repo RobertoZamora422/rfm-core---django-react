@@ -23,14 +23,17 @@ import { formatCurrency, formatDate, formatPhone } from '../../utils/formatters'
 import {
   ESTADOS_CONTRATO_FILTRO,
   ESTADOS_PAGO_FILTRO,
+  TIPOS_SERVICIO_FILTRO,
   getEstadoContratoLabel,
   getEstadoPagoLabel,
+  getTipoServicioLabel,
 } from './contractConstants'
 
 const initialFilters = {
   buscar: '',
   estado_contrato: '',
   estado_pago: '',
+  tipo_servicio: '',
   tipo_evento: '',
   desde: '',
   hasta: '',
@@ -167,9 +170,14 @@ export function ContratosPage() {
       render: (item) => (
         <div className="stacked-cell">
           <strong>{item.tipo_evento_nombre}</strong>
-          <span>{item.paquete_nombre || 'Sin paquete'} · {formatDate(item.fecha_evento)}</span>
+          <span>{item.paquete_nombre} · {formatDate(item.fecha_evento)}</span>
         </div>
       ),
+    },
+    {
+      key: 'tipo_servicio',
+      header: 'Tipo de servicio',
+      render: (item) => getTipoServicioLabel(item.tipo_servicio),
     },
     {
       key: 'valores',
@@ -254,6 +262,9 @@ export function ContratosPage() {
 
       <FiltersToolbar hasFilters={hasFilters} isLoading={isLoading} onClear={handleClearFilters} resultCount={totalItems}>
         <Input icon={Search} id="contratos-buscar" label="Buscar" name="buscar" onChange={handleFilterChange} placeholder="Cliente, teléfono, evento o paquete" type="search" value={filters.buscar} />
+        <Select id="contratos-tipo-servicio" label="Tipo de servicio" name="tipo_servicio" onChange={handleFilterChange} value={filters.tipo_servicio}>
+          {TIPOS_SERVICIO_FILTRO.map((item) => <option key={item.value || 'todos'} value={item.value}>{item.label}</option>)}
+        </Select>
         <Select id="contratos-estado-contrato" label="Estado del contrato" name="estado_contrato" onChange={handleFilterChange} value={filters.estado_contrato}>
           {ESTADOS_CONTRATO_FILTRO.map((item) => <option key={item.value || 'todos'} value={item.value}>{item.label}</option>)}
         </Select>

@@ -5,8 +5,19 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from rest_framework import serializers
 
+from financiero.models import Contrato
 from negocio.models import Paquete, Persona, TipoEvento
+from negocio.ofertas import (
+    presentacion_paquete,
+    snapshot_alquiler,
+    snapshot_alquiler_desde_oferta,
+    snapshot_no_estoy_seguro,
+    snapshot_no_estoy_seguro_desde_oferta,
+    snapshot_paquete,
+    snapshot_paquete_desde_oferta,
+)
 from negocio.persona_services import PersonaDuplicadaError, crear_persona
+from negocio.selectors import obtener_configuracion_activa
 from negocio.serializers import PersonaNuevaSerializer
 from negocio.validators import validate_phone
 
@@ -25,7 +36,11 @@ class CotizacionSerializer(serializers.ModelSerializer):
         source="tipo_evento.nombre",
         read_only=True,
     )
-    paquete_nombre = serializers.CharField(source="paquete.nombre", read_only=True)
+    paquete_nombre = serializers.SerializerMethodField()
+    tipo_servicio_display = serializers.CharField(
+        source="get_tipo_servicio_display",
+        read_only=True,
+    )
     esta_convertida = serializers.BooleanField(read_only=True)
     contrato_id = serializers.SerializerMethodField()
     origen_display = serializers.CharField(source="get_origen_display", read_only=True)
@@ -45,6 +60,9 @@ class CotizacionSerializer(serializers.ModelSerializer):
             "fecha_tentativa",
             "numero_invitados",
             "tipo_servicio",
+            "tipo_servicio_display",
+            "oferta_snapshot",
+            "oferta_requiere_revision",
             "estado",
             "total_estimado",
             "observaciones",
@@ -61,6 +79,8 @@ class CotizacionSerializer(serializers.ModelSerializer):
             "contrato_id",
             "origen",
             "origen_display",
+            "oferta_snapshot",
+            "oferta_requiere_revision",
             "creado_en",
             "actualizado_en",
         ]
@@ -70,6 +90,13 @@ class CotizacionSerializer(serializers.ModelSerializer):
             return obj.contrato.id
         except ObjectDoesNotExist:
             return None
+
+    def get_paquete_nombre(self, obj):
+        return presentacion_paquete(
+            tipo_servicio=obj.tipo_servicio,
+            snapshot=obj.oferta_snapshot,
+            paquete=obj.paquete,
+        )
 
     def validate(self, attrs):
         paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))
@@ -121,11 +148,10 @@ class CotizacionSerializer(serializers.ModelSerializer):
             if self.instance is None or paquete.id != current_paquete_id:
                 errors["paquete"] = "El paquete debe estar activo."
 
-        if paquete and tipo_servicio and paquete.tipo_servicio != tipo_servicio:
-            errors["paquete"] = "El paquete no corresponde al tipo de servicio indicado."
-
         if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO and not paquete:
             errors["paquete"] = "El servicio completo requiere seleccionar un paquete."
+        if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER and paquete:
+            errors["paquete"] = "El alquiler del local no utiliza un paquete."
 
         if estado == Cotizacion.Estado.CONVERTIDA and (
             self.instance is None
@@ -152,6 +178,75 @@ class CotizacionSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    def _snapshot(self, validated_data):
+        tipo_servicio = validated_data.get(
+            "tipo_servicio",
+            getattr(self.instance, "tipo_servicio", None),
+        )
+        paquete = validated_data.get(
+            "paquete",
+            getattr(self.instance, "paquete", None),
+        )
+        numero_invitados = validated_data.get(
+            "numero_invitados",
+            getattr(self.instance, "numero_invitados", None),
+        )
+        total_estimado = validated_data.get(
+            "total_estimado",
+            getattr(self.instance, "total_estimado", None),
+        )
+        configuracion = obtener_configuracion_activa()
+        if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER:
+            if self.instance:
+                snapshot = snapshot_alquiler_desde_oferta(
+                    self.instance.oferta_snapshot,
+                    numero_invitados=numero_invitados,
+                    total_estimado=total_estimado,
+                    origen="cotizacion_manual",
+                )
+                if snapshot:
+                    return snapshot
+            return snapshot_alquiler(
+                configuracion,
+                numero_invitados=numero_invitados,
+                total_estimado=total_estimado,
+                origen="cotizacion_manual",
+            )
+        if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO:
+            if self.instance:
+                snapshot = snapshot_paquete_desde_oferta(
+                    self.instance.oferta_snapshot,
+                    paquete=paquete,
+                    numero_invitados=numero_invitados,
+                    total_estimado=total_estimado,
+                    origen="cotizacion_manual",
+                )
+                if snapshot:
+                    return snapshot
+            return snapshot_paquete(
+                paquete,
+                numero_invitados=numero_invitados,
+                total_estimado=total_estimado,
+                origen="cotizacion_manual",
+            )
+        if self.instance:
+            snapshot = snapshot_no_estoy_seguro_desde_oferta(
+                self.instance.oferta_snapshot,
+                paquete=paquete,
+                numero_invitados=numero_invitados,
+                total_estimado=total_estimado,
+                origen="cotizacion_manual",
+            )
+            if snapshot:
+                return snapshot
+        return snapshot_no_estoy_seguro(
+            numero_invitados=numero_invitados,
+            total_estimado=total_estimado,
+            paquete=paquete,
+            configuracion=configuracion,
+            origen="cotizacion_manual",
+        )
+
     @transaction.atomic
     def create(self, validated_data):
         persona_nueva = validated_data.pop("persona_nueva", None)
@@ -173,7 +268,21 @@ class CotizacionSerializer(serializers.ModelSerializer):
             except DjangoValidationError as exc:
                 raise serializers.ValidationError(exc.message_dict) from exc
         validated_data["origen"] = Cotizacion.Origen.COTIZACION_MANUAL
+        validated_data["oferta_snapshot"] = self._snapshot(validated_data)
+        validated_data["oferta_requiere_revision"] = False
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        critical_fields = {
+            "tipo_servicio",
+            "paquete",
+            "numero_invitados",
+            "total_estimado",
+        }
+        if critical_fields.intersection(validated_data):
+            validated_data["oferta_snapshot"] = self._snapshot(validated_data)
+            validated_data["oferta_requiere_revision"] = False
+        return super().update(instance, validated_data)
 
     def validate_numero_invitados(self, value):
         if value <= 0:
@@ -208,6 +317,18 @@ class PreCotizacionSerializer(serializers.Serializer):
     numero_invitados = serializers.IntegerField(min_value=1)
     tipo_servicio = serializers.ChoiceField(choices=Cotizacion.TipoServicioInteres.choices)
     observaciones = serializers.CharField(required=False, allow_blank=True)
+    nivel_experiencia = serializers.ChoiceField(
+        choices=["esencial", "equilibrado", "completo"],
+        required=False,
+        default="equilibrado",
+        write_only=True,
+    )
+    entretenimiento = serializers.ChoiceField(
+        choices=["indiferente", "importante"],
+        required=False,
+        default="indiferente",
+        write_only=True,
+    )
 
     def validate(self, attrs):
         nombre_persona = (attrs.get("nombre_persona") or "").strip()
@@ -223,8 +344,10 @@ class PreCotizacionSerializer(serializers.Serializer):
         if not telefono_persona:
             errors["telefono_persona"] = "El teléfono de la persona es obligatorio."
 
-        if paquete and paquete.tipo_servicio != tipo_servicio:
-            errors["paquete"] = "El paquete no corresponde al tipo de servicio indicado."
+        if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER and paquete:
+            errors["paquete"] = "El alquiler del local no utiliza un paquete."
+        if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO and not paquete:
+            errors["paquete"] = "Selecciona el paquete de servicio completo que prefieres."
 
         if errors:
             raise serializers.ValidationError(errors)
@@ -246,6 +369,10 @@ class CambiarEstadoCotizacionSerializer(serializers.Serializer):
 
 
 class ConvertirContratoSerializer(serializers.Serializer):
+    tipo_servicio = serializers.ChoiceField(
+        choices=Contrato.TipoServicio.choices,
+        required=False,
+    )
     fecha_evento = serializers.DateField(required=False)
     numero_invitados = serializers.IntegerField(min_value=1, required=False)
     paquete = serializers.PrimaryKeyRelatedField(
