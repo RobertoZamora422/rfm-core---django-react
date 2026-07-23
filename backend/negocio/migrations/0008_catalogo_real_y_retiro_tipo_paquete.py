@@ -359,6 +359,8 @@ def cargar_catalogo_real(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
+    atomic = False
+
     dependencies = [
         ("negocio", "0007_estructura_oferta_paquetes"),
         ("comercial", "0006_oferta_historica_y_tipo_servicio"),
@@ -366,7 +368,11 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunPython(cargar_catalogo_real, migrations.RunPython.noop),
+        migrations.RunPython(
+            cargar_catalogo_real,
+            migrations.RunPython.noop,
+            atomic=True,
+        ),
         migrations.RemoveConstraint(
             model_name="paquete",
             name="paquete_precio_por_persona_no_negativo",
