@@ -1,62 +1,70 @@
 # Estado actual de RFM Core
 
-Fecha de referencia: 22 de julio de 2026.
+Fecha de referencia: 23 de julio de 2026.
 
-## Estado funcional
-
-RFM Core dispone de:
+## Implementado
 
 - pre-cotización pública sin autenticación;
-- autenticación administrativa por token;
-- Inicio operativo;
-- Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
-- Configuración del negocio;
-- costos directos, gastos recurrentes, gastos adicionales, dashboard financiero y reportes;
-- diseño responsive y actualización automática de recursos administrativos.
+- panel administrativo restringido a usuarios activos con `is_staff=True`;
+- Persona canónica, teléfono normalizado, alias y clasificación derivada;
+- cotizaciones, conversión única, contratos, pagos y cancelación histórica;
+- alquiler separado de paquetes de servicio completo;
+- snapshots históricos de ofertas;
+- costos directos con eliminación lógica;
+- gastos recurrentes versionados, ajustes de periodo y gastos adicionales;
+- Inicio, dashboard financiero, reportes y configuración del negocio;
+- diseño responsive y actualización automática entre vistas y pestañas;
+- pruebas automatizadas de backend y frontend.
 
-## Dominio de identidad
+## Integridad y seguridad
 
-`Persona` es la única entidad canónica para cualquier persona relacionada con el negocio. Cotizaciones y contratos apuntan a `persona`.
+- el backend concentra reglas comerciales, financieras y autorizaciones;
+- cotizaciones y contratos no admiten borrado físico;
+- tokens administrativos revocables con vencimiento de 24 horas por defecto;
+- límites configurables sobre login y escrituras públicas;
+- límites de tamaño y longitud en la pre-cotización;
+- producción exige secreto, hosts, CORS, CSRF y PostgreSQL;
+- HTTPS, cookies seguras, HSTS y cabeceras defensivas se activan sin `DEBUG`;
+- `/api/health/` comprueba el proceso y `/api/ready/` la base de datos.
 
-La clasificación se calcula desde backend:
+## Datos e historial
 
-- Interesado: cero contratos históricos.
-- Cliente: uno o más contratos históricos, incluidos los cancelados.
+`Persona` es la identidad única. Interesado significa cero contratos históricos;
+Cliente significa uno o más, aunque se hayan cancelado. Cancelar conserva la
+clasificación pero excluye el contrato de ingresos y rankings financieros.
 
-No hay modelos `Cliente` o `Interesado`, ni un campo editable de clasificación. El teléfono normalizado es único; el origen inicial y los alias se conservan.
+Las cotizaciones no son ingresos. Los costos y gastos eliminados lógicamente no
+afectan cálculos activos. Los gastos recurrentes se resuelven por intervalos de
+vigencia sin crear filas futuras por cada mes.
 
-## Navegación y API
+No existen semillas demo automáticas. Usuarios, configuración y catálogos reales
+se crean explícitamente.
 
-- Menú: `Personas`.
-- Pantalla: `Clientes & Interesados`.
-- Ruta: `/personas` y detalle `/personas/:id`.
-- API: `/api/personas/`, `/api/personas/resumen/` y `/api/personas/coincidencias/`.
-- La API y las rutas antiguas de la entidad genérica ya no se mantienen.
+## Rendimiento
 
-## Estado de datos
+- relaciones precargadas y agregaciones en base de datos;
+- clasificación y conteos anotados;
+- evolución del dashboard consultada por rango en vez de repetir todo por mes;
+- índices compuestos sobre estados, fechas, pagos, soft delete y vigencias;
+- búsqueda remota con debounce y paginación administrativa opcional.
 
-La base local está preparada para información real:
+## Despliegue oficial
 
-- cero personas, alias, cotizaciones y contratos;
-- cero tipos de evento, paquetes, costos directos y gastos operativos;
-- una configuración activa de Rancho Flor María;
-- un usuario administrativo.
+- Cloudflare Pages: React/Vite.
+- Koyeb: Django/DRF y Gunicorn.
+- Neon: PostgreSQL con TLS.
+- GitHub: código y activación de despliegues.
+- GitHub Actions: validación de backend y frontend en push y pull request.
 
-No existen cargas demo automáticas. Los comandos antiguos de semillas y sus marcadores técnicos fueron eliminados.
+El objetivo es $0/mes dentro de las cuotas gratuitas. Render solo pertenece al
+historial documental anterior.
 
-## Calidad y mantenimiento
+## Pendiente operativo
 
-- reglas de negocio en servicios, selectors y serializers;
-- transacciones para creación compuesta y deduplicación;
-- consultas anotadas para clasificación y conteos;
-- búsqueda remota con debounce en selectores de persona;
-- migraciones reproducibles desde una base vacía;
-- limpieza operativa explícita mediante `limpiar_datos_operativos`.
-
-## Próximos pasos operativos
-
-1. Registrar tipos de evento reales.
-2. Registrar paquetes reales.
-3. Confirmar la configuración vigente del negocio.
-4. Iniciar la captación pública y administrativa de personas.
-5. Mantener las validaciones descritas en `06_validacion_fase_17.md` como control de regresión.
+1. Crear proyecto y credenciales reales en Neon, Koyeb y Cloudflare.
+2. Aplicar migraciones con una conexión directa de Neon.
+3. Crear el administrador inicial y retirar su contraseña del entorno.
+4. Registrar configuración y catálogos reales.
+5. Ejecutar el recorrido de aceptación sobre las URLs productivas.
+6. Evaluar Recharts 3 en una tarea separada; la rama 2 está deprecada, aunque
+   la auditoría npm actual no reporta vulnerabilidades.

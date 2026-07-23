@@ -1,109 +1,80 @@
-# Plan Técnico de Implementación
+# Plan técnico y estado de implementación
 
-## Objetivo
+## Completado
 
-Mantener RFM Core como un producto coherente desde base de datos hasta interfaz, con reglas comerciales y financieras centralizadas en backend.
-
-## Estado de fases
-
-### Plataforma base — completada
+### Plataforma y dominio
 
 - Django REST Framework y React/Vite.
-- autenticación administrativa por token;
-- configuración local y Render;
-- migraciones, checks y suites automatizadas.
+- services, selectors, strategies y validators con responsabilidades separadas.
+- Persona canónica y migraciones históricas reproducibles.
+- pre-cotización, pipeline comercial, contratos, finanzas y reportes.
+- gastos recurrentes versionados sin duplicación mensual.
+- snapshots de oferta y eliminación lógica financiera.
 
-### Flujo público — completada
+### Seguridad
 
-- pre-cotización sin login;
-- cálculo por estrategias de alquiler, servicio completo o comparación;
-- registro transaccional de Persona y Cotización;
-- continuidad por WhatsApp configurado en backend.
+- API privada para personal autorizado;
+- tokens con expiración y revocación;
+- límites de abuso y tamaño de solicitudes públicas;
+- borrado físico bloqueado para documentos históricos;
+- configuración productiva HTTPS, HSTS, CORS/CSRF y PostgreSQL.
 
-### Gestión comercial — completada
+### Rendimiento
 
-- Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
-- búsqueda, filtros, detalle, creación, edición y acciones por estado;
-- creación rápida y selección remota de personas;
-- conversión única de cotización a contrato;
-- responsive, accesibilidad y estados vacíos.
+- consultas relacionadas y agregaciones en ORM;
+- dashboard de seis periodos consolidado por rango;
+- índices para filtros financieros y comerciales frecuentes;
+- búsqueda remota, debounce y paginación.
 
-### Finanzas y reportes — completada
+### Frontend y UX
 
-- costos directos, gastos recurrentes y gastos adicionales;
-- dashboard mensual y reportes históricos;
-- exclusión de contratos cancelados de métricas principales;
-- selectors y services para evitar lógica duplicada.
+- composición visual Rancho Flor María;
+- navegación protegida, ruta 404 y cierre local sin red;
+- estados de carga, error, vacío, reintento y envío;
+- tablas que cambian a cards/listas en móvil;
+- labels, foco visible, modales con trampa/restauración de foco y reduced motion;
+- Vitest y Testing Library para sesión y rutas.
 
-### Canonicalización de Persona — completada
+### Despliegue
 
-- modelo `Persona` y tabla `negocio_persona`;
-- FK `persona` en Cotización y Contrato;
-- serializers y viewset de Persona;
-- `/api/personas/` y rutas frontend `/personas`;
-- sidebar `Personas` y pantalla `Clientes & Interesados`;
-- clasificación Cliente/Interesado derivada de contratos históricos;
-- teléfono normalizado único, alias y origen preservados;
-- retirada de la nomenclatura técnica genérica anterior.
+- Cloudflare Pages: `_redirects`, `_headers`, Node fijado y build `dist`;
+- Koyeb: Python fijado, Procfile, Gunicorn, logging, staticfiles y readiness;
+- Neon: SSL, conexión saludable y compatibilidad con pooler;
+- ejemplos de entorno y documentación sin Render como opción vigente.
 
-### Preparación para datos reales — completada
+## Convenciones
 
-- eliminación de datos operativos demo locales;
-- conservación de configuración activa y administrador;
-- eliminación de semillas y marcadores demo;
-- comando explícito `limpiar_datos_operativos` con simulación por defecto;
-- migración comprobada sobre copia y desde base vacía.
-
-## Convenciones vigentes
-
-### Backend
-
-- models: integridad estructural y validaciones base;
-- serializers: contrato HTTP y errores de campo;
-- services: operaciones compuestas y transacciones;
-- selectors: consultas, filtros, anotaciones y optimización;
-- views: autorización, parámetros y respuesta HTTP.
-
-### Frontend
-
-- services: rutas HTTP centralizadas;
-- hooks: carga, debounce, refresco y coincidencias;
-- componentes compartidos solo cuando mejoran consistencia;
-- páginas orientadas a tareas y no a reproducir el esquema del endpoint.
-
-## Contratos de datos principales
+Backend:
 
 ```text
-Persona: id, nombre, telefono, correo, origen, clasificacion, conteos
-Cotizacion: persona, tipo_evento, paquete, fecha, invitados, estado, total
-Contrato: persona, cotizacion, evento, pago, valor, saldo, costos
+models -> integridad estructural
+serializers -> contrato HTTP
+services -> negocio y transacciones
+selectors -> consultas y agregaciones
+views -> autorización, parámetros y respuesta
 ```
 
-Las relaciones se envían como IDs en `persona`, nunca como identificadores escritos manualmente por el usuario.
+Frontend:
 
-## Política de datos iniciales
-
-- `migrate` solo crea estructura y permisos del framework.
-- `createsuperuser` se ejecuta de forma explícita.
-- Configuración, tipos de evento y paquetes se registran con información real.
-- No hay fixtures o seeds demo automáticos.
-- La limpieza destructiva requiere `limpiar_datos_operativos --execute`.
+```text
+services -> API
+hooks/context -> sesión y estado reutilizable
+components -> interacción compartida
+pages -> tareas del usuario
+```
 
 ## Control de cambios
 
-Antes de integrar una modificación sustancial:
+1. auditar el flujo página -> service -> endpoint -> backend;
+2. conservar contratos públicos y datos históricos;
+3. crear migraciones nuevas, nunca reescribir aplicadas;
+4. añadir prueba de regresión;
+5. ejecutar tests, checks, lint, build y `git diff --check`;
+6. validar navegador y configuración productiva.
 
-1. auditar modelos, serializers, services, selectors, endpoints y consumidores;
-2. proteger compatibilidad solo cuando exista un consumidor real;
-3. generar migraciones no destructivas o justificar explícitamente la limpieza;
-4. actualizar pruebas del comportamiento modificado;
-5. ejecutar checks, suite backend, lint, build y `git diff --check`;
-6. validar los flujos críticos en navegador.
+## Futuro condicionado a producto
 
-## Trabajo futuro condicionado a decisión de producto
-
-- auditoría de eventos totalmente persistida: solo si el negocio requiere trazabilidad más allá del historial verificable actual;
-- integración de mensajería: solo con alcance, consentimiento y proveedor definidos;
-- importación masiva: solo cuando existan datos reales que justifiquen reglas de conciliación.
-
-No se agregan métricas, estados ni automatizaciones sin una tarea operativa demostrable.
+- auditoría inmutable de eventos, si se define el nivel de trazabilidad;
+- segundo factor o identidad externa, si cambia el riesgo operativo;
+- cache/throttling compartido, si Koyeb escala a varias instancias;
+- importación masiva, cuando existan datos y reglas de conciliación reales.

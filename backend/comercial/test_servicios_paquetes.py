@@ -21,6 +21,7 @@ class ServiciosPaquetesDomainTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="servicios-paquetes",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
         self.persona = Persona.objects.create(

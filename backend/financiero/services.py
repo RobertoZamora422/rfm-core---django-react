@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 from negocio.ofertas import presentacion_paquete
@@ -25,6 +26,7 @@ from .selectors import (
     costos_directos_activos_por_evento_entre,
     gastos_adicionales_activos_entre,
     gastos_recurrentes_aplicables,
+    gastos_recurrentes_con_vigencia_entre,
 )
 
 
@@ -673,26 +675,101 @@ def _commercial_performance(rows):
     }
 
 
+def _grouped_monthly_values(queryset, *, date_field, value_field):
+    return {
+        item["periodo"]: item["total"] or ZERO
+        for item in queryset.annotate(
+            periodo=TruncMonth(date_field),
+        )
+        .values("periodo")
+        .annotate(total=Sum(value_field))
+    }
+
+
+def _recurrent_totals_by_period(period_dates):
+    totals = {periodo: ZERO for periodo in period_dates}
+    if not period_dates:
+        return totals
+
+    gastos = gastos_recurrentes_con_vigencia_entre(
+        min(period_dates),
+        max(period_dates),
+    )
+    for gasto in gastos:
+        ajustes = {
+            ajuste.periodo: ajuste
+            for ajuste in gasto.ajustes_rango
+        }
+        for periodo in period_dates:
+            version = next(
+                (
+                    item
+                    for item in reversed(gasto.versiones_rango)
+                    if item.vigente_desde <= periodo
+                    and (
+                        item.vigente_hasta is None
+                        or item.vigente_hasta >= periodo
+                    )
+                ),
+                None,
+            )
+            if version is None:
+                continue
+            ajuste = ajustes.get(periodo)
+            totals[periodo] += ajuste.valor if ajuste else version.valor_mensual
+    return totals
+
+
 def _monthly_evolution(mes, anio):
+    periods = _period_sequence(mes, anio)
+    period_dates = [date(period_anio, period_mes, 1) for period_mes, period_anio in periods]
+    range_start = period_dates[0]
+    _last_start, range_end = _month_bounds(periods[-1][0], periods[-1][1])
+
+    ingresos_por_periodo = _grouped_monthly_values(
+        Contrato.objects.filter(
+            estado_contrato=Contrato.EstadoContrato.CONFIRMADO,
+            fecha_evento__gte=range_start,
+            fecha_evento__lte=range_end,
+        ),
+        date_field="fecha_evento",
+        value_field="valor_final",
+    )
+    costos_por_periodo = _grouped_monthly_values(
+        costos_directos_activos_por_evento_entre(range_start, range_end),
+        date_field="contrato__fecha_evento",
+        value_field="valor",
+    )
+    adicionales_por_periodo = _grouped_monthly_values(
+        gastos_adicionales_activos_entre(range_start, range_end),
+        date_field="fecha",
+        value_field="valor",
+    )
+    recurrentes_por_periodo = _recurrent_totals_by_period(period_dates)
+
     evolution = []
-    for period_mes, period_anio in _period_sequence(mes, anio):
-        metrics = _period_metrics(period_mes, period_anio)
+    for (period_mes, period_anio), periodo in zip(periods, period_dates):
+        ingresos = ingresos_por_periodo.get(periodo, ZERO)
+        costos = costos_por_periodo.get(periodo, ZERO)
+        recurrentes = recurrentes_por_periodo.get(periodo, ZERO)
+        adicionales = adicionales_por_periodo.get(periodo, ZERO)
+        gastos_operativos = recurrentes + adicionales
         evolution.append(
             {
-                "periodo": metrics["periodo"],
-                "label": metrics["periodo"]["label"],
-                "ingresos_mes": _money(metrics["ingresos_mes"]),
-                "costos_directos_mes": _money(metrics["costos_directos_mes"]),
-                "gastos_fijos_recurrentes_periodo": _money(
-                    metrics["gastos_fijos_recurrentes_periodo"]
-                ),
-                "gastos_adicionales_periodo": _money(
-                    metrics["gastos_adicionales_periodo"]
-                ),
-                "total_gastos_operativos_periodo": _money(
-                    metrics["total_gastos_operativos_periodo"]
-                ),
-                "utilidad_neta": _money(metrics["utilidad_neta"]),
+                "periodo": {
+                    "mes": period_mes,
+                    "anio": period_anio,
+                    "inicio": periodo.isoformat(),
+                    "fin": _month_bounds(period_mes, period_anio)[1].isoformat(),
+                    "label": _period_label(period_mes, period_anio),
+                },
+                "label": _period_label(period_mes, period_anio),
+                "ingresos_mes": _money(ingresos),
+                "costos_directos_mes": _money(costos),
+                "gastos_fijos_recurrentes_periodo": _money(recurrentes),
+                "gastos_adicionales_periodo": _money(adicionales),
+                "total_gastos_operativos_periodo": _money(gastos_operativos),
+                "utilidad_neta": _money(ingresos - costos - gastos_operativos),
             }
         )
     return evolution

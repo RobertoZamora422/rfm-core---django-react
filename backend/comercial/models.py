@@ -70,6 +70,16 @@ class Cotizacion(TimeStampedModel):
     )
     class Meta:
         ordering = ["-creado_en"]
+        indexes = [
+            models.Index(
+                fields=["estado", "fecha_tentativa"],
+                name="cotiz_estado_fecha_idx",
+            ),
+            models.Index(
+                fields=["persona", "-creado_en"],
+                name="cotiz_persona_crea_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(numero_invitados__gt=0),

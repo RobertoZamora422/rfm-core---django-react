@@ -308,14 +308,28 @@ class CotizacionSerializer(serializers.ModelSerializer):
 
 class PreCotizacionSerializer(serializers.Serializer):
     persona = serializers.IntegerField(required=False, write_only=True)
-    nombre_persona = serializers.CharField(required=True, allow_blank=False)
+    nombre_persona = serializers.CharField(
+        required=True,
+        allow_blank=False,
+        max_length=150,
+    )
     telefono_persona = serializers.CharField(
         required=True,
         allow_blank=False,
+        max_length=30,
         validators=[validate_phone],
     )
-    correo_persona = serializers.EmailField(required=False, allow_blank=True, write_only=True)
-    observaciones_persona = serializers.CharField(required=False, allow_blank=True)
+    correo_persona = serializers.EmailField(
+        required=False,
+        allow_blank=True,
+        max_length=254,
+        write_only=True,
+    )
+    observaciones_persona = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=1000,
+    )
     tipo_evento = serializers.PrimaryKeyRelatedField(
         queryset=TipoEvento.objects.filter(activo=True),
     )
@@ -327,7 +341,11 @@ class PreCotizacionSerializer(serializers.Serializer):
     fecha_tentativa = serializers.DateField()
     numero_invitados = serializers.IntegerField(min_value=1)
     tipo_servicio = serializers.ChoiceField(choices=Cotizacion.TipoServicioInteres.choices)
-    observaciones = serializers.CharField(required=False, allow_blank=True)
+    observaciones = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2000,
+    )
     solicitud_token = serializers.CharField(
         required=False,
         allow_blank=False,

@@ -1,5 +1,8 @@
 # Modelo de Datos Detallado
 
+> Estado: modelo vigente. Las migraciones `comercial.0009` y
+> `financiero.0007` agregan índices no destructivos sobre filtros frecuentes.
+
 ## Diagrama conceptual
 
 ```text

@@ -1,11 +1,13 @@
 import os
+from datetime import timedelta
 from io import StringIO
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
@@ -80,6 +82,7 @@ class AuthApiTests(APITestCase):
             username="admin",
             password="test-pass",
             email="admin@example.com",
+            is_staff=True,
         )
 
     def test_login_devuelve_usuario_y_token(self):
@@ -104,6 +107,21 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_login_rechaza_usuario_sin_acceso_administrativo(self):
+        get_user_model().objects.create_user(
+            username="visitante",
+            password="test-pass",
+        )
+
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "visitante", "password": "test-pass"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Token.objects.filter(user__username="visitante").exists())
+
     def test_me_requiere_autenticacion(self):
         anonymous = self.client.get("/api/auth/me/")
 
@@ -123,3 +141,32 @@ class AuthApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Token.objects.filter(key=token.key).exists())
+
+    @override_settings(AUTH_TOKEN_TTL_HOURS=24)
+    def test_token_vencido_se_revoca_y_exige_nuevo_login(self):
+        token = Token.objects.create(user=self.user)
+        Token.objects.filter(pk=token.pk).update(
+            created=timezone.now() - timedelta(hours=25)
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+        response = self.client.get("/api/auth/me/")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertFalse(Token.objects.filter(key=token.key).exists())
+
+    @override_settings(AUTH_TOKEN_TTL_HOURS=24)
+    def test_login_reemplaza_token_vencido(self):
+        token = Token.objects.create(user=self.user)
+        Token.objects.filter(pk=token.pk).update(
+            created=timezone.now() - timedelta(hours=25)
+        )
+
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "admin", "password": "test-pass"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.data["auth"]["token"], token.key)

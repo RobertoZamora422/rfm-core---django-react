@@ -1,91 +1,82 @@
-# Arquitectura Técnica Detallada
+# Arquitectura técnica
 
 ## Componentes
 
 ```text
-React/Vite -> Axios -> Django REST Framework -> Services/Selectors -> Django ORM -> SQLite/PostgreSQL
+Cloudflare Pages (React/Vite)
+  -> HTTPS / Axios
+  -> Koyeb (Gunicorn -> Django REST Framework)
+  -> Services y Selectors
+  -> Django ORM
+  -> Neon PostgreSQL
 ```
 
-- React controla presentación, navegación y estado de formularios.
-- DRF valida contratos HTTP y permisos.
-- Services coordinan operaciones compuestas y transacciones.
-- Selectors centralizan consultas anotadas y filtros reutilizables.
-- Modelos y restricciones de base protegen la integridad final.
+- React controla presentación, navegación y estado transitorio.
+- Axios centraliza URL, token, timeout y expiración de sesión.
+- DRF valida el contrato HTTP y los permisos.
+- Services coordinan reglas y operaciones transaccionales.
+- Selectors concentran consultas, agregaciones y precargas.
+- Modelos, constraints e índices protegen la integridad final.
 
-## Entidad Persona
+## Límites de confianza
 
-`negocio.models.Persona` reemplaza al nombre de dominio genérico anterior. Las relaciones vigentes son:
+La API privada exige `IsAdminUser`. Login, catálogos públicos, pre-cotización,
+health y readiness declaran acceso anónimo de manera explícita. El token se
+revoca al cerrar sesión y al vencer. Las escrituras públicas y el login tienen
+throttling configurable.
+
+CORS acepta únicamente orígenes exactos. En producción Django redirige a HTTPS,
+confía en `X-Forwarded-Proto` del proxy, activa cookies seguras y HSTS y no
+permite una base distinta de PostgreSQL.
+
+## Dominio
 
 ```text
 Persona 1 --- N NombrePersona
-Persona 1 --- N Cotizacion
-Persona 1 --- N Contrato
+Persona 1 --- N Cotizacion 0..1 --- Contrato
+Persona 1 --- N Contrato 1 --- N CostoDirecto
+
+GastoRecurrente 1 --- N GastoRecurrenteVersion
+GastoRecurrente 1 --- N GastoRecurrenteAjuste
+GastoAdicional
+ConfiguracionNegocio
 ```
 
-Los campos ORM y JSON son `persona` y `persona_id`. La tabla física vigente es `negocio_persona`; cotizaciones y contratos contienen `persona_id`.
-
-La clasificación se obtiene mediante conteos de contratos anotados. Un contrato cancelado sigue siendo histórico y, por tanto, mantiene la clasificación Cliente.
-
-## Identidad y concurrencia
-
-La normalización telefónica está centralizada en `negocio.validators.normalizar_telefono`. `telefono_normalizado` tiene unicidad en base de datos. `persona_services.py` usa transacciones y captura conflictos de integridad para evitar duplicados incluso con solicitudes concurrentes.
-
-`NombrePersona` conserva alias únicos por persona y nombre normalizado. La persona mantiene su origen inicial.
-
-## API de personas
-
-```text
-GET|POST       /api/personas/
-GET|PUT|PATCH  /api/personas/{id}/
-GET            /api/personas/resumen/
-GET            /api/personas/coincidencias/?buscar=...
-GET            /api/personas/coincidencias/?telefono=...
-```
-
-La búsqueda devuelve sugerencias por nombre y una coincidencia exacta separada cuando el teléfono normalizado ya existe. Los listados incluyen conteos eficientes de cotizaciones y contratos.
-
-No existe una ruta de compatibilidad heredada porque frontend y backend se actualizan en conjunto y no se identificó un consumidor externo.
+La identidad se deduplica por teléfono normalizado dentro de transacciones. La
+clasificación Cliente/Interesado se deriva. Cotización y contrato guardan una
+fotografía de la oferta para que cambios futuros de catálogo no alteren el
+historial.
 
 ## Flujos compuestos
 
-### Pre-cotización pública
+### Pre-cotización
 
-`POST /api/pre-cotizacion/` recibe `nombre_persona` y `telefono_persona`. El service reutiliza o crea Persona, registra alias y crea la cotización en una transacción. La respuesta pública no expone coincidencias administrativas.
+El serializer limita y valida entrada. El service crea o reutiliza Persona,
+elige la estrategia de cálculo, crea la cotización y devuelve un token firmado
+para recalcular la misma solicitud sin exponer coincidencias internas.
 
-### Cotización administrativa
+### Conversión
 
-`CotizacionSerializer` acepta una relación `persona` o `persona_nueva`, nunca ambas. Si se crea una persona, su origen es `cotizacion_manual` y ambos registros se confirman o revierten juntos.
+La cotización se bloquea con `select_for_update`; se valida el estado, se crea un
+solo contrato y se marca Convertida dentro de la misma transacción.
 
-### Contrato directo
+### Finanzas
 
-`ContratoSerializer` aplica el mismo patrón. Una persona nueva nace con origen `contrato_directo`; una persona existente conserva su origen. Al guardar el contrato su clasificación derivada pasa a Cliente.
+Solo contratos confirmados alimentan ingresos y rentabilidad. Costos eliminados
+y contratos cancelados se excluyen. La evolución mensual agrega valores por
+rango y los gastos recurrentes se resuelven mediante versiones y ajustes.
 
 ## Frontend
 
-- `personasService` consume `/personas/`.
-- `usePersonaMatches` deduplica solicitudes idénticas y aplica búsqueda remota.
-- `PersonaSelector` se reutiliza en cotizaciones y contratos.
-- `PersonasPage` usa `/personas` y `DetallePersonaPage` usa `/personas/:id`.
-- Los parámetros de preselección usan `?persona={id}`.
+- `apiClient`: base URL, token, timeout, 401, eventos de mutación.
+- `resourceService`: endpoints administrativos centralizados.
+- `AuthProvider` y `ProtectedRoute`: sesión y rutas privadas.
+- `useAutoRefresh`: mutaciones, `BroadcastChannel`, foco y visibilidad.
+- componentes UI: tablas/cards responsive, modales con foco, estados y errores.
 
-## Rendimiento
+## Producción
 
-- `select_related` para persona, tipo de evento y paquete.
-- `prefetch_related` para detalle de persona.
-- `Count(..., distinct=True)` para clasificación y conteos.
-- paginación opcional en recursos administrativos.
-- debounce en búsquedas de texto.
-- no se cargan todas las personas en los formularios.
-
-## Instalación y despliegue
-
-```powershell
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py createsuperuser
-```
-
-La configuración y los catálogos reales se crean de forma explícita. No hay seeds automáticos. En producción se usa PostgreSQL mediante `DATABASE_URL`; el frontend recibe la URL del API en `VITE_API_BASE_URL`.
-
-## Limpieza controlada
-
-`limpiar_datos_operativos` audita por defecto y exige `--execute`. Conserva usuarios y Configuración del negocio. No debe formar parte de build, startup ni deploy.
+Cloudflare genera archivos estáticos; no contiene secretos. Koyeb usa buildpack,
+collectstatic y el `Procfile`. Gunicorn no ejecuta migraciones. Neon aporta una
+URL pooler para runtime y una directa para migraciones/exportaciones. Los
+estáticos de Django se sirven mediante WhiteNoise.

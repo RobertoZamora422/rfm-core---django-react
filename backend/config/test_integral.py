@@ -15,6 +15,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="admin-integral",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda integral")
@@ -62,6 +63,13 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.assertEqual(pre_cotizacion.data["calculo"]["total_estimado"], "4200.00")
         cotizacion_id = pre_cotizacion.data["cotizacion"]["id"]
 
+        detalle_cotizacion = self.client.get(f"/api/cotizaciones/{cotizacion_id}/")
+        self.assertEqual(detalle_cotizacion.status_code, 200)
+        self.assertEqual(
+            detalle_cotizacion.data["persona_nombre"],
+            "Persona Integral",
+        )
+
         cambio_estado = self.client.post(
             f"/api/cotizaciones/{cotizacion_id}/cambiar-estado/",
             {"estado": Cotizacion.Estado.CONFIRMADA},
@@ -75,7 +83,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
             {
                 "fecha_evento": fecha_evento.isoformat(),
                 "valor_final": "4200.00",
-                "monto_abonado": "1200.00",
+                "monto_abonado": "0.00",
                 "observaciones": "Contrato generado desde prueba integral",
             },
             format="json",
@@ -88,10 +96,18 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         )
         self.assertEqual(
             conversion.data["contrato"]["estado_pago"],
-            Contrato.EstadoPago.ABONADO,
+            Contrato.EstadoPago.PENDIENTE,
         )
-        self.assertEqual(conversion.data["contrato"]["saldo_pendiente"], "3000.00")
         contrato_id = conversion.data["contrato"]["id"]
+
+        pago = self.client.patch(
+            f"/api/contratos/{contrato_id}/",
+            {"monto_abonado": "1200.00"},
+            format="json",
+        )
+        self.assertEqual(pago.status_code, 200)
+        self.assertEqual(pago.data["estado_pago"], Contrato.EstadoPago.ABONADO)
+        self.assertEqual(pago.data["saldo_pendiente"], "3000.00")
 
         conversion_repetida = self.client.post(
             f"/api/cotizaciones/{cotizacion_id}/convertir-contrato/",
@@ -122,8 +138,24 @@ class FlujoIntegralRfmCoreTests(APITestCase):
             },
             format="json",
         )
+        recurrente = self.client.post(
+            "/api/gastos-recurrentes/",
+            {
+                "concepto": "Internet integral",
+                "valor_mensual": "250.00",
+                "aplicar_desde": fecha_evento.strftime("%Y-%m"),
+                "aplicar_hasta": None,
+                "observaciones": "",
+            },
+            format="json",
+        )
         self.assertEqual(costo.status_code, 201)
         self.assertEqual(gasto.status_code, 201)
+        self.assertEqual(recurrente.status_code, 201)
+
+        detalle_contrato = self.client.get(f"/api/contratos/{contrato_id}/")
+        self.assertEqual(detalle_contrato.status_code, 200)
+        self.assertEqual(detalle_contrato.data["total_costos_directos"], "900.00")
 
         contrato_cancelado = Contrato.objects.create(
             persona_id=conversion.data["contrato"]["persona"],
@@ -152,9 +184,9 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.assertEqual(dashboard.data["metricas"]["costos_directos_mes"], "900.00")
         self.assertEqual(
             dashboard.data["metricas"]["total_gastos_operativos_periodo"],
-            "400.00",
+            "650.00",
         )
-        self.assertEqual(dashboard.data["metricas"]["utilidad_neta"], "2900.00")
+        self.assertEqual(dashboard.data["metricas"]["utilidad_neta"], "2650.00")
         self.assertEqual(dashboard.data["estado_pagos"]["saldo_pendiente"], "3000.00")
         self.assertEqual(
             {item["contrato_id"] for item in dashboard.data["rentabilidad_eventos"]},
@@ -168,7 +200,7 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.assertEqual(reporte_financiero.status_code, 200)
         self.assertEqual(
             reporte_financiero.data["metricas"]["utilidad_neta"],
-            "2900.00",
+            "2650.00",
         )
 
         inicio_periodo, fin_periodo = self.period_bounds(fecha_evento)

@@ -63,6 +63,7 @@ def _parse_query_date(value, field_name):
 class PreCotizacionAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_scope = "public_precotizacion"
 
     def post(self, request):
         serializer = PreCotizacionSerializer(data=request.data)
@@ -120,6 +121,7 @@ class PreCotizacionAPIView(APIView):
 class PreCotizacionPreferenciaAPIView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_scope = "public_preferencia"
 
     def post(self, request):
         serializer = PreferenciaPaquetePublicaSerializer(data=request.data)
@@ -150,6 +152,16 @@ class CotizacionViewSet(viewsets.ModelViewSet):
     serializer_class = CotizacionSerializer
     pagination_class = OptionalPageNumberPagination
     search_fields = ["persona__nombre", "persona__telefono", "observaciones"]
+
+    def destroy(self, request, *args, **kwargs):
+        raise ApiValidationError(
+            {
+                "cotizacion": (
+                    "Las cotizaciones no se eliminan porque conservan el historial "
+                    "comercial. Use el estado Descartada cuando corresponda."
+                )
+            }
+        )
 
     def get_queryset(self):
         queryset = cotizaciones_con_relaciones()

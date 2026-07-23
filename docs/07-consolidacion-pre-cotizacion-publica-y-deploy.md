@@ -1,8 +1,10 @@
-# Pre-cotización Pública y Despliegue
+# Pre-cotización pública y despliegue oficial
 
 ## Contrato público
 
-`POST /api/pre-cotizacion/` no requiere autenticación y acepta:
+```http
+POST /api/pre-cotizacion/
+```
 
 ```json
 {
@@ -15,77 +17,62 @@
 }
 ```
 
-Opcionalmente puede recibir correo u observaciones de persona y observaciones de la cotización.
+El backend limita longitudes, tamaño y frecuencia. Normaliza el teléfono,
+reutiliza Persona, conserva alias, calcula mediante estrategia, guarda la
+cotización y devuelve una estimación referencial. La respuesta no revela si la
+identidad ya existía.
 
-## Identidad durante el envío
+## Arquitectura
 
-1. El backend normaliza el teléfono.
-2. Reutiliza la Persona existente o crea una nueva con origen `formulario_publico`.
-3. Conserva el nombre recibido como alias si difiere del principal.
-4. Crea la Cotización relacionada mediante `persona`.
-5. Confirma o revierte todo dentro de una transacción.
+```text
+GitHub -> Cloudflare Pages -> Koyeb -> Neon PostgreSQL
+```
 
-El usuario público recibe el mismo resultado comercial exista o no un registro administrativo previo. La API pública no permite seleccionar una Persona mediante ID.
+### Cloudflare Pages
 
-## Catálogos y cálculo
+- Root: `frontend`.
+- Install: `npm ci`.
+- Build: `npm run build`.
+- Output: `dist`.
+- Node: `.node-version`.
+- Variable: `VITE_API_BASE_URL=https://<koyeb>.koyeb.app/api`.
+- SPA y headers: `frontend/public`.
 
-- Solo Tipos de evento y Paquetes activos se publican.
-- La configuración activa del negocio alimenta la estimación de alquiler.
-- Los paquetes de servicio completo usan precios registrados en backend.
-- La estimación no es reserva ni precio final.
-- WhatsApp continúa la atención humana.
+### Koyeb
 
-## Entorno local
+- Work directory: `backend`.
+- Builder: buildpack.
+- Build: `python manage.py collectstatic --noinput`.
+- Run: `backend/Procfile`.
+- Health check: `/api/ready/`.
+- Entorno: `backend/.env.example`.
+
+El arranque no ejecuta migraciones para evitar carreras entre workers.
+
+### Neon
+
+- Runtime: URL `-pooler` con TLS.
+- Migraciones y exportaciones: URL directa.
+- Django: conexiones saludables, vida corta y cursores de servidor desactivados.
+
+Ejecutar como una sola tarea antes de tráfico:
 
 ```powershell
 cd backend
+$env:DATABASE_URL="<neon-direct-url>"
 .\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py createsuperuser
-.\.venv\Scripts\python.exe manage.py runserver
-
-cd ..\frontend
-npm install
-npm run dev
+.\.venv\Scripts\python.exe manage.py create_admin_from_env
 ```
 
-Registrar Configuración, Tipos de evento y Paquetes reales desde el panel. No se cargan datos demo.
+No guardar URLs ni contraseñas en Git o scripts.
 
-## Render
+## Verificación
 
-Backend:
+Ejecutar las órdenes de `06_validacion_fase_17.md`. Después comprobar HTTPS,
+health, readiness, CORS, login, pre-cotización, recarga de ruta interna y los
+flujos administrativos principales.
 
-- Root Directory: `backend`.
-- Build: `pip install -r requirements.txt`.
-- Start: `gunicorn config.wsgi:application`.
-- Ejecutar `python manage.py migrate` y `python manage.py collectstatic --noinput`.
-- Configurar `DATABASE_URL`, secretos, hosts y orígenes permitidos.
+## Nota histórica
 
-Frontend:
-
-- Root Directory: `frontend`.
-- Build: `npm install && npm run build`.
-- Publish Directory: `dist`.
-- Definir `VITE_API_BASE_URL` con el backend real.
-
-## Política de datos
-
-- Las migraciones no insertan información demo.
-- No existen comandos de seeds demo en el flujo normal.
-- El administrador y la configuración real se crean explícitamente.
-- `limpiar_datos_operativos` es manual, audita por defecto y nunca se ejecuta en startup o deploy.
-- Una base nueva queda estructuralmente lista, pero sin datos operativos inventados.
-
-## Verificación previa al despliegue
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py test
-
-cd ..\frontend
-npm run lint
-npm run build
-```
-
-Verificar además `/api/health/`, CORS, login, el formulario público y la navegación a `/personas`.
+Versiones anteriores describían Render. Ya no es la arquitectura oficial ni
+debe usarse como procedimiento vigente.

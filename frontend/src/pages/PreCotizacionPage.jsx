@@ -113,14 +113,6 @@ function getPublicErrorMessage(error, context = 'submit') {
   return 'No fue posible registrar la solicitud. Inténtalo nuevamente.'
 }
 
-function RequiredLabel({ children }) {
-  return (
-    <>
-      {children} <span className="field__required" aria-hidden="true">*</span>
-    </>
-  )
-}
-
 function FormSectionHeading({ description, id, number, title }) {
   return (
     <div className="public-form-section__heading">
@@ -331,7 +323,7 @@ export function PreCotizacionPage() {
                   error={errors.nombre || errors.nombre_persona}
                   icon={UserRound}
                   id="public-nombre"
-                  label={<RequiredLabel>Nombre completo</RequiredLabel>}
+                  label="Nombre completo"
                   name="nombre"
                   onChange={handleChange}
                   placeholder="Ingresa tu nombre completo"
@@ -344,7 +336,7 @@ export function PreCotizacionPage() {
                   helpText="Este número identifica tu solicitud."
                   icon={Phone}
                   id="public-telefono"
-                  label={<RequiredLabel>Teléfono / WhatsApp</RequiredLabel>}
+                  label="Teléfono / WhatsApp"
                   name="telefono"
                   onChange={handleChange}
                   placeholder="Ej. 0991234567"
@@ -363,7 +355,7 @@ export function PreCotizacionPage() {
                   error={errors.tipo_evento}
                   icon={PartyPopper}
                   id="public-tipo-evento"
-                  label={<RequiredLabel>Tipo de evento</RequiredLabel>}
+                  label="Tipo de evento"
                   name="tipo_evento"
                   onChange={handleChange}
                   required
@@ -378,7 +370,7 @@ export function PreCotizacionPage() {
                   error={errors.fecha_tentativa}
                   icon={CalendarDays}
                   id="public-fecha"
-                  label={<RequiredLabel>Fecha tentativa</RequiredLabel>}
+                  label="Fecha tentativa"
                   name="fecha_tentativa"
                   onChange={handleChange}
                   required
@@ -389,7 +381,7 @@ export function PreCotizacionPage() {
                   error={errors.numero_invitados}
                   icon={UsersRound}
                   id="public-invitados"
-                  label={<RequiredLabel>Número de invitados</RequiredLabel>}
+                  label="Número de invitados"
                   min="1"
                   name="numero_invitados"
                   onChange={handleChange}

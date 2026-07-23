@@ -186,6 +186,7 @@ class NegocioApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
 

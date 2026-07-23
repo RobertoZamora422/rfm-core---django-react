@@ -96,6 +96,16 @@ class ContratoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
     pagination_class = OptionalPageNumberPagination
     search_fields = ["persona__nombre", "persona__telefono", "observaciones"]
 
+    def destroy(self, request, *args, **kwargs):
+        raise ValidationError(
+            {
+                "contrato": (
+                    "Los contratos no se eliminan porque conservan el historial "
+                    "financiero. Use la acción Cancelar cuando corresponda."
+                )
+            }
+        )
+
     def get_queryset(self):
         queryset = contratos_con_relaciones()
         estado_contrato = self.request.query_params.get("estado_contrato")

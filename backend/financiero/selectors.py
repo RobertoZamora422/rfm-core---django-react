@@ -81,15 +81,43 @@ def gastos_recurrentes_aplicables(periodo):
     )
     return (
         GastoRecurrente.objects.filter(
-            versiones__vigente_desde__lte=periodo,
-        )
-        .filter(
-            Q(versiones__vigente_hasta__isnull=True)
-            | Q(versiones__vigente_hasta__gte=periodo)
+            Q(versiones__vigente_desde__lte=periodo)
+            & (
+                Q(versiones__vigente_hasta__isnull=True)
+                | Q(versiones__vigente_hasta__gte=periodo)
+            )
         )
         .prefetch_related(
             Prefetch("versiones", queryset=versiones, to_attr="versiones_periodo"),
             Prefetch("ajustes", queryset=ajustes, to_attr="ajustes_periodo"),
+        )
+        .distinct()
+        .order_by("concepto", "id")
+    )
+
+
+def gastos_recurrentes_con_vigencia_entre(periodo_desde, periodo_hasta):
+    versiones = GastoRecurrenteVersion.objects.filter(
+        vigente_desde__lte=periodo_hasta,
+    ).filter(
+        Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=periodo_desde)
+    ).order_by("vigente_desde", "id")
+    ajustes = GastoRecurrenteAjuste.objects.filter(
+        periodo__gte=periodo_desde,
+        periodo__lte=periodo_hasta,
+        eliminado=False,
+    ).order_by("periodo", "id")
+    return (
+        GastoRecurrente.objects.filter(
+            Q(versiones__vigente_desde__lte=periodo_hasta)
+            & (
+                Q(versiones__vigente_hasta__isnull=True)
+                | Q(versiones__vigente_hasta__gte=periodo_desde)
+            )
+        )
+        .prefetch_related(
+            Prefetch("versiones", queryset=versiones, to_attr="versiones_rango"),
+            Prefetch("ajustes", queryset=ajustes, to_attr="ajustes_rango"),
         )
         .distinct()
         .order_by("concepto", "id")

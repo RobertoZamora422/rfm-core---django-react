@@ -20,6 +20,7 @@ import { GastosPage } from '../pages/finanzas/GastosPage'
 import { ReportesPage } from '../pages/finanzas/ReportesPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
+import { NotFoundPage } from '../pages/NotFoundPage'
 import { PreCotizacionPage } from '../pages/PreCotizacionPage'
 import { ProtectedRoute } from './ProtectedRoute'
 
@@ -55,7 +56,7 @@ export function AppRouter() {
           <Route element={<ReportesPage />} path="reportes" />
         </Route>
       </Route>
-      <Route element={<Navigate replace to="/pre-cotizacion" />} path="*" />
+      <Route element={<NotFoundPage />} path="*" />
     </Routes>
   )
 }

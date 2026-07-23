@@ -1,41 +1,56 @@
-# Frontend - RFM Core
+# Frontend de RFM Core
 
-Aplicacion React/Vite del panel administrativo y flujo publico de pre-cotizacion de RFM Core.
+Aplicación React/Vite para el panel administrativo y la pre-cotización pública
+de Rancho Flor María. Los cálculos y las reglas críticas provienen de la API.
 
-Produccion actual en Render:
-
-- Frontend: https://rfm-core-frontend.onrender.com/
-- API usada por el bundle desplegado: https://rfm-core-backend.onrender.com/api
-
-## Comandos
+## Desarrollo
 
 ```powershell
-npm install
+npm ci
+Copy-Item .env.example .env
 npm run dev
-npm run lint
-npm run build
 ```
 
-## Configuracion local
+Comandos de calidad:
 
-El archivo `.env.example` define la URL base de la API:
+```powershell
+npm test
+npm run lint
+npm run build
+npm audit --omit=dev
+```
+
+Variables:
 
 ```text
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_API_TIMEOUT_MS=15000
 ```
 
-En desarrollo existe fallback a `http://127.0.0.1:8000/api` si la variable no esta definida. En produccion `VITE_API_BASE_URL` es obligatoria.
+En producción `VITE_API_BASE_URL` es obligatoria. Las variables `VITE_*` quedan
+expuestas en el bundle y no deben contener secretos.
 
-## Render Static Site
+## Cloudflare Pages
+
+Configuración oficial:
 
 ```text
-Root Directory: frontend
-Build Command: npm install && npm run build
-Publish Directory: dist
+Root directory: frontend
+Install command: npm ci
+Build command: npm run build
+Output directory: dist
+Node: 22.20.0 (.node-version)
 ```
 
-Variable requerida:
+Definir:
 
 ```text
-VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api
+VITE_API_BASE_URL=https://<servicio-koyeb>.koyeb.app/api
+VITE_API_TIMEOUT_MS=15000
 ```
+
+`public/_redirects` resuelve rutas SPA hacia `index.html`. `public/_headers`
+agrega cabeceras defensivas que Cloudflare copia al resultado de producción.
+
+Después del despliegue, registrar el origen exacto de Pages o del dominio
+personalizado en CORS/CSRF del backend.

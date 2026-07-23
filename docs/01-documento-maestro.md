@@ -1,5 +1,8 @@
 # Documento Maestro del Sistema
 
+> Estado: implementado y vigente al 23 de julio de 2026. La arquitectura
+> productiva oficial es Cloudflare Pages, Koyeb y Neon PostgreSQL.
+
 ## Propósito
 
 RFM Core acompaña el ciclo de Rancho Flor María desde una consulta inicial hasta el contrato y su análisis de rentabilidad. Separa oportunidades comerciales de ventas reales y ofrece información comprensible para la operación diaria.

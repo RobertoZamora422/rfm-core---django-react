@@ -74,10 +74,16 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
-    await logoutRequest()
-    setAuthToken(null)
-    setToken(null)
-    setUser(null)
+    try {
+      await logoutRequest()
+    } catch {
+      // El cierre local debe funcionar aunque el servidor ya no esté disponible.
+    } finally {
+      clearStoredAuth()
+      setAuthToken(null)
+      setToken(null)
+      setUser(null)
+    }
   }, [])
 
   const value = useMemo(

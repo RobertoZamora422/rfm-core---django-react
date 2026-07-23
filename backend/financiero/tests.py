@@ -3,7 +3,9 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
@@ -82,16 +84,19 @@ class FinancieroCleanDatabaseApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
 
     def test_dashboard_financiero_con_base_limpia_devuelve_ceros(self):
-        response = self.client.get(
-            "/api/dashboard-financiero/",
-            {"mes": 5, "anio": 2026},
-        )
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(
+                "/api/dashboard-financiero/",
+                {"mes": 5, "anio": 2026},
+            )
 
         self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(queries), 45)
         self.assertEqual(response.data["ingresos_mes"], "0.00")
         self.assertEqual(response.data["costos_directos_mes"], "0.00")
         self.assertEqual(response.data["total_gastos_operativos_periodo"], "0.00")
@@ -163,6 +168,7 @@ class FinancieroApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
         self.persona = Persona.objects.create(
@@ -1007,3 +1013,12 @@ class FinancieroApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("mes", response.data)
+
+    def test_contrato_no_se_elimina_fisicamente(self):
+        contrato = self.crear_contrato()
+
+        response = self.client.delete(f"/api/contratos/{contrato.id}/")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Contrato.objects.filter(pk=contrato.pk).exists())
+        self.assertIn("contrato", response.data)

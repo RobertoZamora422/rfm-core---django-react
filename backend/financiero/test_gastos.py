@@ -34,6 +34,7 @@ class GastosDomainApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="gastos-admin",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
         self.current = timezone.localdate().replace(day=1)

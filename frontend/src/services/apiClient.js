@@ -7,6 +7,12 @@ if (import.meta.env.PROD && !envApiBaseUrl) {
 }
 
 const API_BASE_URL = envApiBaseUrl ?? 'http://127.0.0.1:8000/api'
+const configuredTimeout = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 15000)
+const API_TIMEOUT_MS = (
+  Number.isFinite(configuredTimeout) && configuredTimeout > 0
+    ? configuredTimeout
+    : 15000
+)
 const AUTH_TOKEN_KEY = 'rfm_core_auth_token'
 const AUTH_USER_KEY = 'rfm_core_auth_user'
 export const DATA_CHANGED_EVENT = 'rfm:data-changed'
@@ -16,6 +22,7 @@ const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,9 +31,19 @@ export const apiClient = axios.create({
 export function getStoredAuth() {
   const token = window.localStorage.getItem(AUTH_TOKEN_KEY)
   const userValue = window.localStorage.getItem(AUTH_USER_KEY)
-  return {
-    token,
-    user: userValue ? JSON.parse(userValue) : null,
+
+  if (!userValue) {
+    return { token, user: null }
+  }
+
+  try {
+    return {
+      token,
+      user: JSON.parse(userValue),
+    }
+  } catch {
+    clearStoredAuth()
+    return { token: null, user: null }
   }
 }
 

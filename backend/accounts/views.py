@@ -4,12 +4,14 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .authentication import token_is_expired
 from .serializers import LoginSerializer, UserSerializer
 
 
 class LoginAPIView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth_login"
 
     def post(self, request):
         serializer = LoginSerializer(
@@ -18,7 +20,10 @@ class LoginAPIView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
-        token, _created = Token.objects.get_or_create(user=user)
+        token, created = Token.objects.get_or_create(user=user)
+        if not created and token_is_expired(token):
+            token.delete()
+            token = Token.objects.create(user=user)
 
         return Response(
             {
@@ -32,6 +37,8 @@ class LoginAPIView(APIView):
 
 
 class LogoutAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
         if request.auth is not None:
             request.auth.delete()
@@ -40,5 +47,7 @@ class LogoutAPIView(APIView):
 
 
 class MeAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         return Response(UserSerializer(request.user).data)

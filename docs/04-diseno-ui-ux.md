@@ -1,5 +1,8 @@
 # Diseño UI/UX
 
+> Estado: implementado y vigente. La ruta desconocida muestra una salida 404
+> comprensible y la sesión puede cerrarse localmente aunque falle la red.
+
 ## Identidad
 
 RFM Core usa la calidez y elegancia de Rancho Flor María con superficies claras, acentos verdes y dorados controlados, bordes suaves e iconografía consistente. Inter y la pila del sistema se reservan para tablas, cifras, formularios y acciones.

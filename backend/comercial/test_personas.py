@@ -69,7 +69,11 @@ class PublicPersonFlowTests(APITestCase):
 
 class ManualQuotePersonFlowTests(APITestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username="quotes-person", password="test")
+        self.user = get_user_model().objects.create_user(
+            username="quotes-person",
+            password="test",
+            is_staff=True,
+        )
         self.client.force_authenticate(self.user)
         self.tipo_evento = TipoEvento.objects.create(nombre="Evento manual")
 

@@ -44,6 +44,7 @@ class CotizacionCleanDatabaseApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
 
@@ -80,6 +81,7 @@ class CotizacionApiTests(APITestCase):
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
+            is_staff=True,
         )
         self.client.force_authenticate(self.user)
         self.persona = Persona.objects.create(
@@ -475,6 +477,17 @@ class CotizacionApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_usuario_no_staff_no_accede_a_api_administrativa(self):
+        user = get_user_model().objects.create_user(
+            username="sin-panel",
+            password="test-pass",
+        )
+        self.client.force_authenticate(user)
+
+        response = self.client.get("/api/cotizaciones/")
+
+        self.assertEqual(response.status_code, 403)
+
     def test_endpoints_publicos_devuelven_solo_datos_activos(self):
         self.client.force_authenticate(user=None)
         TipoEvento.objects.create(nombre="Evento inactivo", activo=False)
@@ -851,3 +864,21 @@ class CotizacionApiTests(APITestCase):
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 400)
         self.assertEqual(Contrato.objects.filter(cotizacion=cotizacion).count(), 1)
+
+    def test_cotizacion_no_se_elimina_fisicamente(self):
+        cotizacion = Cotizacion.objects.create(
+            persona=self.persona,
+            tipo_evento=self.tipo_evento,
+            paquete=self.paquete,
+            fecha_tentativa=date(2026, 8, 1),
+            numero_invitados=80,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            estado=Cotizacion.Estado.NUEVA,
+            total_estimado=Decimal("2400.00"),
+        )
+
+        response = self.client.delete(f"/api/cotizaciones/{cotizacion.id}/")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Cotizacion.objects.filter(pk=cotizacion.pk).exists())
+        self.assertIn("cotizacion", response.data)

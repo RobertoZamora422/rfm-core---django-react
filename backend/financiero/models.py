@@ -85,6 +85,16 @@ class Contrato(TimeStampedModel):
     observaciones = models.TextField(blank=True)
     class Meta:
         ordering = ["-fecha_evento", "-creado_en"]
+        indexes = [
+            models.Index(
+                fields=["estado_contrato", "fecha_evento"],
+                name="contrato_estado_fecha_idx",
+            ),
+            models.Index(
+                fields=["estado_pago", "fecha_evento"],
+                name="contrato_pago_fecha_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(numero_invitados__gt=0),
@@ -191,6 +201,16 @@ class CostoDirecto(TimeStampedModel):
 
     class Meta:
         ordering = ["-fecha", "-creado_en"]
+        indexes = [
+            models.Index(
+                fields=["eliminado", "fecha"],
+                name="costo_activo_fecha_idx",
+            ),
+            models.Index(
+                fields=["contrato", "eliminado"],
+                name="costo_contrato_activo_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(valor__gte=0),
@@ -221,6 +241,12 @@ class GastoAdicional(TimeStampedModel):
 
     class Meta:
         ordering = ["-fecha", "concepto", "-creado_en"]
+        indexes = [
+            models.Index(
+                fields=["eliminado", "fecha"],
+                name="gasto_adic_act_fecha_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(valor__gte=0),
@@ -245,6 +271,12 @@ class GastoRecurrente(TimeStampedModel):
 
     class Meta:
         ordering = ["concepto", "id"]
+        indexes = [
+            models.Index(
+                fields=["activo", "inicio_periodo", "fin_periodo"],
+                name="gasto_rec_vigencia_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(fin_periodo__isnull=True)
@@ -344,6 +376,12 @@ class GastoRecurrenteAjuste(TimeStampedModel):
 
     class Meta:
         ordering = ["-periodo", "-creado_en"]
+        indexes = [
+            models.Index(
+                fields=["periodo", "eliminado"],
+                name="gasto_ajuste_periodo_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(valor__gte=0),

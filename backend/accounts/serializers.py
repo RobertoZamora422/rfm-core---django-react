@@ -26,6 +26,15 @@ class LoginSerializer(serializers.Serializer):
                 {"non_field_errors": ["El usuario se encuentra inactivo."]}
             )
 
+        if not user.is_staff:
+            raise serializers.ValidationError(
+                {
+                    "non_field_errors": [
+                        "El usuario no tiene acceso al panel administrativo."
+                    ]
+                }
+            )
+
         attrs["user"] = user
         return attrs
 
