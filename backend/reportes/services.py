@@ -123,6 +123,7 @@ def reporte_financiero(mes, anio):
         "estado_pagos": dashboard["estado_pagos"],
         "rentabilidad_eventos": dashboard["rentabilidad_eventos"],
         "interpretacion": dashboard["interpretacion"],
+        "gastos_periodo": dashboard["gastos_periodo"],
     }
 
 

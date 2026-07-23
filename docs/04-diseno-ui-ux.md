@@ -10,7 +10,7 @@ El flujo público no muestra navegación administrativa. El panel protegido orga
 
 - Inicio;
 - Comercial: Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
-- Finanzas: Dashboard, Costos directos, Gastos fijos y Reportes;
+- Finanzas: Dashboard, Costos directos, Gastos y Reportes;
 - Configuración.
 
 ## Personas

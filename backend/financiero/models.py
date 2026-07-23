@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -5,7 +6,7 @@ from django.db import models
 from django.db.models import Q, Sum
 
 from comercial.models import Cotizacion
-from financiero.validators import validate_month, validate_non_negative, validate_year
+from financiero.validators import validate_non_negative, validate_period_start
 from negocio.models import Paquete, Persona, TimeStampedModel, TipoEvento
 from negocio.validators import validate_positive_integer
 
@@ -167,31 +168,170 @@ class CostoDirecto(TimeStampedModel):
         return f"{self.concepto} - {self.contrato}"
 
 
-class GastoFijoMensual(TimeStampedModel):
+class GastoAdicional(TimeStampedModel):
     concepto = models.CharField(max_length=150)
     valor = models.DecimalField(
         max_digits=12,
         decimal_places=2,
         validators=[validate_non_negative],
     )
-    mes = models.PositiveSmallIntegerField(validators=[validate_month])
-    anio = models.PositiveIntegerField(validators=[validate_year])
+    fecha = models.DateField()
+    observaciones = models.TextField(blank=True)
+    eliminado = models.BooleanField(default=False)
+    eliminado_en = models.DateTimeField(blank=True, null=True)
+    origen_legacy = models.BooleanField(
+        default=False,
+        editable=False,
+        help_text="Indica que el registro proviene del modelo mensual anterior.",
+    )
+
+    class Meta:
+        ordering = ["-fecha", "concepto", "-creado_en"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valor__gte=0),
+                name="gasto_adicional_valor_no_negativo",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.concepto} ({self.fecha:%d/%m/%Y})"
+
+
+class GastoRecurrente(TimeStampedModel):
+    concepto = models.CharField(max_length=150)
+    observaciones = models.TextField(blank=True)
+    inicio_periodo = models.DateField(validators=[validate_period_start])
+    fin_periodo = models.DateField(
+        blank=True,
+        null=True,
+        validators=[validate_period_start],
+    )
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["concepto", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(fin_periodo__isnull=True)
+                | Q(fin_periodo__gte=models.F("inicio_periodo")),
+                name="gasto_recurrente_vigencia_valida",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        self.concepto = " ".join((self.concepto or "").strip().split())
+        self.observaciones = (self.observaciones or "").strip()
+        if self.fin_periodo and self.fin_periodo < self.inicio_periodo:
+            raise ValidationError(
+                {"fin_periodo": "El periodo final no puede ser anterior al inicial."}
+            )
+
+    def __str__(self):
+        return self.concepto
+
+
+class GastoRecurrenteVersion(TimeStampedModel):
+    gasto_recurrente = models.ForeignKey(
+        GastoRecurrente,
+        on_delete=models.PROTECT,
+        related_name="versiones",
+    )
+    valor_mensual = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[validate_non_negative],
+    )
+    vigente_desde = models.DateField(validators=[validate_period_start])
+    vigente_hasta = models.DateField(
+        blank=True,
+        null=True,
+        validators=[validate_period_start],
+    )
+
+    class Meta:
+        ordering = ["vigente_desde", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(valor_mensual__gte=0),
+                name="gasto_recurrente_version_valor_no_negativo",
+            ),
+            models.CheckConstraint(
+                condition=Q(vigente_hasta__isnull=True)
+                | Q(vigente_hasta__gte=models.F("vigente_desde")),
+                name="gasto_recurrente_version_vigencia_valida",
+            ),
+            models.UniqueConstraint(
+                fields=["gasto_recurrente", "vigente_desde"],
+                name="gasto_recurrente_version_inicio_unico",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.vigente_hasta and self.vigente_hasta < self.vigente_desde:
+            raise ValidationError(
+                {"vigente_hasta": "El periodo final no puede ser anterior al inicial."}
+            )
+
+        overlapping = type(self).objects.filter(
+            gasto_recurrente=self.gasto_recurrente,
+            vigente_desde__lte=self.vigente_hasta or date.max,
+        ).filter(
+            Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=self.vigente_desde)
+        )
+        if self.pk:
+            overlapping = overlapping.exclude(pk=self.pk)
+        if overlapping.exists():
+            raise ValidationError(
+                "Ya existe un valor recurrente vigente dentro de ese periodo."
+            )
+
+    def __str__(self):
+        return f"{self.gasto_recurrente} - {self.valor_mensual}"
+
+
+class GastoRecurrenteAjuste(TimeStampedModel):
+    gasto_recurrente = models.ForeignKey(
+        GastoRecurrente,
+        on_delete=models.PROTECT,
+        related_name="ajustes",
+    )
+    periodo = models.DateField(validators=[validate_period_start])
+    valor = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[validate_non_negative],
+    )
     observaciones = models.TextField(blank=True)
     eliminado = models.BooleanField(default=False)
     eliminado_en = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        ordering = ["-anio", "-mes", "concepto"]
+        ordering = ["-periodo", "-creado_en"]
         constraints = [
             models.CheckConstraint(
                 condition=Q(valor__gte=0),
-                name="gasto_fijo_valor_no_negativo",
+                name="gasto_recurrente_ajuste_valor_no_negativo",
             ),
-            models.CheckConstraint(
-                condition=Q(mes__gte=1, mes__lte=12),
-                name="gasto_fijo_mes_valido",
+            models.UniqueConstraint(
+                fields=["gasto_recurrente", "periodo"],
+                name="gasto_recurrente_ajuste_periodo_unico",
             ),
         ]
 
+    def clean(self):
+        super().clean()
+        self.observaciones = (self.observaciones or "").strip()
+        if not self.gasto_recurrente.versiones.filter(
+            vigente_desde__lte=self.periodo,
+        ).filter(
+            Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=self.periodo)
+        ).exists():
+            raise ValidationError(
+                {"periodo": "El gasto recurrente no se aplica en ese periodo."}
+            )
+
     def __str__(self):
-        return f"{self.concepto} ({self.mes}/{self.anio})"
+        return f"{self.gasto_recurrente} ({self.periodo:%m/%Y})"

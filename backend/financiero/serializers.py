@@ -11,7 +11,15 @@ from negocio.persona_services import PersonaDuplicadaError, crear_persona
 from negocio.serializers import PersonaNuevaSerializer
 from negocio.validators import validate_non_negative, validate_positive_integer
 
-from .models import Contrato, CostoDirecto, GastoFijoMensual
+from .models import (
+    Contrato,
+    CostoDirecto,
+    GastoAdicional,
+    GastoRecurrente,
+    GastoRecurrenteAjuste,
+    GastoRecurrenteVersion,
+)
+from .services import crear_gasto_recurrente
 
 
 class ContratoSerializer(serializers.ModelSerializer):
@@ -264,25 +272,43 @@ class CostoDirectoSerializer(serializers.ModelSerializer):
         return value
 
 
-class GastoFijoMensualSerializer(serializers.ModelSerializer):
+class PeriodMonthField(serializers.DateField):
+    default_error_messages = {
+        "invalid": "Ingresa un periodo válido con el formato AAAA-MM.",
+    }
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and len(data) == 7:
+            data = f"{data}-01"
+        value = super().to_internal_value(data)
+        if value.day != 1:
+            self.fail("invalid")
+        return value
+
+    def to_representation(self, value):
+        if not value:
+            return None
+        return value.strftime("%Y-%m")
+
+
+class GastoAdicionalSerializer(serializers.ModelSerializer):
     valor = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
         min_value=Decimal("0.00"),
     )
-    mes = serializers.IntegerField(min_value=1, max_value=12)
 
     class Meta:
-        model = GastoFijoMensual
+        model = GastoAdicional
         fields = [
             "id",
             "concepto",
             "valor",
-            "mes",
-            "anio",
+            "fecha",
             "observaciones",
             "eliminado",
             "eliminado_en",
+            "origen_legacy",
             "creado_en",
             "actualizado_en",
         ]
@@ -290,6 +316,7 @@ class GastoFijoMensualSerializer(serializers.ModelSerializer):
             "id",
             "eliminado",
             "eliminado_en",
+            "origen_legacy",
             "creado_en",
             "actualizado_en",
         ]
@@ -300,8 +327,187 @@ class GastoFijoMensualSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("El concepto es obligatorio.")
         return value
 
-    def validate_anio(self, value):
-        current_year = date.today().year
-        if value < 2000 or value > current_year + 10:
-            raise serializers.ValidationError("El anio no es valido para el registro del sistema.")
+    def validate_fecha(self, value):
+        if value.year < 2000 or value.year > date.today().year + 10:
+            raise serializers.ValidationError(
+                "La fecha no es válida para el registro del sistema."
+            )
         return value
+
+
+class GastoRecurrenteVersionSerializer(serializers.ModelSerializer):
+    vigente_desde = PeriodMonthField()
+    vigente_hasta = PeriodMonthField(allow_null=True)
+
+    class Meta:
+        model = GastoRecurrenteVersion
+        fields = [
+            "id",
+            "valor_mensual",
+            "vigente_desde",
+            "vigente_hasta",
+            "creado_en",
+        ]
+
+
+class GastoRecurrenteAjusteSerializer(serializers.ModelSerializer):
+    periodo = PeriodMonthField()
+
+    class Meta:
+        model = GastoRecurrenteAjuste
+        fields = [
+            "id",
+            "periodo",
+            "valor",
+            "observaciones",
+            "creado_en",
+            "actualizado_en",
+        ]
+
+
+class GastoRecurrenteSerializer(serializers.ModelSerializer):
+    aplicar_desde = PeriodMonthField(source="inicio_periodo")
+    aplicar_hasta = PeriodMonthField(
+        source="fin_periodo",
+        allow_null=True,
+        required=False,
+    )
+    valor_mensual = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+        write_only=True,
+        required=False,
+    )
+    valor_vigente = serializers.SerializerMethodField()
+    tiene_ajuste_periodo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GastoRecurrente
+        fields = [
+            "id",
+            "concepto",
+            "valor_mensual",
+            "valor_vigente",
+            "aplicar_desde",
+            "aplicar_hasta",
+            "activo",
+            "tiene_ajuste_periodo",
+            "observaciones",
+            "creado_en",
+            "actualizado_en",
+        ]
+        read_only_fields = [
+            "id",
+            "activo",
+            "valor_vigente",
+            "tiene_ajuste_periodo",
+            "creado_en",
+            "actualizado_en",
+        ]
+
+    def _period_value(self, instance):
+        periodo = self.context.get("periodo")
+        if not periodo:
+            today = date.today()
+            periodo = today.replace(day=1)
+        ajuste = next(
+            (
+                item
+                for item in instance.ajustes.all()
+                if not item.eliminado and item.periodo == periodo
+            ),
+            None,
+        )
+        version = next(
+            (
+                item
+                for item in reversed(list(instance.versiones.all()))
+                if item.vigente_desde <= periodo
+                and (item.vigente_hasta is None or item.vigente_hasta >= periodo)
+            ),
+            None,
+        )
+        return ajuste, version
+
+    def get_valor_vigente(self, instance):
+        ajuste, version = self._period_value(instance)
+        value = ajuste.valor if ajuste else version.valor_mensual if version else None
+        return str(value.quantize(Decimal("0.01"))) if value is not None else None
+
+    def get_tiene_ajuste_periodo(self, instance):
+        ajuste, _version = self._period_value(instance)
+        return bool(ajuste)
+
+    def validate_concepto(self, value):
+        value = " ".join((value or "").strip().split())
+        if not value:
+            raise serializers.ValidationError("El concepto es obligatorio.")
+        return value
+
+    def validate(self, attrs):
+        if self.instance:
+            protected = {"inicio_periodo", "fin_periodo", "valor_mensual"}
+            if protected.intersection(attrs):
+                raise serializers.ValidationError(
+                    "Usa las acciones de vigencia o ajuste para modificar valores y periodos."
+                )
+            return attrs
+
+        if "valor_mensual" not in attrs:
+            raise serializers.ValidationError(
+                {"valor_mensual": "El valor mensual es obligatorio."}
+            )
+        inicio = attrs.get("inicio_periodo")
+        fin = attrs.get("fin_periodo")
+        if fin and inicio and fin < inicio:
+            raise serializers.ValidationError(
+                {"aplicar_hasta": "El periodo final no puede ser anterior al inicial."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        return crear_gasto_recurrente(
+            concepto=validated_data["concepto"],
+            valor_mensual=validated_data["valor_mensual"],
+            inicio_periodo=validated_data["inicio_periodo"],
+            fin_periodo=validated_data.get("fin_periodo"),
+            observaciones=validated_data.get("observaciones", ""),
+        )
+
+
+class AjusteValorDesdeSerializer(serializers.Serializer):
+    periodo = PeriodMonthField()
+    valor_mensual = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+    )
+
+
+class AjustePeriodoSerializer(serializers.Serializer):
+    periodo = PeriodMonthField()
+    valor = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+    )
+    observaciones = serializers.CharField(
+        allow_blank=True,
+        required=False,
+        max_length=1000,
+    )
+
+
+class DesactivarGastoRecurrenteSerializer(serializers.Serializer):
+    periodo_desde = PeriodMonthField()
+
+
+class ReactivarGastoRecurrenteSerializer(serializers.Serializer):
+    periodo_desde = PeriodMonthField()
+    periodo_hasta = PeriodMonthField(allow_null=True, required=False)
+    valor_mensual = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+    )

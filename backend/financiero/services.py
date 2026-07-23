@@ -5,17 +5,24 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.db.models import Count, Sum
+from django.db import transaction
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
-from .models import Contrato
+from .models import (
+    Contrato,
+    GastoRecurrente,
+    GastoRecurrenteAjuste,
+    GastoRecurrenteVersion,
+)
 from .selectors import (
     contratos_cancelados_entre,
     contratos_confirmados_con_rentabilidad_entre,
     contratos_confirmados_con_saldo_pendiente,
     contratos_confirmados_entre,
     costos_directos_activos_por_evento_entre,
-    gastos_fijos_activos_del_periodo,
+    gastos_adicionales_activos_entre,
+    gastos_recurrentes_aplicables,
 )
 
 
@@ -105,8 +112,260 @@ def eliminar_logicamente_costo_directo(costo):
     return _eliminar_logicamente(costo)
 
 
-def eliminar_logicamente_gasto_fijo(gasto):
+def eliminar_logicamente_gasto_adicional(gasto):
     return _eliminar_logicamente(gasto)
+
+
+def _period_date(mes, anio):
+    return date(anio, mes, 1)
+
+
+def _previous_period_date(periodo):
+    previous_mes, previous_anio = _previous_period(periodo.month, periodo.year)
+    return date(previous_anio, previous_mes, 1)
+
+
+def _current_period_date():
+    today = timezone.localdate()
+    return date(today.year, today.month, 1)
+
+
+def _serialize_recurrent_application(gasto):
+    version = gasto.versiones_periodo[0]
+    ajuste = gasto.ajustes_periodo[0] if gasto.ajustes_periodo else None
+    valor = ajuste.valor if ajuste else version.valor_mensual
+    return {
+        "id": gasto.id,
+        "concepto": gasto.concepto,
+        "valor": _money(valor),
+        "valor_base": _money(version.valor_mensual),
+        "es_ajuste": bool(ajuste),
+        "ajuste_id": ajuste.id if ajuste else None,
+        "observaciones": ajuste.observaciones if ajuste else gasto.observaciones,
+        "inicio_periodo": gasto.inicio_periodo.isoformat(),
+        "fin_periodo": gasto.fin_periodo.isoformat() if gasto.fin_periodo else None,
+        "activo": gasto.activo,
+    }
+
+
+def gastos_recurrentes_del_periodo(mes, anio):
+    periodo = _period_date(mes, anio)
+    aplicaciones = [
+        _serialize_recurrent_application(gasto)
+        for gasto in gastos_recurrentes_aplicables(periodo)
+    ]
+    total = sum((Decimal(item["valor"]) for item in aplicaciones), ZERO)
+    return aplicaciones, total
+
+
+def resumen_gastos_periodo(mes, anio):
+    inicio, fin = _month_bounds(mes, anio)
+    recurrentes, total_recurrentes = gastos_recurrentes_del_periodo(mes, anio)
+    adicionales = gastos_adicionales_activos_entre(inicio, fin)
+    total_adicionales = _sum(adicionales, "valor")
+    return {
+        "periodo": {
+            "mes": mes,
+            "anio": anio,
+            "inicio": inicio.isoformat(),
+            "fin": fin.isoformat(),
+            "label": _period_label(mes, anio),
+        },
+        "gastos_fijos_recurrentes_periodo": total_recurrentes,
+        "gastos_adicionales_periodo": total_adicionales,
+        "total_gastos_operativos_periodo": total_recurrentes + total_adicionales,
+        "gastos_recurrentes_aplicados": len(recurrentes),
+        "gastos_adicionales_registrados": adicionales.count(),
+        "recurrentes": recurrentes,
+        "adicionales": [
+            {
+                "id": gasto.id,
+                "concepto": gasto.concepto,
+                "valor": _money(gasto.valor),
+                "fecha": gasto.fecha.isoformat(),
+                "observaciones": gasto.observaciones,
+                "origen_legacy": gasto.origen_legacy,
+            }
+            for gasto in adicionales.order_by("fecha", "concepto", "id")
+        ],
+    }
+
+
+def serializar_resumen_gastos(resumen):
+    return {
+        **resumen,
+        "gastos_fijos_recurrentes_periodo": _money(
+            resumen["gastos_fijos_recurrentes_periodo"]
+        ),
+        "gastos_adicionales_periodo": _money(
+            resumen["gastos_adicionales_periodo"]
+        ),
+        "total_gastos_operativos_periodo": _money(
+            resumen["total_gastos_operativos_periodo"]
+        ),
+    }
+
+
+@transaction.atomic
+def crear_gasto_recurrente(
+    *,
+    concepto,
+    valor_mensual,
+    inicio_periodo,
+    fin_periodo=None,
+    observaciones="",
+):
+    gasto = GastoRecurrente.objects.create(
+        concepto=concepto,
+        observaciones=observaciones,
+        inicio_periodo=inicio_periodo,
+        fin_periodo=fin_periodo,
+        activo=True,
+    )
+    GastoRecurrenteVersion.objects.create(
+        gasto_recurrente=gasto,
+        valor_mensual=valor_mensual,
+        vigente_desde=inicio_periodo,
+        vigente_hasta=fin_periodo,
+    )
+    return gasto
+
+
+@transaction.atomic
+def ajustar_gasto_recurrente_desde(*, gasto, periodo, valor_mensual):
+    if periodo < _current_period_date():
+        raise ValidationError(
+            {"periodo": "Los cambios permanentes solo pueden comenzar en el mes actual o uno futuro."}
+        )
+
+    gasto = GastoRecurrente.objects.select_for_update().get(pk=gasto.pk)
+    future_versions = gasto.versiones.filter(vigente_desde__gt=periodo)
+    if future_versions.exists():
+        raise ValidationError(
+            {"periodo": "Ya existe un cambio de valor programado después de ese periodo."}
+        )
+
+    version = (
+        gasto.versiones.filter(vigente_desde__lte=periodo)
+        .filter(
+            Q(vigente_hasta__isnull=True)
+            | Q(vigente_hasta__gte=periodo)
+        )
+        .order_by("-vigente_desde")
+        .first()
+    )
+    if not version:
+        raise ValidationError(
+            {"periodo": "El gasto recurrente no se encuentra vigente en ese periodo."}
+        )
+
+    if version.vigente_desde == periodo:
+        version.valor_mensual = valor_mensual
+        version.save(update_fields=["valor_mensual", "actualizado_en"])
+    else:
+        previous_end = version.vigente_hasta
+        version.vigente_hasta = _previous_period_date(periodo)
+        version.save(update_fields=["vigente_hasta", "actualizado_en"])
+        GastoRecurrenteVersion.objects.create(
+            gasto_recurrente=gasto,
+            valor_mensual=valor_mensual,
+            vigente_desde=periodo,
+            vigente_hasta=previous_end,
+        )
+    return gasto
+
+
+@transaction.atomic
+def ajustar_gasto_recurrente_periodo(
+    *,
+    gasto,
+    periodo,
+    valor,
+    observaciones="",
+):
+    gasto = GastoRecurrente.objects.select_for_update().get(pk=gasto.pk)
+    if not gasto.versiones.filter(vigente_desde__lte=periodo).filter(
+        Q(vigente_hasta__isnull=True)
+        | Q(vigente_hasta__gte=periodo)
+    ).exists():
+        raise ValidationError(
+            {"periodo": "El gasto recurrente no se aplica en ese periodo."}
+        )
+    ajuste, _created = GastoRecurrenteAjuste.objects.update_or_create(
+        gasto_recurrente=gasto,
+        periodo=periodo,
+        defaults={
+            "valor": valor,
+            "observaciones": observaciones,
+            "eliminado": False,
+            "eliminado_en": None,
+        },
+    )
+    return ajuste
+
+
+@transaction.atomic
+def desactivar_gasto_recurrente(*, gasto, periodo_desde):
+    if periodo_desde < _current_period_date():
+        raise ValidationError(
+            {"periodo_desde": "La desactivación no puede modificar periodos históricos."}
+        )
+    gasto = GastoRecurrente.objects.select_for_update().get(pk=gasto.pk)
+    if not gasto.activo:
+        raise ValidationError({"activo": "El gasto recurrente ya está inactivo."})
+
+    cutoff = _previous_period_date(periodo_desde)
+    now = timezone.now()
+    gasto.ajustes.filter(
+        periodo__gte=periodo_desde,
+        eliminado=False,
+    ).update(
+        eliminado=True,
+        eliminado_en=now,
+        actualizado_en=now,
+    )
+    gasto.versiones.filter(vigente_desde__gte=periodo_desde).delete()
+    for version in gasto.versiones.filter(vigente_desde__lt=periodo_desde):
+        if version.vigente_hasta is None or version.vigente_hasta >= periodo_desde:
+            version.vigente_hasta = cutoff
+            version.save(update_fields=["vigente_hasta", "actualizado_en"])
+
+    gasto.activo = False
+    gasto.fin_periodo = cutoff
+    gasto.save(update_fields=["activo", "fin_periodo", "actualizado_en"])
+    return gasto
+
+
+@transaction.atomic
+def reactivar_gasto_recurrente(
+    *,
+    gasto,
+    periodo_desde,
+    valor_mensual,
+    periodo_hasta=None,
+):
+    if periodo_desde < _current_period_date():
+        raise ValidationError(
+            {"periodo_desde": "La reactivación debe comenzar en el mes actual o uno futuro."}
+        )
+    gasto = GastoRecurrente.objects.select_for_update().get(pk=gasto.pk)
+    if gasto.activo:
+        raise ValidationError({"activo": "El gasto recurrente ya está activo."})
+    if periodo_hasta and periodo_hasta < periodo_desde:
+        raise ValidationError(
+            {"periodo_hasta": "El periodo final no puede ser anterior al inicial."}
+        )
+
+    GastoRecurrenteVersion.objects.create(
+        gasto_recurrente=gasto,
+        valor_mensual=valor_mensual,
+        vigente_desde=periodo_desde,
+        vigente_hasta=periodo_hasta,
+    )
+    gasto.activo = True
+    gasto.fin_periodo = periodo_hasta
+    gasto.save(update_fields=["activo", "fin_periodo", "actualizado_en"])
+    return gasto
 
 
 def _variation(current, previous, has_previous_data=True):
@@ -137,13 +396,13 @@ def _period_metrics(mes, anio):
     inicio, fin = _month_bounds(mes, anio)
     contratos = contratos_confirmados_entre(inicio, fin)
     costos_directos = costos_directos_activos_por_evento_entre(inicio, fin)
-    gastos_fijos = gastos_fijos_activos_del_periodo(mes, anio)
+    gastos = resumen_gastos_periodo(mes, anio)
 
     ingresos = _sum(contratos, "valor_final")
     costos = _sum(costos_directos, "valor")
-    gastos = _sum(gastos_fijos, "valor")
+    total_gastos = gastos["total_gastos_operativos_periodo"]
     utilidad_bruta = ingresos - costos
-    utilidad_neta = utilidad_bruta - gastos
+    utilidad_neta = utilidad_bruta - total_gastos
     margen_bruto = _safe_percentage(utilidad_bruta, ingresos)
     margen_neto = _safe_percentage(utilidad_neta, ingresos)
     contratos_count = contratos.count()
@@ -159,7 +418,11 @@ def _period_metrics(mes, anio):
         },
         "ingresos_mes": ingresos,
         "costos_directos_mes": costos,
-        "gastos_fijos_mes": gastos,
+        "gastos_fijos_recurrentes_periodo": gastos[
+            "gastos_fijos_recurrentes_periodo"
+        ],
+        "gastos_adicionales_periodo": gastos["gastos_adicionales_periodo"],
+        "total_gastos_operativos_periodo": total_gastos,
         "utilidad_bruta": utilidad_bruta,
         "margen_bruto": margen_bruto,
         "utilidad_neta": utilidad_neta,
@@ -167,7 +430,15 @@ def _period_metrics(mes, anio):
         "ticket_promedio": ticket_promedio,
         "contratos_confirmados": contratos_count,
         "costos_directos_registrados": costos_directos.count(),
-        "gastos_fijos_registrados": gastos_fijos.count(),
+        "gastos_recurrentes_aplicados": gastos["gastos_recurrentes_aplicados"],
+        "gastos_adicionales_registrados": gastos[
+            "gastos_adicionales_registrados"
+        ],
+        "gastos_operativos_registrados": (
+            gastos["gastos_recurrentes_aplicados"]
+            + gastos["gastos_adicionales_registrados"]
+        ),
+        "gastos_periodo": gastos,
     }
 
 
@@ -391,7 +662,15 @@ def _monthly_evolution(mes, anio):
                 "label": metrics["periodo"]["label"],
                 "ingresos_mes": _money(metrics["ingresos_mes"]),
                 "costos_directos_mes": _money(metrics["costos_directos_mes"]),
-                "gastos_fijos_mes": _money(metrics["gastos_fijos_mes"]),
+                "gastos_fijos_recurrentes_periodo": _money(
+                    metrics["gastos_fijos_recurrentes_periodo"]
+                ),
+                "gastos_adicionales_periodo": _money(
+                    metrics["gastos_adicionales_periodo"]
+                ),
+                "total_gastos_operativos_periodo": _money(
+                    metrics["total_gastos_operativos_periodo"]
+                ),
                 "utilidad_neta": _money(metrics["utilidad_neta"]),
             }
         )
@@ -403,7 +682,7 @@ def _current_vs_previous(current, previous):
         ("ingresos_mes", "Ingresos", "currency"),
         ("costos_directos_mes", "Costos directos", "currency"),
         ("utilidad_bruta", "Utilidad bruta", "currency"),
-        ("gastos_fijos_mes", "Gastos fijos", "currency"),
+        ("total_gastos_operativos_periodo", "Gastos operativos", "currency"),
         ("utilidad_neta", "Utilidad neta", "currency"),
         ("ticket_promedio", "Ticket promedio", "currency"),
     ]
@@ -440,7 +719,7 @@ def _pending_financials():
 def _interpretation(metrics, previous_metrics, commercial_performance, pending_financials):
     ingresos = metrics["ingresos_mes"]
     costos = metrics["costos_directos_mes"]
-    gastos = metrics["gastos_fijos_mes"]
+    gastos = metrics["total_gastos_operativos_periodo"]
     utilidad = metrics["utilidad_neta"]
     margen = metrics["margen_neto"]
 
@@ -466,7 +745,10 @@ def _interpretation(metrics, previous_metrics, commercial_performance, pending_f
         }
 
     puntos = []
-    if previous_metrics["contratos_confirmados"] == 0 and previous_metrics["gastos_fijos_registrados"] == 0:
+    if (
+        previous_metrics["contratos_confirmados"] == 0
+        and previous_metrics["gastos_operativos_registrados"] == 0
+    ):
         puntos.append("No hay suficiente información para comparar con el mes anterior.")
     elif utilidad > previous_metrics["utilidad_neta"]:
         puntos.append("La utilidad neta mejora frente al mes anterior.")
@@ -494,7 +776,7 @@ def _interpretation(metrics, previous_metrics, commercial_performance, pending_f
         return {
             "nivel": "warning",
             "titulo": "Periodo con pérdida neta",
-            "detalle": "Los costos directos y gastos fijos superan los ingresos confirmados del mes.",
+            "detalle": "Los costos directos y gastos operativos superan los ingresos confirmados del mes.",
             "puntos": puntos,
         }
     if margen < Decimal("20"):
@@ -507,7 +789,7 @@ def _interpretation(metrics, previous_metrics, commercial_performance, pending_f
     return {
         "nivel": "success",
         "titulo": "Periodo rentable",
-        "detalle": "Los ingresos confirmados cubren costos directos, gastos fijos y dejan margen neto positivo.",
+        "detalle": "Los ingresos confirmados cubren costos directos, gastos operativos y dejan margen neto positivo.",
         "puntos": puntos,
     }
 
@@ -516,7 +798,15 @@ def _serialize_metrics(metrics):
     return {
         "ingresos_mes": _money(metrics["ingresos_mes"]),
         "costos_directos_mes": _money(metrics["costos_directos_mes"]),
-        "gastos_fijos_mes": _money(metrics["gastos_fijos_mes"]),
+        "gastos_fijos_recurrentes_periodo": _money(
+            metrics["gastos_fijos_recurrentes_periodo"]
+        ),
+        "gastos_adicionales_periodo": _money(
+            metrics["gastos_adicionales_periodo"]
+        ),
+        "total_gastos_operativos_periodo": _money(
+            metrics["total_gastos_operativos_periodo"]
+        ),
         "utilidad_bruta": _money(metrics["utilidad_bruta"]),
         "margen_bruto": _percent(metrics["margen_bruto"]),
         "utilidad_neta": _money(metrics["utilidad_neta"]),
@@ -524,7 +814,11 @@ def _serialize_metrics(metrics):
         "ticket_promedio": _money(metrics["ticket_promedio"]),
         "contratos_confirmados": metrics["contratos_confirmados"],
         "costos_directos_registrados": metrics["costos_directos_registrados"],
-        "gastos_fijos_registrados": metrics["gastos_fijos_registrados"],
+        "gastos_recurrentes_aplicados": metrics["gastos_recurrentes_aplicados"],
+        "gastos_adicionales_registrados": metrics[
+            "gastos_adicionales_registrados"
+        ],
+        "gastos_operativos_registrados": metrics["gastos_operativos_registrados"],
     }
 
 
@@ -532,7 +826,7 @@ def _kpi_payload(current, previous):
     has_previous_activity = (
         previous["contratos_confirmados"] > 0
         or previous["costos_directos_registrados"] > 0
-        or previous["gastos_fijos_registrados"] > 0
+        or previous["gastos_operativos_registrados"] > 0
     )
 
     def comparison(key, has_previous_data=has_previous_activity):
@@ -540,8 +834,6 @@ def _kpi_payload(current, previous):
 
     ingresos = current["ingresos_mes"]
     costos_ratio = _safe_percentage(current["costos_directos_mes"], ingresos)
-    gastos_ratio = _safe_percentage(current["gastos_fijos_mes"], ingresos)
-
     return [
         {
             "key": "ingresos_mes",
@@ -586,18 +878,24 @@ def _kpi_payload(current, previous):
             ),
         },
         {
-            "key": "gastos_fijos_mes",
-            "label": "Gastos fijos",
-            "value": _money(current["gastos_fijos_mes"]),
+            "key": "total_gastos_operativos_periodo",
+            "label": "Gastos operativos",
+            "value": _money(current["total_gastos_operativos_periodo"]),
             "detail": (
-                f"{_percent(gastos_ratio)}% de los ingresos del mes"
+                (
+                    f"Fijos {_money(current['gastos_fijos_recurrentes_periodo'])} "
+                    f"· adicionales {_money(current['gastos_adicionales_periodo'])}"
+                )
                 if ingresos
-                else "No hay ingresos para calcular proporción"
+                else (
+                    f"Fijos {_money(current['gastos_fijos_recurrentes_periodo'])} "
+                    f"· adicionales {_money(current['gastos_adicionales_periodo'])}"
+                )
             ),
             "format": "currency",
             "comparison": comparison(
-                "gastos_fijos_mes",
-                previous["gastos_fijos_registrados"] > 0,
+                "total_gastos_operativos_periodo",
+                previous["gastos_operativos_registrados"] > 0,
             ),
         },
         {
@@ -655,7 +953,7 @@ def dashboard_financiero(mes=None, anio=None):
     has_previous_activity = (
         previous["contratos_confirmados"] > 0
         or previous["costos_directos_registrados"] > 0
-        or previous["gastos_fijos_registrados"] > 0
+        or previous["gastos_operativos_registrados"] > 0
     )
     comparativo_mes_anterior = _current_vs_previous(current, previous)
     interpretacion = _interpretation(
@@ -689,10 +987,10 @@ def dashboard_financiero(mes=None, anio=None):
                     previous["utilidad_bruta"],
                     previous["contratos_confirmados"] > 0,
                 ),
-                "gastos_fijos_mes": _variation(
-                    current["gastos_fijos_mes"],
-                    previous["gastos_fijos_mes"],
-                    previous["gastos_fijos_registrados"] > 0,
+                "total_gastos_operativos_periodo": _variation(
+                    current["total_gastos_operativos_periodo"],
+                    previous["total_gastos_operativos_periodo"],
+                    previous["gastos_operativos_registrados"] > 0,
                 ),
                 "utilidad_neta": _variation(
                     current["utilidad_neta"],
@@ -739,10 +1037,11 @@ def dashboard_financiero(mes=None, anio=None):
         "estado_pagos_cobranza": estado_pagos,
         "pendientes_financieros": pendientes,
         "interpretacion": interpretacion,
+        "gastos_periodo": serializar_resumen_gastos(current["gastos_periodo"]),
         "estados_vacios": {
             "contratos_confirmados": "Aún no hay contratos confirmados para este mes.",
             "costos_directos": "No hay costos registrados en este periodo.",
-            "gastos_fijos": "No hay gastos fijos registrados para este mes.",
+            "gastos_operativos": "No existen gastos aplicables para este periodo.",
             "comparacion": "No hay suficiente información para comparar con el mes anterior.",
             "interpretacion": "Aún no hay información suficiente para generar una interpretación financiera.",
         },

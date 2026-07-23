@@ -30,7 +30,7 @@ Mantener RFM Core como un producto coherente desde base de datos hasta interfaz,
 
 ### Finanzas y reportes — completada
 
-- costos directos y gastos fijos;
+- costos directos, gastos recurrentes y gastos adicionales;
 - dashboard mensual y reportes históricos;
 - exclusión de contratos cancelados de métricas principales;
 - selectors y services para evitar lógica duplicada.

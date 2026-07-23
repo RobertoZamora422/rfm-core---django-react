@@ -2,10 +2,17 @@
 
 from decimal import Decimal
 
-from django.db.models import DecimalField, F, Q, Sum, Value
+from django.db.models import DecimalField, F, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 
-from .models import Contrato, CostoDirecto, GastoFijoMensual
+from .models import (
+    Contrato,
+    CostoDirecto,
+    GastoAdicional,
+    GastoRecurrente,
+    GastoRecurrenteAjuste,
+    GastoRecurrenteVersion,
+)
 
 
 ZERO = Decimal("0.00")
@@ -54,11 +61,38 @@ def costos_directos_activos_por_evento_entre(inicio, fin):
     )
 
 
-def gastos_fijos_activos_del_periodo(mes, anio):
-    return GastoFijoMensual.objects.filter(
+def gastos_adicionales_activos_entre(inicio, fin):
+    return GastoAdicional.objects.filter(
         eliminado=False,
-        mes=mes,
-        anio=anio,
+        fecha__gte=inicio,
+        fecha__lte=fin,
+    )
+
+
+def gastos_recurrentes_aplicables(periodo):
+    versiones = GastoRecurrenteVersion.objects.filter(
+        vigente_desde__lte=periodo,
+    ).filter(
+        Q(vigente_hasta__isnull=True) | Q(vigente_hasta__gte=periodo)
+    ).order_by("-vigente_desde", "-id")
+    ajustes = GastoRecurrenteAjuste.objects.filter(
+        periodo=periodo,
+        eliminado=False,
+    )
+    return (
+        GastoRecurrente.objects.filter(
+            versiones__vigente_desde__lte=periodo,
+        )
+        .filter(
+            Q(versiones__vigente_hasta__isnull=True)
+            | Q(versiones__vigente_hasta__gte=periodo)
+        )
+        .prefetch_related(
+            Prefetch("versiones", queryset=versiones, to_attr="versiones_periodo"),
+            Prefetch("ajustes", queryset=ajustes, to_attr="ajustes_periodo"),
+        )
+        .distinct()
+        .order_by("concepto", "id")
     )
 
 

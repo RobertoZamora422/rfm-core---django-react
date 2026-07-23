@@ -60,7 +60,7 @@ const paymentClassNames = {
 const chartColors = {
   ingresos_mes: '#236447',
   costos_directos_mes: '#bd8731',
-  gastos_fijos_mes: '#7b8580',
+  total_gastos_operativos_periodo: '#7b8580',
   utilidad_neta: '#3e765e',
   utilidad_bruta: '#557390',
   anterior: '#aab1ad',
@@ -71,7 +71,7 @@ const kpiVisuals = {
   ingresos_mes: { icon: CircleDollarSign, tone: 'forest' },
   costos_directos_mes: { icon: Receipt, tone: 'gold' },
   utilidad_bruta: { icon: ChartNoAxesCombined, tone: 'blue' },
-  gastos_fijos_mes: { icon: WalletCards, tone: 'slate' },
+  total_gastos_operativos_periodo: { icon: WalletCards, tone: 'slate' },
   utilidad_neta: { icon: Sparkles, tone: 'forest' },
   ticket_promedio: { icon: BadgeDollarSign, tone: 'sage' },
 }
@@ -127,7 +127,7 @@ function getTrendClass(kpi) {
   if (!kpi.comparison?.tiene_comparacion || direction === 'sin_variacion') {
     return 'metric-trend--neutral'
   }
-  if (['costos_directos_mes', 'gastos_fijos_mes'].includes(kpi.key)) {
+  if (['costos_directos_mes', 'total_gastos_operativos_periodo'].includes(kpi.key)) {
     return 'metric-trend--context'
   }
   return direction === 'sube' ? 'metric-trend--positive' : 'metric-trend--negative'
@@ -219,13 +219,13 @@ function EvolutionChart({ rows }) {
     label: row.label,
     ingresos_mes: toNumber(row.ingresos_mes),
     costos_directos_mes: toNumber(row.costos_directos_mes),
-    gastos_fijos_mes: toNumber(row.gastos_fijos_mes),
+    total_gastos_operativos_periodo: toNumber(row.total_gastos_operativos_periodo),
     utilidad_neta: toNumber(row.utilidad_neta),
   }))
   const accessibleSummary = data
     .map(
       (row) =>
-        `${row.label}: ingresos ${formatCurrency(row.ingresos_mes)}, costos directos ${formatCurrency(row.costos_directos_mes)}, gastos fijos ${formatCurrency(row.gastos_fijos_mes)} y utilidad neta ${formatCurrency(row.utilidad_neta)}.`,
+        `${row.label}: ingresos ${formatCurrency(row.ingresos_mes)}, costos directos ${formatCurrency(row.costos_directos_mes)}, gastos operativos ${formatCurrency(row.total_gastos_operativos_periodo)} y utilidad neta ${formatCurrency(row.utilidad_neta)}.`,
     )
     .join(' ')
 
@@ -236,7 +236,7 @@ function EvolutionChart({ rows }) {
       hasData={hasAnyValue(data, [
         'ingresos_mes',
         'costos_directos_mes',
-        'gastos_fijos_mes',
+        'total_gastos_operativos_periodo',
         'utilidad_neta',
       ])}
       subtitle="Seis meses de ingresos, costos, gastos y utilidad neta."
@@ -251,7 +251,7 @@ function EvolutionChart({ rows }) {
           <Legend />
           <Line dataKey="ingresos_mes" dot={false} name="Ingresos" stroke={chartColors.ingresos_mes} strokeWidth={3} type="monotone" />
           <Line dataKey="costos_directos_mes" dot={false} name="Costos directos" stroke={chartColors.costos_directos_mes} strokeWidth={2} type="monotone" />
-          <Line dataKey="gastos_fijos_mes" dot={false} name="Gastos fijos" stroke={chartColors.gastos_fijos_mes} strokeWidth={2} type="monotone" />
+          <Line dataKey="total_gastos_operativos_periodo" dot={false} name="Gastos operativos" stroke={chartColors.total_gastos_operativos_periodo} strokeWidth={2} type="monotone" />
           <Line dataKey="utilidad_neta" dot={false} name="Utilidad neta" stroke={chartColors.utilidad_neta} strokeWidth={3} type="monotone" />
         </LineChart>
       </ResponsiveContainer>

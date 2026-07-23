@@ -51,7 +51,7 @@ Administrativas protegidas:
 /contratos/:id
 /contratos/:id/editar
 /costos-directos
-/gastos-fijos
+/gastos
 /dashboard-financiero
 /reportes
 ```
@@ -86,7 +86,9 @@ GET  /api/auth/me/
 /api/cotizaciones/{id}/convertir-contrato/
 /api/contratos/
 /api/costos-directos/
-/api/gastos-fijos/
+/api/gastos-recurrentes/
+/api/gastos-adicionales/
+/api/gastos/resumen/
 /api/inicio-resumen/
 /api/dashboard-financiero/
 /api/reportes/
@@ -144,7 +146,29 @@ cd backend
 .\.venv\Scripts\python.exe manage.py limpiar_datos_operativos --execute
 ```
 
-Elimina personas, alias, cotizaciones, contratos, tipos de evento, paquetes, costos directos y gastos fijos. Conserva usuarios y configuración del negocio. Es una operación destructiva y no forma parte de instalación ni despliegue.
+Elimina personas, alias, cotizaciones, contratos, tipos de evento, paquetes,
+costos directos, gastos recurrentes y gastos adicionales. Conserva usuarios y
+configuración del negocio. Es una operación destructiva y no forma parte de
+instalación ni despliegue.
+
+## Auditoría de gastos heredados
+
+La migración conserva todos los registros mensuales anteriores como gastos
+adicionales. El comando siguiente solo los clasifica y no modifica datos:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe manage.py auditar_gastos_legacy
+```
+
+Una serie inequívoca se convierte únicamente después de revisarla y seleccionarla:
+
+```powershell
+.\.venv\Scripts\python.exe manage.py auditar_gastos_legacy --apply --concepto "Internet"
+```
+
+Por defecto la recurrencia termina en el último mes histórico. `--sin-fin` debe
+usarse de forma explícita cuando el compromiso realmente continúa.
 
 ## Validación
 

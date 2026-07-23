@@ -34,7 +34,7 @@ export const navigationSections = [
     title: 'Finanzas',
     items: [
       { label: 'Costos directos', path: '/costos-directos', icon: Receipt },
-      { label: 'Gastos fijos', path: '/gastos-fijos', icon: WalletCards },
+      { label: 'Gastos', path: '/gastos', icon: WalletCards },
       { label: 'Reportes', path: '/reportes', icon: FileBarChart },
     ],
   },

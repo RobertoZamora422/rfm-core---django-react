@@ -44,7 +44,7 @@ Venta real asociada a una persona. Distingue el estado del contrato del estado d
 - Público: Pre-cotización.
 - Comercial: Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes.
 - Administración: Configuración del negocio.
-- Finanzas: Costos directos, Gastos fijos, Dashboard financiero y Reportes.
+- Finanzas: Costos directos, Gastos, Dashboard financiero y Reportes.
 
 ## Reglas de identidad
 

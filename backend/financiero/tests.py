@@ -7,7 +7,7 @@ from django.test import TestCase
 from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
-from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
+from financiero.models import Contrato, CostoDirecto, GastoAdicional
 from negocio.models import Persona, Paquete, TipoEvento
 
 
@@ -66,12 +66,11 @@ class FinancieroModelTests(TestCase):
         self.assertEqual(contrato.utilidad_bruta, Decimal("1200.00"))
         self.assertEqual(contrato.margen_bruto, Decimal("60.0"))
 
-    def test_gasto_fijo_valida_mes(self):
-        gasto = GastoFijoMensual(
+    def test_gasto_adicional_valida_valor(self):
+        gasto = GastoAdicional(
             concepto="Arriendo",
-            valor=Decimal("500.00"),
-            mes=13,
-            anio=2026,
+            valor=Decimal("-1.00"),
+            fecha=date(2026, 8, 1),
         )
 
         with self.assertRaises(ValidationError):
@@ -95,7 +94,7 @@ class FinancieroCleanDatabaseApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["ingresos_mes"], "0.00")
         self.assertEqual(response.data["costos_directos_mes"], "0.00")
-        self.assertEqual(response.data["gastos_fijos_mes"], "0.00")
+        self.assertEqual(response.data["total_gastos_operativos_periodo"], "0.00")
         self.assertEqual(response.data["utilidad_bruta"], "0.00")
         self.assertEqual(response.data["margen_bruto"], "0.00")
         self.assertEqual(response.data["utilidad_neta"], "0.00")
@@ -119,14 +118,16 @@ class FinancieroCleanDatabaseApiTests(APITestCase):
         self.assertIsNone(variacion_ingresos["porcentaje"])
         self.assertEqual(variacion_ingresos["direccion"], "sin_datos")
 
-    def test_gastos_fijos_resumen_sin_gastos_devuelve_total_cero(self):
+    def test_gastos_resumen_sin_gastos_devuelve_totales_cero(self):
         response = self.client.get(
-            "/api/gastos-fijos/resumen/",
+            "/api/gastos/resumen/",
             {"mes": 5, "anio": 2026},
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["total_periodo"], "0.00")
+        self.assertEqual(response.data["gastos_fijos_recurrentes_periodo"], "0.00")
+        self.assertEqual(response.data["gastos_adicionales_periodo"], "0.00")
+        self.assertEqual(response.data["total_gastos_operativos_periodo"], "0.00")
 
     def test_costos_directos_resumen_sin_costos_devuelve_ceros(self):
         response = self.client.get("/api/costos-directos/resumen/")
@@ -146,7 +147,7 @@ class FinancieroCleanDatabaseApiTests(APITestCase):
         endpoints = [
             "/api/contratos/",
             "/api/costos-directos/",
-            "/api/gastos-fijos/",
+            "/api/gastos-adicionales/",
         ]
 
         for endpoint in endpoints:
@@ -448,7 +449,7 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(contrato.estado_contrato, Contrato.EstadoContrato.CANCELADO)
 
-    def test_crea_costo_directo_y_gasto_fijo(self):
+    def test_crea_costo_directo_y_gasto_adicional(self):
         contrato = self.crear_contrato()
 
         costo = self.client.post(
@@ -463,12 +464,11 @@ class FinancieroApiTests(APITestCase):
             format="json",
         )
         gasto = self.client.post(
-            "/api/gastos-fijos/",
+            "/api/gastos-adicionales/",
             {
                 "concepto": "Servicios básicos",
                 "valor": "300.00",
-                "mes": 8,
-                "anio": 2026,
+                "fecha": "2026-08-15",
                 "observaciones": "",
             },
             format="json",
@@ -485,20 +485,19 @@ class FinancieroApiTests(APITestCase):
             valor=Decimal("700.00"),
             fecha=date(2026, 8, 1),
         )
-        gasto = GastoFijoMensual.objects.create(
+        gasto = GastoAdicional.objects.create(
             concepto="Servicios basicos",
             valor=Decimal("300.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 15),
         )
 
         costo_delete = self.client.delete(f"/api/costos-directos/{costo.id}/")
-        gasto_delete = self.client.delete(f"/api/gastos-fijos/{gasto.id}/")
+        gasto_delete = self.client.delete(f"/api/gastos-adicionales/{gasto.id}/")
         costo.refresh_from_db()
         gasto.refresh_from_db()
         costos_list = self.client.get("/api/costos-directos/")
-        gastos_list = self.client.get("/api/gastos-fijos/", {"mes": 8, "anio": 2026})
-        resumen = self.client.get("/api/gastos-fijos/resumen/", {"mes": 8, "anio": 2026})
+        gastos_list = self.client.get("/api/gastos-adicionales/", {"mes": 8, "anio": 2026})
+        resumen = self.client.get("/api/gastos/resumen/", {"mes": 8, "anio": 2026})
 
         self.assertEqual(costo_delete.status_code, 204)
         self.assertEqual(gasto_delete.status_code, 204)
@@ -508,7 +507,7 @@ class FinancieroApiTests(APITestCase):
         self.assertIsNotNone(gasto.eliminado_en)
         self.assertEqual(costos_list.data, [])
         self.assertEqual(gastos_list.data, [])
-        self.assertEqual(resumen.data["total_periodo"], "0.00")
+        self.assertEqual(resumen.data["total_gastos_operativos_periodo"], "0.00")
 
     def test_lista_costos_directos_con_datos_de_contrato_y_filtros(self):
         contrato_objetivo = self.crear_contrato()
@@ -689,51 +688,48 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(costo.valor, Decimal("125.00"))
         self.assertEqual(costo.contrato_id, contrato.id)
 
-    def test_filtra_gastos_fijos_y_devuelve_resumen_del_periodo(self):
-        GastoFijoMensual.objects.create(
+    def test_filtra_gastos_adicionales_y_devuelve_resumen_del_periodo(self):
+        GastoAdicional.objects.create(
             concepto="Servicios basicos",
             valor=Decimal("300.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 2),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Internet",
             valor=Decimal("90.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 4),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Mantenimiento",
             valor=Decimal("250.00"),
-            mes=9,
-            anio=2026,
+            fecha=date(2026, 9, 1),
         )
 
         response = self.client.get(
-            "/api/gastos-fijos/",
+            "/api/gastos-adicionales/",
             {"mes": 8, "anio": 2026, "concepto": "servicios"},
         )
         resumen = self.client.get(
-            "/api/gastos-fijos/resumen/",
+            "/api/gastos/resumen/",
             {"mes": 8, "anio": 2026},
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["concepto"] for item in response.data], ["Servicios basicos"])
         self.assertEqual(resumen.status_code, 200)
-        self.assertEqual(resumen.data["total_periodo"], "390.00")
+        self.assertEqual(resumen.data["gastos_adicionales_periodo"], "390.00")
+        self.assertEqual(resumen.data["total_gastos_operativos_periodo"], "390.00")
 
-    def test_rechaza_gasto_fijo_con_valores_invalidos(self):
+    def test_rechaza_gasto_adicional_con_valores_invalidos(self):
         cases = [
-            ("concepto", {"concepto": " ", "valor": "100.00", "mes": 8, "anio": 2026}),
-            ("valor", {"concepto": "Internet", "valor": "-1.00", "mes": 8, "anio": 2026}),
-            ("mes", {"concepto": "Internet", "valor": "100.00", "mes": 13, "anio": 2026}),
-            ("anio", {"concepto": "Internet", "valor": "100.00", "mes": 8, "anio": 1999}),
+            ("concepto", {"concepto": " ", "valor": "100.00", "fecha": "2026-08-01"}),
+            ("valor", {"concepto": "Internet", "valor": "-1.00", "fecha": "2026-08-01"}),
+            ("fecha", {"concepto": "Internet", "valor": "100.00", "fecha": "invalida"}),
         ]
 
         for field, payload in cases:
             with self.subTest(field=field):
-                response = self.client.post("/api/gastos-fijos/", payload, format="json")
+                response = self.client.post("/api/gastos-adicionales/", payload, format="json")
                 self.assertEqual(response.status_code, 400)
                 self.assertIn(field, response.data)
 
@@ -801,30 +797,26 @@ class FinancieroApiTests(APITestCase):
             valor=Decimal("500.00"),
             fecha=date(2026, 8, 5),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Arriendo",
             valor=Decimal("300.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 1),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Internet",
             valor=Decimal("100.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 2),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Gasto eliminado",
             valor=Decimal("999.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 3),
             eliminado=True,
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Arriendo julio",
             valor=Decimal("100.00"),
-            mes=7,
-            anio=2026,
+            fecha=date(2026, 7, 1),
         )
 
         response = self.client.get(
@@ -838,7 +830,10 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.data["metricas"]["costos_directos_mes"], "900.00")
         self.assertEqual(response.data["metricas"]["utilidad_bruta"], "2100.00")
         self.assertEqual(response.data["metricas"]["margen_bruto"], "70.00")
-        self.assertEqual(response.data["metricas"]["gastos_fijos_mes"], "400.00")
+        self.assertEqual(
+            response.data["metricas"]["total_gastos_operativos_periodo"],
+            "400.00",
+        )
         self.assertEqual(response.data["metricas"]["utilidad_neta"], "1700.00")
         self.assertEqual(response.data["metricas"]["margen_neto"], "56.67")
         self.assertEqual(response.data["metricas"]["ticket_promedio"], "1500.00")
@@ -902,11 +897,10 @@ class FinancieroApiTests(APITestCase):
         )
 
     def test_dashboard_financiero_maneja_periodo_sin_ingresos(self):
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Arriendo",
             valor=Decimal("250.00"),
-            mes=10,
-            anio=2026,
+            fecha=date(2026, 10, 1),
         )
 
         response = self.client.get(

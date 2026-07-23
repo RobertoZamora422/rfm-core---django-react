@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Contrato, CostoDirecto, GastoFijoMensual
+from .models import (
+    Contrato,
+    CostoDirecto,
+    GastoAdicional,
+    GastoRecurrente,
+    GastoRecurrenteAjuste,
+    GastoRecurrenteVersion,
+)
 
 
 @admin.register(Contrato)
@@ -29,9 +36,30 @@ class CostoDirectoAdmin(admin.ModelAdmin):
     readonly_fields = ("creado_en", "actualizado_en", "eliminado_en")
 
 
-@admin.register(GastoFijoMensual)
-class GastoFijoMensualAdmin(admin.ModelAdmin):
-    list_display = ("concepto", "valor", "mes", "anio", "eliminado")
-    list_filter = ("anio", "mes", "eliminado")
+@admin.register(GastoAdicional)
+class GastoAdicionalAdmin(admin.ModelAdmin):
+    list_display = ("concepto", "valor", "fecha", "eliminado", "origen_legacy")
+    list_filter = ("fecha", "eliminado", "origen_legacy")
     search_fields = ("concepto", "observaciones")
     readonly_fields = ("creado_en", "actualizado_en", "eliminado_en")
+
+
+class GastoRecurrenteVersionInline(admin.TabularInline):
+    model = GastoRecurrenteVersion
+    extra = 0
+    readonly_fields = ("creado_en", "actualizado_en")
+
+
+class GastoRecurrenteAjusteInline(admin.TabularInline):
+    model = GastoRecurrenteAjuste
+    extra = 0
+    readonly_fields = ("creado_en", "actualizado_en", "eliminado_en")
+
+
+@admin.register(GastoRecurrente)
+class GastoRecurrenteAdmin(admin.ModelAdmin):
+    list_display = ("concepto", "inicio_periodo", "fin_periodo", "activo")
+    list_filter = ("activo", "inicio_periodo", "fin_periodo")
+    search_fields = ("concepto", "observaciones")
+    readonly_fields = ("creado_en", "actualizado_en")
+    inlines = (GastoRecurrenteVersionInline, GastoRecurrenteAjusteInline)

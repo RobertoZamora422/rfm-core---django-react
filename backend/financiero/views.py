@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import date
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, Q, Sum
@@ -12,18 +13,31 @@ from rest_framework.views import APIView
 from config.pagination import OptionalPageNumberPagination
 from negocio.validators import extraer_digitos_telefono, normalizar_telefono_parcial
 
-from .models import Contrato, CostoDirecto, GastoFijoMensual
+from .models import Contrato, CostoDirecto, GastoAdicional, GastoRecurrente
 from .serializers import (
+    AjustePeriodoSerializer,
+    AjusteValorDesdeSerializer,
     ContratoSerializer,
     CostoDirectoSerializer,
-    GastoFijoMensualSerializer,
+    DesactivarGastoRecurrenteSerializer,
+    GastoAdicionalSerializer,
+    GastoRecurrenteAjusteSerializer,
+    GastoRecurrenteSerializer,
+    GastoRecurrenteVersionSerializer,
+    ReactivarGastoRecurrenteSerializer,
 )
 from .selectors import contratos_con_relaciones
 from .services import (
     cancelar_contrato,
+    ajustar_gasto_recurrente_desde,
+    ajustar_gasto_recurrente_periodo,
     dashboard_financiero,
+    desactivar_gasto_recurrente,
+    eliminar_logicamente_gasto_adicional,
     eliminar_logicamente_costo_directo,
-    eliminar_logicamente_gasto_fijo,
+    reactivar_gasto_recurrente,
+    resumen_gastos_periodo,
+    serializar_resumen_gastos,
 )
 
 
@@ -244,10 +258,11 @@ class CostoDirectoViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
         )
 
 
-class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
-    queryset = GastoFijoMensual.objects.filter(eliminado=False)
-    serializer_class = GastoFijoMensualSerializer
+class GastoAdicionalViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
+    queryset = GastoAdicional.objects.filter(eliminado=False)
+    serializer_class = GastoAdicionalSerializer
     search_fields = ["concepto", "observaciones"]
+    pagination_class = OptionalPageNumberPagination
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -269,20 +284,150 @@ class GastoFijoMensualViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
             or ""
         ).strip()
         if mes:
-            queryset = queryset.filter(mes=mes)
+            queryset = queryset.filter(fecha__month=mes)
         if anio:
-            queryset = queryset.filter(anio=anio)
+            queryset = queryset.filter(fecha__year=anio)
         if buscar:
-            queryset = queryset.filter(concepto__icontains=buscar)
+            queryset = queryset.filter(
+                Q(concepto__icontains=buscar)
+                | Q(observaciones__icontains=buscar)
+            )
         return queryset
 
     def perform_destroy(self, instance):
-        eliminar_logicamente_gasto_fijo(instance)
+        eliminar_logicamente_gasto_adicional(instance)
 
-    @action(detail=False, methods=["get"], url_path="resumen")
-    def resumen(self, request):
-        total = self.get_queryset().aggregate(total=Sum("valor"))["total"]
-        return Response({"total_periodo": _serialize_decimal(total)})
+
+class GastoRecurrenteViewSet(CleanModelValidationMixin, viewsets.ModelViewSet):
+    queryset = GastoRecurrente.objects.prefetch_related("versiones", "ajustes")
+    serializer_class = GastoRecurrenteSerializer
+    pagination_class = OptionalPageNumberPagination
+    http_method_names = ["get", "post", "patch", "put", "head", "options"]
+
+    def _selected_period(self):
+        today = date.today()
+        mes = _parse_int_query(
+            self.request.query_params.get("mes"),
+            "mes",
+            min_value=1,
+            max_value=12,
+        ) or today.month
+        anio = _parse_int_query(
+            self.request.query_params.get("anio"),
+            "anio",
+            min_value=2000,
+        ) or today.year
+        return date(anio, mes, 1)
+
+    def get_serializer_context(self):
+        return {
+            **super().get_serializer_context(),
+            "periodo": self._selected_period(),
+        }
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        buscar = (
+            self.request.query_params.get("buscar")
+            or self.request.query_params.get("search")
+            or ""
+        ).strip()
+        estado = self.request.query_params.get("estado")
+        if buscar:
+            queryset = queryset.filter(
+                Q(concepto__icontains=buscar)
+                | Q(observaciones__icontains=buscar)
+            )
+        if estado == "activo":
+            queryset = queryset.filter(activo=True)
+        elif estado == "inactivo":
+            queryset = queryset.filter(activo=False)
+        return queryset
+
+    def _service_response(self, service, **kwargs):
+        try:
+            service(**kwargs)
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
+        instance = self.get_queryset().get(pk=kwargs["gasto"].pk)
+        return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=["post"], url_path="ajustar-desde")
+    def ajustar_desde(self, request, pk=None):
+        serializer = AjusteValorDesdeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._service_response(
+            ajustar_gasto_recurrente_desde,
+            gasto=self.get_object(),
+            **serializer.validated_data,
+        )
+
+    @action(detail=True, methods=["post"], url_path="ajustar-periodo")
+    def ajustar_periodo(self, request, pk=None):
+        serializer = AjustePeriodoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            ajuste = ajustar_gasto_recurrente_periodo(
+                gasto=self.get_object(),
+                **serializer.validated_data,
+            )
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
+        return Response(GastoRecurrenteAjusteSerializer(ajuste).data)
+
+    @action(detail=True, methods=["post"])
+    def desactivar(self, request, pk=None):
+        serializer = DesactivarGastoRecurrenteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._service_response(
+            desactivar_gasto_recurrente,
+            gasto=self.get_object(),
+            **serializer.validated_data,
+        )
+
+    @action(detail=True, methods=["post"])
+    def reactivar(self, request, pk=None):
+        serializer = ReactivarGastoRecurrenteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return self._service_response(
+            reactivar_gasto_recurrente,
+            gasto=self.get_object(),
+            **serializer.validated_data,
+        )
+
+    @action(detail=True, methods=["get"])
+    def historial(self, request, pk=None):
+        gasto = self.get_object()
+        return Response(
+            {
+                "gasto": self.get_serializer(gasto).data,
+                "versiones": GastoRecurrenteVersionSerializer(
+                    gasto.versiones.all(),
+                    many=True,
+                ).data,
+                "ajustes": GastoRecurrenteAjusteSerializer(
+                    gasto.ajustes.filter(eliminado=False),
+                    many=True,
+                ).data,
+            }
+        )
+
+
+class GastosResumenAPIView(APIView):
+    def get(self, request):
+        today = date.today()
+        mes = _parse_int_query(
+            request.query_params.get("mes"),
+            "mes",
+            min_value=1,
+            max_value=12,
+        ) or today.month
+        anio = _parse_int_query(
+            request.query_params.get("anio"),
+            "anio",
+            min_value=2000,
+        ) or today.year
+        return Response(serializar_resumen_gastos(resumen_gastos_periodo(mes, anio)))
 
 
 class DashboardFinancieroAPIView(APIView):

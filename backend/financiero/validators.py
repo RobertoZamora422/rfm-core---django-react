@@ -14,3 +14,8 @@ def validate_year(value):
     current_year = date.today().year
     if value < 2000 or value > current_year + 10:
         raise ValidationError("El año no es válido para el registro del sistema.")
+
+
+def validate_period_start(value):
+    if value.day != 1:
+        raise ValidationError("El periodo debe corresponder al primer día del mes.")

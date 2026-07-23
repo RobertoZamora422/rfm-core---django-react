@@ -126,18 +126,57 @@ function buildExportRows(activeReport, data) {
   }
 
   if (activeReport === 'financiero') {
-    return (data.rentabilidad_eventos ?? []).map((row) => ({
+    const period = data.periodo?.label ?? ''
+    const base = {
+      'Periodo consultado': period,
+      'Tipo de registro': '',
+      'Contrato': '',
+      'Cliente o concepto': '',
+      'Fecha': '',
+      'Vigencia': '',
+      'Estado': '',
+      'Ingresos confirmados (USD)': '',
+      'Costos directos (USD)': '',
+      'Valor del gasto (USD)': '',
+      'Utilidad bruta (USD)': '',
+      'Margen bruto (%)': '',
+      'Saldo pendiente (USD)': '',
+      'Observaciones': '',
+    }
+    const contractRows = (data.rentabilidad_eventos ?? []).map((row) => ({
+      ...base,
+      'Tipo de registro': 'Contrato confirmado',
       'Contrato': row.contrato_id,
-      'Cliente': row.persona_nombre,
-      'Tipo de evento': row.tipo_evento_nombre,
-      'Fecha del evento': formatDate(row.fecha_evento),
+      'Cliente o concepto': `${row.persona_nombre} · ${row.tipo_evento_nombre}`,
+      'Fecha': formatDate(row.fecha_evento),
+      'Estado': getStatusLabel(row.estado_pago, paymentLabels),
       'Ingresos confirmados (USD)': row.valor_final,
       'Costos directos (USD)': row.costos_directos,
       'Utilidad bruta (USD)': row.utilidad_bruta,
       'Margen bruto (%)': row.margen_bruto,
-      'Estado de pago': getStatusLabel(row.estado_pago, paymentLabels),
       'Saldo pendiente (USD)': row.saldo_pendiente,
     }))
+    const recurringRows = (data.gastos_periodo?.recurrentes ?? []).map((row) => ({
+      ...base,
+      'Tipo de registro': row.es_ajuste
+        ? 'Gasto fijo recurrente · ajuste mensual'
+        : 'Gasto fijo recurrente',
+      'Cliente o concepto': row.concepto,
+      'Vigencia': `${row.inicio_periodo} a ${row.fin_periodo ?? 'sin finalización'}`,
+      'Estado': row.activo ? 'Activo' : 'Inactivo',
+      'Valor del gasto (USD)': row.valor,
+      'Observaciones': row.observaciones,
+    }))
+    const additionalRows = (data.gastos_periodo?.adicionales ?? []).map((row) => ({
+      ...base,
+      'Tipo de registro': 'Gasto adicional',
+      'Cliente o concepto': row.concepto,
+      'Fecha': formatDate(row.fecha),
+      'Estado': 'Registrado',
+      'Valor del gasto (USD)': row.valor,
+      'Observaciones': row.observaciones,
+    }))
+    return [...contractRows, ...recurringRows, ...additionalRows]
   }
 
   if (activeReport === 'eventos') {
@@ -381,6 +420,8 @@ function CommercialReport({ data }) {
 
 function FinancialReport({ data }) {
   const events = data.rentabilidad_eventos ?? []
+  const recurringExpenses = data.gastos_periodo?.recurrentes ?? []
+  const additionalExpenses = data.gastos_periodo?.adicionales ?? []
   const columns = [
     {
       key: 'contrato_id',
@@ -451,6 +492,59 @@ function FinancialReport({ data }) {
           <span>Interpretacion</span>
           <strong>{data.interpretacion.titulo}</strong>
           <p>{data.interpretacion.detalle}</p>
+        </div>
+      </Card>
+      <Card className="report-expense-breakdown">
+        <div className="report-expense-breakdown__heading">
+          <div>
+            <span>Gastos operativos</span>
+            <h3>Desglose del periodo</h3>
+          </div>
+          <strong>{formatCurrency(data.gastos_periodo?.total_gastos_operativos_periodo)}</strong>
+        </div>
+        <div className="report-expense-breakdown__tables">
+          <section>
+            <h4>Gastos fijos recurrentes</h4>
+            <DataTable
+              caption="Gastos fijos recurrentes aplicados en el periodo"
+              columns={[
+                { key: 'concepto', header: 'Concepto' },
+                {
+                  key: 'tipo',
+                  header: 'Aplicación',
+                  render: (row) => row.es_ajuste ? 'Ajuste de este mes' : 'Valor recurrente',
+                },
+                {
+                  key: 'valor',
+                  header: 'Valor',
+                  align: 'right',
+                  render: (row) => formatCurrency(row.valor),
+                },
+              ]}
+              emptyMessage="No hay gastos fijos recurrentes aplicables en este periodo."
+              mobileTitle={(row) => row.concepto}
+              rows={recurringExpenses}
+            />
+          </section>
+          <section>
+            <h4>Gastos adicionales</h4>
+            <DataTable
+              caption="Gastos adicionales registrados en el periodo"
+              columns={[
+                { key: 'concepto', header: 'Concepto' },
+                { key: 'fecha', header: 'Fecha', render: (row) => formatDate(row.fecha) },
+                {
+                  key: 'valor',
+                  header: 'Valor',
+                  align: 'right',
+                  render: (row) => formatCurrency(row.valor),
+                },
+              ]}
+              emptyMessage="No hay gastos adicionales registrados en este periodo."
+              mobileTitle={(row) => row.concepto}
+              rows={additionalExpenses}
+            />
+          </section>
         </div>
       </Card>
       <Card>

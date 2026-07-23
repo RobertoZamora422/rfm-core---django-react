@@ -114,12 +114,11 @@ class FlujoIntegralRfmCoreTests(APITestCase):
             format="json",
         )
         gasto = self.client.post(
-            "/api/gastos-fijos/",
+            "/api/gastos-adicionales/",
             {
                 "concepto": "Arriendo integral",
                 "valor": "400.00",
-                "mes": fecha_evento.month,
-                "anio": fecha_evento.year,
+                "fecha": fecha_evento.isoformat(),
                 "observaciones": "",
             },
             format="json",
@@ -151,7 +150,10 @@ class FlujoIntegralRfmCoreTests(APITestCase):
         self.assertEqual(dashboard.status_code, 200)
         self.assertEqual(dashboard.data["metricas"]["ingresos_mes"], "4200.00")
         self.assertEqual(dashboard.data["metricas"]["costos_directos_mes"], "900.00")
-        self.assertEqual(dashboard.data["metricas"]["gastos_fijos_mes"], "400.00")
+        self.assertEqual(
+            dashboard.data["metricas"]["total_gastos_operativos_periodo"],
+            "400.00",
+        )
         self.assertEqual(dashboard.data["metricas"]["utilidad_neta"], "2900.00")
         self.assertEqual(dashboard.data["estado_pagos"]["saldo_pendiente"], "3000.00")
         self.assertEqual(

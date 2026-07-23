@@ -2,7 +2,14 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from comercial.models import Cotizacion
-from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
+from financiero.models import (
+    Contrato,
+    CostoDirecto,
+    GastoAdicional,
+    GastoRecurrente,
+    GastoRecurrenteAjuste,
+    GastoRecurrenteVersion,
+)
 from negocio.models import NombrePersona, Paquete, Persona, TipoEvento
 
 
@@ -15,14 +22,18 @@ def contar_datos_operativos():
         "tipos_evento": TipoEvento.objects.count(),
         "paquetes": Paquete.objects.count(),
         "costos_directos": CostoDirecto.objects.count(),
-        "gastos_fijos": GastoFijoMensual.objects.count(),
+        "gastos_adicionales": GastoAdicional.objects.count(),
+        "gastos_recurrentes": GastoRecurrente.objects.count(),
     }
 
 
 @transaction.atomic
 def eliminar_datos_operativos():
     CostoDirecto.objects.all().delete()
-    GastoFijoMensual.objects.all().delete()
+    GastoAdicional.objects.all().delete()
+    GastoRecurrenteAjuste.objects.all().delete()
+    GastoRecurrenteVersion.objects.all().delete()
+    GastoRecurrente.objects.all().delete()
     Contrato.objects.all().delete()
     Cotizacion.objects.all().delete()
     NombrePersona.objects.all().delete()

@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
-from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
+from financiero.models import Contrato, CostoDirecto, GastoAdicional
 from .models import Persona, ConfiguracionNegocio, Paquete, TipoEvento
 from .validators import normalizar_whatsapp_ecuador
 
@@ -158,11 +158,10 @@ class LimpiarDatosOperativosCommandTests(TestCase):
             valor=Decimal("100.00"),
             fecha=timezone.localdate(),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Internet",
             valor=Decimal("30.00"),
-            mes=timezone.localdate().month,
-            anio=timezone.localdate().year,
+            fecha=timezone.localdate(),
         )
 
         salida_simulacion = self.call_command("limpiar_datos_operativos")
@@ -176,7 +175,7 @@ class LimpiarDatosOperativosCommandTests(TestCase):
         self.assertEqual(Cotizacion.objects.count(), 0)
         self.assertEqual(Contrato.objects.count(), 0)
         self.assertEqual(CostoDirecto.objects.count(), 0)
-        self.assertEqual(GastoFijoMensual.objects.count(), 0)
+        self.assertEqual(GastoAdicional.objects.count(), 0)
         self.assertEqual(TipoEvento.objects.count(), 0)
         self.assertEqual(Paquete.objects.count(), 0)
         self.assertTrue(get_user_model().objects.filter(pk=usuario.pk).exists())

@@ -16,7 +16,7 @@ import { EditarCotizacionPage } from '../pages/cotizaciones/EditarCotizacionPage
 import { NuevaCotizacionPage } from '../pages/cotizaciones/NuevaCotizacionPage'
 import { CostosDirectosPage } from '../pages/finanzas/CostosDirectosPage'
 import { DashboardFinancieroPage } from '../pages/finanzas/DashboardFinancieroPage'
-import { GastosFijosPage } from '../pages/finanzas/GastosFijosPage'
+import { GastosPage } from '../pages/finanzas/GastosPage'
 import { ReportesPage } from '../pages/finanzas/ReportesPage'
 import { InicioPage } from '../pages/InicioPage'
 import { LoginPage } from '../pages/LoginPage'
@@ -49,7 +49,8 @@ export function AppRouter() {
           <Route element={<EditarContratoPage />} path="contratos/:id/editar" />
           <Route element={<DetalleContratoPage />} path="contratos/:id" />
           <Route element={<CostosDirectosPage />} path="costos-directos" />
-          <Route element={<GastosFijosPage />} path="gastos-fijos" />
+          <Route element={<GastosPage />} path="gastos" />
+          <Route element={<Navigate replace to="/gastos" />} path="gastos-fijos" />
           <Route element={<DashboardFinancieroPage />} path="dashboard-financiero" />
           <Route element={<ReportesPage />} path="reportes" />
         </Route>

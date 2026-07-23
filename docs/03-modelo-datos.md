@@ -13,7 +13,10 @@ Persona
            `--< CostoDirecto
 
 ConfiguracionNegocio
-GastoFijoMensual
+GastoRecurrente
+  |--< GastoRecurrenteVersion
+  `--< GastoRecurrenteAjuste
+GastoAdicional
 ```
 
 ## Persona
@@ -80,9 +83,29 @@ Nombre, modalidad, precio por persona, descripción y estado activo. Los paquete
 
 FK a Contrato, concepto, valor, fecha, observaciones y campos de eliminación lógica.
 
-### GastoFijoMensual
+### GastoRecurrente
 
-Concepto, valor, mes, año, observaciones y campos de eliminación lógica.
+Define un compromiso habitual mediante concepto, observaciones, periodo inicial,
+periodo final opcional y estado activo. No se generan filas mensuales futuras.
+
+### GastoRecurrenteVersion
+
+Conserva cada valor mensual con `vigente_desde` y `vigente_hasta`. Sus intervalos
+no pueden solaparse dentro de una misma recurrencia. Un cambio permanente crea
+una nueva versión efectiva y no reescribe valores anteriores.
+
+### GastoRecurrenteAjuste
+
+Excepción de valor para un único periodo. La restricción única
+`(gasto_recurrente, periodo)` impide contabilizar dos ajustes para la misma
+recurrencia y mes.
+
+### GastoAdicional
+
+Gasto general no asociado a contratos que ocurre en una fecha concreta.
+Mantiene eliminación lógica. Los registros del antiguo `GastoFijoMensual` se
+conservan aquí con `origen_legacy=True` y la fecha equivalente al primer día del
+mes original.
 
 ### ConfiguracionNegocio
 
@@ -93,6 +116,8 @@ Parámetros vigentes para la pre-cotización pública. Solo puede existir una co
 - unicidad de `Persona.telefono_normalizado`;
 - aliases únicos por persona y nombre normalizado;
 - valores monetarios no negativos;
+- versiones recurrentes con vigencia válida e inicio único por recurrencia;
+- un único ajuste por recurrencia y periodo;
 - invitados positivos;
 - monto abonado no mayor al valor final;
 - catálogos inactivos excluidos de registros nuevos;
@@ -103,5 +128,8 @@ Parámetros vigentes para la pre-cotización pública. Solo puede existir una co
 - `negocio.0006_rename_cliente_persona`: renombra modelo, tabla y FK de alias; elimina el marcador demo.
 - `comercial.0005_rename_cliente_persona`: renombra la FK de Cotización y elimina el marcador demo.
 - `financiero.0004_rename_cliente_persona`: renombra la FK de Contrato y elimina marcadores demo financieros.
+- `financiero.0005_gastos_recurrentes_y_adicionales`: conserva los gastos
+  mensuales como adicionales históricos y agrega recurrencias, versiones y
+  ajustes mensuales sin crear aplicaciones futuras.
 
 Las migraciones históricas anteriores conservan los nombres antiguos porque documentan estados previos necesarios para reconstruir la base desde cero.

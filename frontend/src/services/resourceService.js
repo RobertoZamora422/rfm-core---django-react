@@ -96,11 +96,40 @@ export const costosDirectosService = {
   },
 }
 
-export const gastosFijosService = {
-  ...createResourceService('/gastos-fijos/'),
+export const gastosRecurrentesService = {
+  ...createResourceService('/gastos-recurrentes/'),
 
+  async ajustarDesde(id, payload) {
+    const { data } = await apiClient.post(`/gastos-recurrentes/${id}/ajustar-desde/`, payload)
+    return data
+  },
+
+  async ajustarPeriodo(id, payload) {
+    const { data } = await apiClient.post(`/gastos-recurrentes/${id}/ajustar-periodo/`, payload)
+    return data
+  },
+
+  async desactivar(id, payload) {
+    const { data } = await apiClient.post(`/gastos-recurrentes/${id}/desactivar/`, payload)
+    return data
+  },
+
+  async reactivar(id, payload) {
+    const { data } = await apiClient.post(`/gastos-recurrentes/${id}/reactivar/`, payload)
+    return data
+  },
+
+  async historial(id, params) {
+    const { data } = await apiClient.get(`/gastos-recurrentes/${id}/historial/`, { params })
+    return data
+  },
+}
+
+export const gastosAdicionalesService = createResourceService('/gastos-adicionales/')
+
+export const gastosService = {
   async resumen(params) {
-    const { data } = await apiClient.get('/gastos-fijos/resumen/', { params })
+    const { data } = await apiClient.get('/gastos/resumen/', { params })
     return data
   },
 }

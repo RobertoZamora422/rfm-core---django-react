@@ -11,7 +11,7 @@ RFM Core dispone de:
 - Inicio operativo;
 - Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
 - Configuración del negocio;
-- costos directos, gastos fijos, dashboard financiero y reportes;
+- costos directos, gastos recurrentes, gastos adicionales, dashboard financiero y reportes;
 - diseño responsive y actualización automática de recursos administrativos.
 
 ## Dominio de identidad
@@ -38,7 +38,7 @@ No hay modelos `Cliente` o `Interesado`, ni un campo editable de clasificación.
 La base local está preparada para información real:
 
 - cero personas, alias, cotizaciones y contratos;
-- cero tipos de evento, paquetes, costos directos y gastos fijos operativos;
+- cero tipos de evento, paquetes, costos directos y gastos operativos;
 - una configuración activa de Rancho Flor María;
 - un usuario administrativo.
 

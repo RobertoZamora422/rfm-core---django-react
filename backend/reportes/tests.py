@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from comercial.models import Cotizacion
-from financiero.models import Contrato, CostoDirecto, GastoFijoMensual
+from financiero.models import Contrato, CostoDirecto, GastoAdicional
 from negocio.models import Persona, Paquete, TipoEvento
 
 
@@ -133,17 +133,15 @@ class ReportesApiTests(APITestCase):
             valor=Decimal("900.00"),
             fecha=date(2026, 8, 10),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Arriendo",
             valor=Decimal("400.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 1),
         )
-        GastoFijoMensual.objects.create(
+        GastoAdicional.objects.create(
             concepto="Gasto eliminado",
             valor=Decimal("999.00"),
-            mes=8,
-            anio=2026,
+            fecha=date(2026, 8, 1),
             eliminado=True,
         )
 
@@ -156,7 +154,8 @@ class ReportesApiTests(APITestCase):
         self.assertEqual(response.data["tipo"], "financiero")
         self.assertEqual(response.data["metricas"]["ingresos_mes"], "3000.00")
         self.assertEqual(response.data["metricas"]["costos_directos_mes"], "800.00")
-        self.assertEqual(response.data["metricas"]["gastos_fijos_mes"], "400.00")
+        self.assertEqual(response.data["metricas"]["gastos_adicionales_periodo"], "400.00")
+        self.assertEqual(response.data["metricas"]["total_gastos_operativos_periodo"], "400.00")
         self.assertEqual(response.data["metricas"]["utilidad_neta"], "1800.00")
         self.assertEqual(len(response.data["rentabilidad_eventos"]), 1)
         self.assertEqual(
