@@ -123,18 +123,37 @@ class ServiciosPaquetesDomainTests(APITestCase):
             "Premium 18",
         )
 
-    def test_cotizacion_no_estoy_seguro_con_recomendaciones(self):
+    def test_cotizacion_servicio_completo_sin_paquete_es_una_oportunidad_valida(self):
         self.client.force_authenticate(user=None)
         response = self.client.post(
             "/api/pre-cotizacion/",
-            {
-                **self.public_payload(
-                    telefono="0991112203",
-                    tipo_servicio=Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
-                ),
-                "nivel_experiencia": "completo",
-                "entretenimiento": "importante",
-            },
+            self.public_payload(
+                telefono="0991112205",
+                tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertIsNone(response.data["cotizacion"]["paquete"])
+        self.assertIsNone(response.data["cotizacion"]["total_estimado"])
+        self.assertEqual(
+            response.data["cotizacion"]["paquete_nombre"],
+            "Por definir",
+        )
+        self.assertIn(
+            "catalogo",
+            response.data["cotizacion"]["oferta_snapshot"],
+        )
+
+    def test_cotizacion_no_estoy_seguro_devuelve_comparacion_resumida(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            self.public_payload(
+                telefono="0991112203",
+                tipo_servicio=Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
+            ),
             format="json",
         )
 
@@ -143,9 +162,19 @@ class ServiciosPaquetesDomainTests(APITestCase):
             response.data["cotizacion"]["tipo_servicio"],
             Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
         )
-        self.assertEqual(response.data["calculo"]["recomendados"], [self.paquete.id])
+        self.assertNotIn("paquetes", response.data["calculo"]["servicio_completo"])
+        self.assertEqual(
+            response.data["calculo"]["servicio_completo"]["categorias"][0][
+                "categoria"
+            ],
+            "premium",
+        )
         self.assertIn(
             "alternativa_alquiler",
+            response.data["cotizacion"]["oferta_snapshot"],
+        )
+        self.assertIn(
+            "comparacion",
             response.data["cotizacion"]["oferta_snapshot"],
         )
 

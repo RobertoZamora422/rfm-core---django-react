@@ -19,6 +19,10 @@ def _money(value):
     return str((value or ZERO).quantize(Decimal("0.01")))
 
 
+def _optional_money(value):
+    return _money(value) if value is not None else None
+
+
 def _percent(value):
     return str((value or ZERO).quantize(Decimal("0.01")))
 
@@ -63,7 +67,7 @@ def _quote_row(cotizacion):
         "tipo_servicio": cotizacion.tipo_servicio,
         "tipo_servicio_display": cotizacion.get_tipo_servicio_display(),
         "estado": cotizacion.estado,
-        "total_estimado": _money(cotizacion.total_estimado),
+        "total_estimado": _optional_money(cotizacion.total_estimado),
         "contrato_id": _cotizacion_contrato_id(cotizacion),
     }
 

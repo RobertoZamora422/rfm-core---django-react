@@ -59,6 +59,8 @@ class Cotizacion(TimeStampedModel):
         max_digits=12,
         decimal_places=2,
         validators=[validate_non_negative],
+        blank=True,
+        null=True,
     )
     observaciones = models.TextField(blank=True)
     origen = models.CharField(
@@ -81,6 +83,11 @@ class Cotizacion(TimeStampedModel):
                 condition=Q(oferta_requiere_revision=True)
                 | Q(tipo_servicio="alquiler", paquete__isnull=True)
                 | Q(tipo_servicio="servicio_completo", paquete__isnull=False)
+                | Q(
+                    origen="formulario_publico",
+                    tipo_servicio="servicio_completo",
+                    paquete__isnull=True,
+                )
                 | Q(tipo_servicio="no_estoy_seguro"),
                 name="cotizacion_tipo_servicio_paquete_coherente",
             ),
@@ -99,6 +106,7 @@ class Cotizacion(TimeStampedModel):
         if (
             self.tipo_servicio == self.TipoServicioInteres.SERVICIO_COMPLETO
             and not self.paquete_id
+            and self.origen != self.Origen.FORMULARIO_PUBLICO
             and not self.oferta_requiere_revision
         ):
             raise ValidationError(

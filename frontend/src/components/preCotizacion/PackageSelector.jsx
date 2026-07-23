@@ -1,4 +1,4 @@
-import { Check, ChevronDown, PackageCheck, Sparkles } from 'lucide-react'
+import { Check, ChevronDown, MessageCircle, PackageCheck, Sparkles, X } from 'lucide-react'
 import { formatCurrency } from '../../utils/formatters'
 import { Button } from '../ui/Button'
 
@@ -28,32 +28,32 @@ function BenefitList({ items }) {
   )
 }
 
-function PackageCard({ isSelected, onSelect, paquete }) {
+function PackageCard({ action, isSelected, onConsult, paquete }) {
   const principales = (paquete.beneficios ?? []).filter((item) => item.tipo === 'principal')
   const detalle = (paquete.beneficios ?? []).filter((item) => item.tipo !== 'principal')
+  const descriptionId = `paquete-${paquete.id}-description`
 
   return (
     <article className={`public-package-card${isSelected ? ' public-package-card--selected' : ''}`}>
-      <label className="public-package-card__select">
-        <input checked={isSelected} name="paquete" onChange={onSelect} type="radio" value={paquete.id} />
-        <span className="public-package-card__radio" aria-hidden="true"><Check size={14} /></span>
-        <span>{isSelected ? 'Paquete seleccionado' : 'Seleccionar paquete'}</span>
-      </label>
       <div className="public-package-card__heading">
         <div>
           <span className="public-package-card__category">{paquete.categoria_display}</span>
           <h4>{paquete.nombre}</h4>
         </div>
-        {paquete.destacado ? (
+        {isSelected ? (
+          <span className="public-package-card__selected-label">
+            <Check size={14} /> Preferencia guardada
+          </span>
+        ) : paquete.destacado ? (
           <span className="public-package-card__featured"><Sparkles size={14} /> Destacado</span>
         ) : paquete.etiqueta_comercial ? (
           <span className="public-package-card__tag">{paquete.etiqueta_comercial}</span>
         ) : null}
       </div>
-      <p>{paquete.resumen_corto}</p>
+      <p id={descriptionId}>{paquete.resumen_corto}</p>
       <div className="public-package-card__prices">
         <div><span>Por persona</span><strong>{formatCurrency(paquete.precio_por_persona)}</strong></div>
-        <div><span>Total estimado</span><strong>{paquete.total_estimado ? formatCurrency(paquete.total_estimado) : 'Ingresa invitados'}</strong></div>
+        <div><span>Total estimado</span><strong>{formatCurrency(paquete.total_estimado)}</strong></div>
       </div>
       <BenefitList items={principales.slice(0, 4)} />
       {(principales.length > 4 || detalle.length) ? (
@@ -62,47 +62,49 @@ function PackageCard({ isSelected, onSelect, paquete }) {
           <BenefitList items={[...principales.slice(4), ...detalle]} />
         </details>
       ) : null}
+      {action?.url ? (
+        <a
+          aria-describedby={descriptionId}
+          className="button whatsapp-link public-package-card__cta"
+          href={action.url}
+          onClick={() => onConsult(paquete.id)}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          <MessageCircle aria-hidden="true" size={17} />
+          <span>{action.etiqueta}</span>
+        </a>
+      ) : (
+        <Button className="public-package-card__cta" disabled type="button">
+          WhatsApp no disponible
+        </Button>
+      )}
     </article>
   )
 }
 
 export function PackageSelector({
   catalog,
-  isGuided,
-  onSelect,
-  onToggleAll,
+  onClearSelection,
+  onConsult,
   selectedId,
-  showAll,
+  whatsappActions = [],
 }) {
   const paquetes = catalog.paquetes ?? []
-  const recommendedIds = new Set(catalog.recomendados ?? [])
-  const visible = isGuided && !showAll
-    ? paquetes.filter((paquete) => recommendedIds.has(paquete.id))
-    : paquetes
+  const actionsByPackage = new Map(
+    whatsappActions.map((action) => [String(action.paquete_id), action]),
+  )
   const selected = paquetes.find((paquete) => String(paquete.id) === String(selectedId))
   const grouped = Object.entries(CATEGORY_LABELS)
     .map(([category, label]) => ({
       category,
       label,
-      items: visible.filter((paquete) => paquete.categoria === category),
+      items: paquetes.filter((paquete) => paquete.categoria === category),
     }))
     .filter((group) => group.items.length)
 
   return (
     <div className="public-package-selector">
-      {isGuided ? (
-        <div className="public-package-guidance">
-          <div>
-            <span>Recomendación orientativa</span>
-            <strong>{showAll ? 'Estás revisando los seis paquetes' : `Te sugerimos ${visible.length} opciones`}</strong>
-            <p>Puedes elegir una recomendación o abrir todo el catálogo antes de continuar.</p>
-          </div>
-          <Button onClick={onToggleAll} type="button" variant="secondary">
-            {showAll ? 'Ver recomendados' : 'Revisar todos'}
-          </Button>
-        </div>
-      ) : null}
-
       {(catalog.incluidos_en_todos ?? []).length ? (
         <section className="public-common-benefits">
           <div>
@@ -126,9 +128,10 @@ export function PackageSelector({
           <div className="public-package-grid">
             {group.items.map((paquete) => (
               <PackageCard
+                action={actionsByPackage.get(String(paquete.id))}
                 isSelected={String(paquete.id) === String(selectedId)}
                 key={paquete.id}
-                onSelect={onSelect}
+                onConsult={onConsult}
                 paquete={paquete}
               />
             ))}
@@ -139,9 +142,12 @@ export function PackageSelector({
       {selected ? (
         <aside className="public-selected-package" aria-live="polite">
           <PackageCheck aria-hidden="true" size={20} />
-          <div><span>Tu selección</span><strong>{selected.nombre}</strong></div>
+          <div><span>Paquete de interés</span><strong>{selected.nombre}</strong></div>
           <div><span>Por persona</span><strong>{formatCurrency(selected.precio_por_persona)}</strong></div>
-          <div><span>Total estimado</span><strong>{selected.total_estimado ? formatCurrency(selected.total_estimado) : 'Pendiente de invitados'}</strong></div>
+          <div><span>Total estimado</span><strong>{formatCurrency(selected.total_estimado)}</strong></div>
+          <Button icon={X} onClick={onClearSelection} type="button" variant="ghost">
+            Quitar preferencia
+          </Button>
         </aside>
       ) : null}
     </div>

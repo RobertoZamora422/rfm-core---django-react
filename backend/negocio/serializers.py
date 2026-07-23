@@ -517,13 +517,15 @@ class ConfiguracionNegocioSerializer(serializers.ModelSerializer):
 
 
 class PublicConfiguracionNegocioSerializer(serializers.ModelSerializer):
+    whatsapp_disponible = serializers.SerializerMethodField()
+
     class Meta:
         model = ConfiguracionNegocio
         fields = [
             "nombre_negocio",
-            "tarifa_base_alquiler",
-            "invitados_incluidos_alquiler",
-            "costo_invitado_adicional",
-            "whatsapp_numero_url",
+            "whatsapp_disponible",
         ]
         read_only_fields = fields
+
+    def get_whatsapp_disponible(self, obj):
+        return bool(obj.whatsapp_numero_url)

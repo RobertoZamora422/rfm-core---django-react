@@ -13,8 +13,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
-import { PreCotizacionSummary } from '../components/preCotizacion/PreCotizacionSummary'
-import { PackageSelector } from '../components/preCotizacion/PackageSelector'
+import { PreCotizacionResult } from '../components/preCotizacion/PreCotizacionResult'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
@@ -23,10 +22,10 @@ import { LoadingState } from '../components/ui/LoadingState'
 import { Select } from '../components/ui/Select'
 import {
   crearPreCotizacion,
-  listarPaquetesPublicos,
+  guardarPreferenciaPreCotizacion,
   listarTiposEventoPublicos,
 } from '../services/preCotizacionService'
-import { getApiFieldErrors } from '../utils/apiErrors'
+import { getApiErrorMessage, getApiFieldErrors } from '../utils/apiErrors'
 
 const initialForm = {
   nombre: '',
@@ -34,34 +33,41 @@ const initialForm = {
   tipo_evento: '',
   fecha_tentativa: '',
   numero_invitados: '',
-  tipo_servicio: 'alquiler',
+  tipo_servicio: '',
   paquete: '',
-  nivel_experiencia: 'equilibrado',
-  entretenimiento: 'indiferente',
 }
+
+const invalidatingFields = new Set([
+  'nombre',
+  'telefono',
+  'tipo_evento',
+  'fecha_tentativa',
+  'numero_invitados',
+  'tipo_servicio',
+])
 
 const serviceOptions = [
   {
     value: 'alquiler',
-    label: 'Alquiler',
-    detail: 'Estima el uso del espacio con la tarifa de alquiler configurada.',
+    label: 'Solo alquiler',
+    detail: 'El espacio para organizar el evento con tus propios proveedores.',
     icon: Building2,
   },
   {
     value: 'servicio_completo',
     label: 'Servicio completo',
-    detail: 'Calcula los paquetes activos según el número de invitados.',
+    detail: 'Opciones integrales de atención, menú y experiencia.',
     icon: Sparkles,
   },
   {
     value: 'no_estoy_seguro',
     label: 'No estoy seguro',
-    detail: 'Responde dos preguntas y revisa recomendaciones sin cerrar otras opciones.',
+    detail: 'Compara ambas modalidades después de registrar tu solicitud.',
     icon: Scale,
   },
 ]
 
-function buildPayload(form) {
+function buildPayload(form, solicitudToken) {
   return {
     nombre_persona: form.nombre.trim(),
     telefono_persona: form.telefono.trim(),
@@ -70,38 +76,20 @@ function buildPayload(form) {
     numero_invitados: Number(form.numero_invitados),
     tipo_servicio: form.tipo_servicio,
     paquete: form.paquete ? Number(form.paquete) : null,
-    nivel_experiencia: form.nivel_experiencia,
-    entretenimiento: form.entretenimiento,
+    ...(solicitudToken ? { solicitud_token: solicitudToken } : {}),
   }
 }
 
 function validateForm(form) {
   const validationErrors = {}
-
-  if (!form.tipo_evento) {
-    validationErrors.tipo_evento = 'Selecciona el tipo de evento.'
-  }
-
-  if (!form.fecha_tentativa) {
-    validationErrors.fecha_tentativa = 'Selecciona una fecha tentativa.'
-  }
-
+  if (!form.nombre.trim()) validationErrors.nombre = 'Ingresa tu nombre completo.'
+  if (!form.telefono.trim()) validationErrors.telefono = 'Ingresa un teléfono de contacto.'
+  if (!form.tipo_evento) validationErrors.tipo_evento = 'Selecciona el tipo de evento.'
+  if (!form.fecha_tentativa) validationErrors.fecha_tentativa = 'Selecciona una fecha tentativa.'
   if (!form.numero_invitados || Number(form.numero_invitados) < 1) {
     validationErrors.numero_invitados = 'Ingresa una cantidad de invitados mayor a cero.'
   }
-
-  if (!form.nombre.trim()) {
-    validationErrors.nombre = 'Ingresa tu nombre completo.'
-  }
-
-  if (!form.telefono.trim()) {
-    validationErrors.telefono = 'Ingresa un teléfono de contacto.'
-  }
-
-  if (form.tipo_servicio === 'servicio_completo' && !form.paquete) {
-    validationErrors.paquete = 'Selecciona el paquete que deseas cotizar.'
-  }
-
+  if (!form.tipo_servicio) validationErrors.tipo_servicio = 'Selecciona una modalidad.'
   return validationErrors
 }
 
@@ -109,30 +97,20 @@ function getPublicErrorMessage(error, context = 'submit') {
   if (!error?.response) {
     return 'No pudimos conectar con el servicio. Verifica tu conexión e inténtalo nuevamente.'
   }
-
   const { data, status } = error.response
-
   if (context === 'catalog') {
     return 'No fue posible cargar los tipos de evento. Inténtalo nuevamente en unos minutos.'
   }
-
   if (data?.configuracion) {
     return 'La configuración del negocio no está disponible. Inténtalo nuevamente más tarde.'
   }
-
-  if (data?.paquete) {
-    return 'No hay opciones activas para esta modalidad en este momento.'
-  }
-
   if (status >= 500) {
     return 'El servicio no está disponible temporalmente. Inténtalo nuevamente en unos minutos.'
   }
-
   if (status === 400) {
     return 'Revisa los datos indicados en el formulario e inténtalo nuevamente.'
   }
-
-  return 'No fue posible calcular la pre-cotización. Inténtalo nuevamente.'
+  return 'No fue posible registrar la solicitud. Inténtalo nuevamente.'
 }
 
 function RequiredLabel({ children }) {
@@ -146,9 +124,7 @@ function RequiredLabel({ children }) {
 function FormSectionHeading({ description, id, number, title }) {
   return (
     <div className="public-form-section__heading">
-      <h3 id={id}>
-        <span>{number}.</span> {title}
-      </h3>
+      <h3 id={id}><span>{number}.</span> {title}</h3>
       {description ? <p>{description}</p> : null}
     </div>
   )
@@ -157,94 +133,67 @@ function FormSectionHeading({ description, id, number, title }) {
 function OrnamentalDivider() {
   return (
     <span className="public-ornament" aria-hidden="true">
-      <span />
-      <i />
-      <span />
+      <span /><i /><span />
     </span>
   )
 }
 
 export function PreCotizacionPage() {
   const [tiposEvento, setTiposEvento] = useState([])
-  const [packageCatalog, setPackageCatalog] = useState({
-    incluidos_en_todos: [],
-    paquetes: [],
-    recomendados: [],
-  })
   const [form, setForm] = useState(initialForm)
   const [errors, setErrors] = useState({})
   const [pageError, setPageError] = useState('')
+  const [preferenceError, setPreferenceError] = useState('')
   const [result, setResult] = useState(null)
+  const [solicitudToken, setSolicitudToken] = useState('')
+  const [isResultStale, setIsResultStale] = useState(false)
   const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
-  const [isLoadingPackages, setIsLoadingPackages] = useState(true)
-  const [showAllPackages, setShowAllPackages] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isSubmittingRef = useRef(false)
-  const formHeadingRef = useRef(null)
-  const summaryHeadingRef = useRef(null)
+  const resultHeadingRef = useRef(null)
+  const resultSectionRef = useRef(null)
   const { configuracion, configError, isConfigLoading } = useOutletContext()
   const hasBusinessConfig = Boolean(configuracion && Object.keys(configuracion).length)
 
   useEffect(() => {
     let isActive = true
-
     async function loadCatalogs() {
       setIsLoadingCatalogs(true)
       setPageError('')
-
       try {
-        const tiposData = await listarTiposEventoPublicos()
+        const data = await listarTiposEventoPublicos()
         if (!isActive) return
-        const catalog = Array.isArray(tiposData) ? tiposData : tiposData.results ?? []
+        const catalog = Array.isArray(data) ? data : data.results ?? []
         setTiposEvento(catalog)
         if (!catalog.length) {
-          setPageError('No hay tipos de evento disponibles para realizar la pre-cotización.')
+          setPageError('No hay tipos de evento disponibles para registrar la solicitud.')
         }
       } catch (error) {
-        if (!isActive) return
-        setPageError(getPublicErrorMessage(error, 'catalog'))
+        if (isActive) setPageError(getPublicErrorMessage(error, 'catalog'))
       } finally {
-        if (isActive) {
-          setIsLoadingCatalogs(false)
-        }
+        if (isActive) setIsLoadingCatalogs(false)
       }
     }
-
     const timeoutId = window.setTimeout(loadCatalogs, 0)
-
     return () => {
       isActive = false
       window.clearTimeout(timeoutId)
     }
   }, [])
 
-  useEffect(() => {
-    let isActive = true
-
-    async function loadPackages() {
-      setIsLoadingPackages(true)
-      try {
-        const data = await listarPaquetesPublicos({
-          ...(Number(form.numero_invitados) > 0
-            ? { numero_invitados: Number(form.numero_invitados) }
-            : {}),
-          nivel_experiencia: form.nivel_experiencia,
-          entretenimiento: form.entretenimiento,
-        })
-        if (isActive) setPackageCatalog(data)
-      } catch (error) {
-        if (isActive) setPageError(getPublicErrorMessage(error, 'catalog'))
-      } finally {
-        if (isActive) setIsLoadingPackages(false)
-      }
+  const clearFieldError = (name) => {
+    const related = {
+      nombre: ['nombre', 'nombre_persona'],
+      telefono: ['telefono', 'telefono_persona'],
     }
-
-    const timeoutId = window.setTimeout(loadPackages, 250)
-    return () => {
-      isActive = false
-      window.clearTimeout(timeoutId)
-    }
-  }, [form.entretenimiento, form.nivel_experiencia, form.numero_invitados])
+    const keys = related[name] ?? [name]
+    setErrors((current) => {
+      if (!keys.some((key) => current[key])) return current
+      const next = { ...current }
+      keys.forEach((key) => delete next[key])
+      return next
+    })
+  }
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -253,37 +202,30 @@ export function PreCotizacionPage() {
       [name]: value,
       ...(name === 'tipo_servicio' ? { paquete: '' } : {}),
     }))
-    if (name === 'nivel_experiencia' || name === 'entretenimiento') {
-      setShowAllPackages(false)
-    }
-    setResult(null)
+    if (result && invalidatingFields.has(name)) setIsResultStale(true)
+    clearFieldError(name)
+  }
 
-    const relatedErrorKeys = {
-      nombre: ['nombre', 'nombre_persona'],
-      telefono: ['telefono', 'telefono_persona'],
-    }
-    const keysToClear = relatedErrorKeys[name] ?? [name]
-
-    setErrors((current) => {
-      if (!keysToClear.some((key) => current[key])) return current
-      const nextErrors = { ...current }
-      keysToClear.forEach((key) => delete nextErrors[key])
-      return nextErrors
+  const focusAndScrollResult = () => {
+    window.requestAnimationFrame(() => {
+      resultHeadingRef.current?.focus({ preventScroll: true })
+      resultSectionRef.current?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      })
     })
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-
     if (isSubmittingRef.current) return
 
     const clientErrors = validateForm(form)
     const firstInvalidField = Object.keys(clientErrors)[0]
-
     if (firstInvalidField) {
       const formElement = event.currentTarget
       setErrors(clientErrors)
-      setPageError('Revisa los campos indicados antes de calcular la pre-cotización.')
+      setPageError('Completa los campos obligatorios antes de ver tus opciones.')
       window.requestAnimationFrame(() => {
         formElement.elements.namedItem(firstInvalidField)?.focus()
       })
@@ -293,15 +235,18 @@ export function PreCotizacionPage() {
     isSubmittingRef.current = true
     setErrors({})
     setPageError('')
-    setResult(null)
+    setPreferenceError('')
     setIsSubmitting(true)
-
     try {
-      const response = await crearPreCotizacion(buildPayload(form))
+      const response = await crearPreCotizacion(buildPayload(form, solicitudToken))
       setResult(response)
-      window.requestAnimationFrame(() => {
-        summaryHeadingRef.current?.focus()
-      })
+      setSolicitudToken(response.solicitud_token)
+      setForm((current) => ({
+        ...current,
+        paquete: response.cotizacion.paquete ? String(response.cotizacion.paquete) : '',
+      }))
+      setIsResultStale(false)
+      focusAndScrollResult()
     } catch (error) {
       setErrors(getApiFieldErrors(error))
       setPageError(getPublicErrorMessage(error))
@@ -311,15 +256,26 @@ export function PreCotizacionPage() {
     }
   }
 
-  const handleReset = () => {
-    setForm({ ...initialForm })
-    setShowAllPackages(false)
-    setErrors({})
-    setPageError('')
-    setResult(null)
-    window.requestAnimationFrame(() => {
-      formHeadingRef.current?.focus()
-    })
+  const savePackagePreference = async (packageId) => {
+    if (!solicitudToken) return
+    const previousPackageId = form.paquete
+    setForm((current) => ({ ...current, paquete: packageId ? String(packageId) : '' }))
+    setPreferenceError('')
+    try {
+      const response = await guardarPreferenciaPreCotizacion({
+        solicitud_token: solicitudToken,
+        paquete: packageId ? Number(packageId) : null,
+      })
+      setResult((current) => ({
+        ...current,
+        cotizacion: response.cotizacion,
+        calculo: response.calculo,
+        whatsapp: response.whatsapp,
+      }))
+    } catch (error) {
+      setForm((current) => ({ ...current, paquete: previousPackageId }))
+      setPreferenceError(getApiErrorMessage(error))
+    }
   }
 
   const isSubmitDisabled =
@@ -327,279 +283,201 @@ export function PreCotizacionPage() {
     isConfigLoading ||
     configError ||
     !hasBusinessConfig ||
-    !tiposEvento.length ||
-    ((form.tipo_servicio === 'servicio_completo' || form.tipo_servicio === 'no_estoy_seguro')
-      && isLoadingPackages)
+    !tiposEvento.length
 
   return (
     <section className="public-precotizacion-page" aria-labelledby="public-prequote-title">
       <div className="public-intro">
         <span className="public-intro__eyebrow">Rancho Flor María</span>
-        <h1 id="public-prequote-title">PRE-COTIZA Y PLANIFICA TU EVENTO</h1>
-        <p>Completa los datos de tu evento y obtén un valor estimado de forma rápida.</p>
+        <h1 id="public-prequote-title">CUÉNTANOS SOBRE TU EVENTO</h1>
+        <p>
+          Registra tus datos para conocer las modalidades disponibles y continuar la
+          conversación con nuestro equipo.
+        </p>
         <OrnamentalDivider />
       </div>
 
-      <div className="public-prequote-grid">
-        <Card className="public-form-card">
-          <div className="public-card-heading">
-            <span className="public-card-heading__icon" aria-hidden="true">
-              <ClipboardList size={21} />
-            </span>
-            <div>
-              <h2 ref={formHeadingRef} tabIndex="-1">
-                Datos de tu evento
-              </h2>
-              <p>Ingresa la información necesaria para calcular una estimación.</p>
-            </div>
+      <Card className="public-form-card">
+        <div className="public-card-heading">
+          <span className="public-card-heading__icon" aria-hidden="true">
+            <ClipboardList size={21} />
+          </span>
+          <div>
+            <h2>Datos para tu pre-cotización</h2>
+            <p>No estás reservando ni contratando. Esta solicitud inicia una conversación comercial.</p>
           </div>
+        </div>
 
-          {isLoadingCatalogs ? (
-            <div className="public-loading-panel" aria-busy="true">
-              <LoadingState label="Cargando opciones disponibles" />
-              <span className="public-loading-panel__line" />
-              <span className="public-loading-panel__line public-loading-panel__line--short" />
-            </div>
-          ) : (
-            <form
-              aria-busy={isSubmitting}
-              className="public-form"
-              noValidate
-              onSubmit={handleSubmit}
-            >
-              <ErrorMessage>{pageError}</ErrorMessage>
+        {isLoadingCatalogs ? (
+          <div className="public-loading-panel" aria-busy="true">
+            <LoadingState label="Cargando formulario" />
+            <span className="public-loading-panel__line" />
+            <span className="public-loading-panel__line public-loading-panel__line--short" />
+          </div>
+        ) : (
+          <form aria-busy={isSubmitting} className="public-form" noValidate onSubmit={handleSubmit}>
+            <ErrorMessage>{pageError}</ErrorMessage>
 
-              <section className="public-form-section" aria-labelledby="event-section-title">
-                <FormSectionHeading
-                  id="event-section-title"
-                  number="1"
-                  title="Información del evento"
+            <section className="public-form-section" aria-labelledby="contact-section-title">
+              <FormSectionHeading
+                description="Usaremos estos datos para identificar la solicitud y poder atenderte."
+                id="contact-section-title"
+                number="1"
+                title="Datos de contacto"
+              />
+              <div className="public-form-grid">
+                <Input
+                  autoComplete="name"
+                  error={errors.nombre || errors.nombre_persona}
+                  icon={UserRound}
+                  id="public-nombre"
+                  label={<RequiredLabel>Nombre completo</RequiredLabel>}
+                  name="nombre"
+                  onChange={handleChange}
+                  placeholder="Ingresa tu nombre completo"
+                  required
+                  value={form.nombre}
                 />
-                <div className="public-form-grid">
-                  <Select
-                    disabled={!tiposEvento.length}
-                    error={errors.tipo_evento}
-                    icon={PartyPopper}
-                    id="public-tipo-evento"
-                    label={<RequiredLabel>Tipo de evento</RequiredLabel>}
-                    name="tipo_evento"
-                    onChange={handleChange}
-                    required
-                    value={form.tipo_evento}
-                  >
-                    <option value="">Selecciona el tipo de evento</option>
-                    {tiposEvento.map((tipo) => (
-                      <option key={tipo.id} value={tipo.id}>
-                        {tipo.nombre}
-                      </option>
-                    ))}
-                  </Select>
-                  <Input
-                    error={errors.fecha_tentativa}
-                    icon={CalendarDays}
-                    id="public-fecha"
-                    label={<RequiredLabel>Fecha tentativa</RequiredLabel>}
-                    name="fecha_tentativa"
-                    onChange={handleChange}
-                    required
-                    type="date"
-                    value={form.fecha_tentativa}
-                  />
-                  <Input
-                    error={errors.numero_invitados}
-                    icon={UsersRound}
-                    id="public-invitados"
-                    label={<RequiredLabel>Número de invitados</RequiredLabel>}
-                    min="1"
-                    name="numero_invitados"
-                    onChange={handleChange}
-                    placeholder="Ej. 100"
-                    required
-                    type="number"
-                    value={form.numero_invitados}
-                  />
-                </div>
-              </section>
-
-              <fieldset className="service-choice">
-                <legend>
-                  <span>2.</span> Modalidad o servicio{' '}
-                  <span className="field__required" aria-hidden="true">*</span>
-                </legend>
-                <p className="service-choice__help" id="service-choice-help">
-                  Selecciona la opción que mejor se adapte a tu evento.
-                </p>
-                <div className="service-options" aria-describedby="service-choice-help">
-                  {serviceOptions.map((option) => (
-                    <label
-                      className={
-                        option.value === form.tipo_servicio
-                          ? 'service-option service-option--selected'
-                          : 'service-option'
-                      }
-                      key={option.value}
-                    >
-                      <input
-                        checked={form.tipo_servicio === option.value}
-                        name="tipo_servicio"
-                        onChange={handleChange}
-                        type="radio"
-                        value={option.value}
-                      />
-                      <span className="service-option__icon" aria-hidden="true">
-                        <option.icon size={21} />
-                      </span>
-                      <span className="service-option__copy">
-                        <strong>{option.label}</strong>
-                        <small>{option.detail}</small>
-                      </span>
-                      <span className="service-option__check" aria-hidden="true">
-                        ✓
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                {errors.tipo_servicio ? (
-                  <span className="field__error" role="alert">
-                    {errors.tipo_servicio}
-                  </span>
-                ) : null}
-              </fieldset>
-
-              {form.tipo_servicio === 'no_estoy_seguro' ? (
-                <section className="public-guidance-questions" aria-labelledby="guidance-title">
-                  <FormSectionHeading
-                    description="Estas respuestas solo ordenan recomendaciones; siempre puedes revisar los seis paquetes."
-                    id="guidance-title"
-                    number="3"
-                    title="Cuéntanos qué priorizas"
-                  />
-                  <div className="public-form-grid">
-                    <Select
-                      id="public-nivel-experiencia"
-                      label="¿Qué nivel de experiencia buscas?"
-                      name="nivel_experiencia"
-                      onChange={handleChange}
-                      value={form.nivel_experiencia}
-                    >
-                      <option value="esencial">Algo esencial y funcional</option>
-                      <option value="equilibrado">Equilibrio entre menú y experiencia</option>
-                      <option value="completo">Una experiencia lo más completa posible</option>
-                    </Select>
-                    <Select
-                      id="public-entretenimiento"
-                      label="¿El entretenimiento es importante?"
-                      name="entretenimiento"
-                      onChange={handleChange}
-                      value={form.entretenimiento}
-                    >
-                      <option value="indiferente">Todavía no es decisivo</option>
-                      <option value="importante">Sí, quiero opciones con entretenimiento</option>
-                    </Select>
-                  </div>
-                </section>
-              ) : null}
-
-              {form.tipo_servicio !== 'alquiler' ? (
-                <section className="public-package-section" aria-labelledby="package-section-title">
-                  <FormSectionHeading
-                    description="El precio total se calcula en el backend con el número de invitados ingresado."
-                    id="package-section-title"
-                    number={form.tipo_servicio === 'no_estoy_seguro' ? '4' : '3'}
-                    title={form.tipo_servicio === 'no_estoy_seguro' ? 'Paquetes recomendados' : 'Elige tu paquete'}
-                  />
-                  {isLoadingPackages ? (
-                    <LoadingState label="Actualizando precios y recomendaciones" />
-                  ) : (
-                    <PackageSelector
-                      catalog={packageCatalog}
-                      isGuided={form.tipo_servicio === 'no_estoy_seguro'}
-                      onSelect={handleChange}
-                      onToggleAll={() => setShowAllPackages((current) => !current)}
-                      selectedId={form.paquete}
-                      showAll={showAllPackages}
-                    />
-                  )}
-                  {errors.paquete ? <span className="field__error" role="alert">{errors.paquete}</span> : null}
-                </section>
-              ) : null}
-
-              <section className="public-form-section" aria-labelledby="contact-section-title">
-                <FormSectionHeading
-                  id="contact-section-title"
-                  number={
-                    form.tipo_servicio === 'alquiler'
-                      ? '3'
-                      : form.tipo_servicio === 'no_estoy_seguro'
-                        ? '5'
-                        : '4'
-                  }
-                  title="Datos de contacto"
+                <Input
+                  autoComplete="tel"
+                  error={errors.telefono || errors.telefono_persona}
+                  helpText="Este número identifica tu solicitud."
+                  icon={Phone}
+                  id="public-telefono"
+                  label={<RequiredLabel>Teléfono / WhatsApp</RequiredLabel>}
+                  name="telefono"
+                  onChange={handleChange}
+                  placeholder="Ej. 0991234567"
+                  required
+                  type="tel"
+                  value={form.telefono}
                 />
-                <div className="public-form-grid">
-                  <Input
-                    autoComplete="name"
-                    error={errors.nombre || errors.nombre_persona}
-                    icon={UserRound}
-                    id="public-nombre"
-                    label={<RequiredLabel>Nombre completo</RequiredLabel>}
-                    name="nombre"
-                    onChange={handleChange}
-                    placeholder="Ingresa tu nombre completo"
-                    required
-                    value={form.nombre}
-                  />
-                  <Input
-                    autoComplete="tel"
-                    error={errors.telefono || errors.telefono_persona}
-                    helpText="Ingresa el número donde deseas recibir información."
-                    icon={Phone}
-                    id="public-telefono"
-                    label={<RequiredLabel>Teléfono / WhatsApp</RequiredLabel>}
-                    name="telefono"
-                    onChange={handleChange}
-                    placeholder="Ingresa tu número de contacto"
-                    required
-                    type="tel"
-                    value={form.telefono}
-                  />
-                </div>
-              </section>
-
-              {!isConfigLoading && (!hasBusinessConfig || configError) ? (
-                <ErrorMessage>
-                  La configuración del negocio no está disponible. Inténtalo nuevamente más tarde.
-                </ErrorMessage>
-              ) : null}
-
-              <div className="public-actions">
-                <Button
-                  className="public-calculate-button"
-                  disabled={isSubmitDisabled}
-                  icon={Calculator}
-                  isLoading={isSubmitting}
-                  loadingLabel="Calculando…"
-                  type="submit"
-                >
-                  Calcular pre-cotización
-                </Button>
-                <p className="public-form-privacy">
-                  <ShieldCheck aria-hidden="true" size={14} />
-                  <span>Usaremos estos datos únicamente para identificar y atender esta solicitud.</span>
-                </p>
               </div>
-            </form>
-          )}
-        </Card>
+            </section>
 
-        <PreCotizacionSummary
-          configuracion={configuracion}
-          configError={configError}
-          headingRef={summaryHeadingRef}
-          isConfigLoading={isConfigLoading}
+            <section className="public-form-section" aria-labelledby="event-section-title">
+              <FormSectionHeading id="event-section-title" number="2" title="Información del evento" />
+              <div className="public-form-grid public-form-grid--event">
+                <Select
+                  disabled={!tiposEvento.length}
+                  error={errors.tipo_evento}
+                  icon={PartyPopper}
+                  id="public-tipo-evento"
+                  label={<RequiredLabel>Tipo de evento</RequiredLabel>}
+                  name="tipo_evento"
+                  onChange={handleChange}
+                  required
+                  value={form.tipo_evento}
+                >
+                  <option value="">Selecciona el tipo de evento</option>
+                  {tiposEvento.map((tipo) => (
+                    <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
+                  ))}
+                </Select>
+                <Input
+                  error={errors.fecha_tentativa}
+                  icon={CalendarDays}
+                  id="public-fecha"
+                  label={<RequiredLabel>Fecha tentativa</RequiredLabel>}
+                  name="fecha_tentativa"
+                  onChange={handleChange}
+                  required
+                  type="date"
+                  value={form.fecha_tentativa}
+                />
+                <Input
+                  error={errors.numero_invitados}
+                  icon={UsersRound}
+                  id="public-invitados"
+                  label={<RequiredLabel>Número de invitados</RequiredLabel>}
+                  min="1"
+                  name="numero_invitados"
+                  onChange={handleChange}
+                  placeholder="Ej. 100"
+                  required
+                  type="number"
+                  value={form.numero_invitados}
+                />
+              </div>
+            </section>
+
+            <fieldset className="service-choice">
+              <legend>
+                <span>3.</span> Modalidad de interés{' '}
+                <span className="field__required" aria-hidden="true">*</span>
+              </legend>
+              <p className="service-choice__help" id="service-choice-help">
+                Seleccionar una modalidad todavía no muestra precios ni implica una contratación.
+              </p>
+              <div className="service-options" aria-describedby="service-choice-help">
+                {serviceOptions.map((option) => (
+                  <label
+                    className={
+                      option.value === form.tipo_servicio
+                        ? 'service-option service-option--selected'
+                        : 'service-option'
+                    }
+                    key={option.value}
+                  >
+                    <input
+                      checked={form.tipo_servicio === option.value}
+                      name="tipo_servicio"
+                      onChange={handleChange}
+                      type="radio"
+                      value={option.value}
+                    />
+                    <span className="service-option__icon" aria-hidden="true">
+                      <option.icon size={21} />
+                    </span>
+                    <span className="service-option__copy">
+                      <strong>{option.label}</strong>
+                      <small>{option.detail}</small>
+                    </span>
+                    <span className="service-option__check" aria-hidden="true">✓</span>
+                  </label>
+                ))}
+              </div>
+              {errors.tipo_servicio ? (
+                <span className="field__error" role="alert">{errors.tipo_servicio}</span>
+              ) : null}
+            </fieldset>
+
+            {!isConfigLoading && (!hasBusinessConfig || configError) ? (
+              <ErrorMessage>
+                La configuración del negocio no está disponible. Inténtalo nuevamente más tarde.
+              </ErrorMessage>
+            ) : null}
+
+            <div className="public-actions">
+              <Button
+                className="public-calculate-button"
+                disabled={isSubmitDisabled}
+                icon={Calculator}
+                isLoading={isSubmitting}
+                loadingLabel="Preparando opciones…"
+                type="submit"
+              >
+                {isResultStale ? 'Actualizar mis opciones' : 'Ver mis opciones y estimación'}
+              </Button>
+              <p className="public-form-privacy">
+                <ShieldCheck aria-hidden="true" size={14} />
+                <span>La fecha y disponibilidad se confirman posteriormente con el negocio.</span>
+              </p>
+            </div>
+          </form>
+        )}
+      </Card>
+
+      <div ref={resultSectionRef}>
+        <PreCotizacionResult
+          headingRef={resultHeadingRef}
+          isStale={isResultStale}
           isSubmitting={isSubmitting}
-          onReset={handleReset}
+          onClearPackage={() => savePackagePreference(null)}
+          onPackageConsult={savePackagePreference}
+          preferenceError={preferenceError}
           result={result}
+          selectedPackageId={form.paquete}
         />
       </div>
     </section>

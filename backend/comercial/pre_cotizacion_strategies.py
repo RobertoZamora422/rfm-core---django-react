@@ -8,7 +8,6 @@ from django.core.exceptions import ValidationError
 from negocio.models import Paquete
 from negocio.ofertas import (
     beneficios_comunes_activos,
-    recomendar_paquetes,
     serializar_beneficio,
     serializar_paquete,
 )
@@ -22,6 +21,29 @@ def paquetes_activos():
         .prefetch_related("beneficios")
         .order_by("categoria", "orden", "precio_por_persona", "id")
     )
+
+
+def resumir_categorias(paquetes, numero_invitados):
+    categorias = []
+    for categoria, categoria_display in Paquete.Categoria.choices:
+        opciones = [item for item in paquetes if item.categoria == categoria]
+        if not opciones:
+            continue
+        precios = [item.precio_por_persona for item in opciones]
+        referencia = next((item for item in opciones if item.destacado), opciones[0])
+        categorias.append(
+            {
+                "categoria": categoria,
+                "categoria_display": categoria_display,
+                "cantidad_paquetes": len(opciones),
+                "precio_por_persona_desde": min(precios),
+                "precio_por_persona_hasta": max(precios),
+                "total_desde": min(precios) * Decimal(numero_invitados),
+                "total_hasta": max(precios) * Decimal(numero_invitados),
+                "resumen": referencia.resumen_corto,
+            }
+        )
+    return categorias
 
 
 class PreCotizacionStrategy(ABC):
@@ -67,6 +89,29 @@ class AlquilerPreCotizacionStrategy(PreCotizacionStrategy):
             "invitados_adicionales": invitados_adicionales,
             "costo_invitado_adicional": configuracion.costo_invitado_adicional,
             "costo_adicional": costo_adicional,
+            "presentacion": {
+                "recomendado_para": [
+                    "Personas que ya cuentan con equipo o proveedores.",
+                    "Quienes desean organizar el evento por su cuenta.",
+                    "Eventos privados, reuniones familiares y celebraciones.",
+                ],
+                "incluidos": [
+                    {
+                        "titulo": "Uso del local",
+                        "detalle": (
+                            "La tarifa base contempla hasta "
+                            f"{configuracion.invitados_incluidos_alquiler} invitados."
+                        ),
+                    }
+                ],
+                "condiciones": [
+                    "La disponibilidad y la fecha deben ser confirmadas por Rancho Flor María.",
+                    (
+                        "Los invitados que excedan la cantidad incluida se calculan "
+                        "con la tarifa adicional configurada."
+                    ),
+                ],
+            },
         }
 
 
@@ -110,7 +155,7 @@ class ServicioCompletoPreCotizacionStrategy(PreCotizacionStrategy):
             Decimal(item["total_estimado"]) for item in paquetes_calculados
         )
         total_estimado = (
-            Decimal(seleccionado["total_estimado"]) if seleccionado else total_minimo
+            Decimal(seleccionado["total_estimado"]) if seleccionado else None
         )
         return {
             "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
@@ -149,15 +194,15 @@ class NoEstoySeguroPreCotizacionStrategy(PreCotizacionStrategy):
             paquete=paquete,
         )
         activos = paquetes_activos()
-        recomendados = recomendar_paquetes(activos, preferencias)
         return {
             "tipo_servicio": Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
             "numero_invitados": numero_invitados,
-            "total_estimado": alquiler["total_estimado"],
+            "total_estimado": None,
             "alquiler": alquiler,
-            "servicio_completo": servicio_completo,
-            "recomendados": [item.id for item in recomendados],
-            "preferencias": preferencias or {},
+            "servicio_completo": {
+                "incluidos_en_todos": servicio_completo["incluidos_en_todos"],
+                "categorias": resumir_categorias(activos, numero_invitados),
+            },
         }
 
 

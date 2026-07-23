@@ -15,6 +15,19 @@ def money(value):
     return str(Decimal(value).quantize(Decimal("0.01")))
 
 
+def valores_snapshot(value):
+    if isinstance(value, Decimal):
+        return money(value)
+    if isinstance(value, list):
+        return [valores_snapshot(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            clave: valores_snapshot(item)
+            for clave, item in value.items()
+        }
+    return deepcopy(value)
+
+
 def serializar_beneficio(beneficio):
     return {
         "id": beneficio.id,
@@ -126,6 +139,31 @@ def snapshot_paquete(
             numero_invitados=numero_invitados,
             comunes=comunes,
         ),
+    }
+
+
+def snapshot_catalogo_servicio_completo(
+    calculo,
+    *,
+    numero_invitados,
+    origen="operacion",
+):
+    """Conserva el catálogo ofrecido cuando el interesado aún no elige paquete."""
+    return {
+        "version": SNAPSHOT_VERSION,
+        "origen": origen,
+        "tipo_servicio": "servicio_completo",
+        "numero_invitados": numero_invitados,
+        "total_estimado": None,
+        "catalogo": {
+            "total_estimado_minimo": money(
+                calculo.get("total_estimado_minimo")
+            ),
+            "incluidos_en_todos": deepcopy(
+                calculo.get("incluidos_en_todos") or []
+            ),
+            "paquetes": deepcopy(calculo.get("paquetes") or []),
+        },
     }
 
 
@@ -296,6 +334,7 @@ def snapshot_no_estoy_seguro(
     paquete=None,
     configuracion=None,
     preferencias=None,
+    comparacion=None,
     origen="operacion",
 ):
     snapshot = {
@@ -306,6 +345,8 @@ def snapshot_no_estoy_seguro(
         "total_estimado": money(total_estimado),
         "preferencias": preferencias or {},
     }
+    if comparacion:
+        snapshot["comparacion"] = valores_snapshot(comparacion)
     if configuracion:
         snapshot["alternativa_alquiler"] = snapshot_alquiler(
             configuracion,
@@ -337,6 +378,8 @@ def presentacion_paquete(*, tipo_servicio, snapshot, paquete=None):
         return nombre
     if paquete:
         return paquete.nombre
+    if tipo_servicio == "servicio_completo" and (snapshot or {}).get("catalogo"):
+        return "Por definir"
     if tipo_servicio == "no_estoy_seguro":
         return "Por definir"
     return "Requiere revisión"

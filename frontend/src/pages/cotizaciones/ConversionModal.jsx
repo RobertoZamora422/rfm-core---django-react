@@ -18,7 +18,7 @@ function buildInitialForm(cotizacion) {
         ? ''
         : cotizacion?.tipo_servicio ?? '',
     paquete: cotizacion?.paquete ?? '',
-    valor_final: cotizacion?.total_estimado ?? '0.00',
+    valor_final: cotizacion?.total_estimado ?? '',
     monto_abonado: '0.00',
     observaciones: '',
   }

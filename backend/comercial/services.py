@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from django.core import signing
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -10,6 +11,7 @@ from negocio.persona_services import obtener_o_crear_persona_publica
 from negocio.ofertas import (
     snapshot_alquiler,
     snapshot_alquiler_desde_oferta,
+    snapshot_catalogo_servicio_completo,
     snapshot_no_estoy_seguro,
     snapshot_paquete,
     snapshot_paquete_desde_oferta,
@@ -21,6 +23,8 @@ from .pre_cotizacion_strategies import obtener_estrategia_pre_cotizacion
 
 
 _UNSET = object()
+SOLICITUD_PUBLICA_TOKEN_SALT = "comercial.pre_cotizacion.publica"
+SOLICITUD_PUBLICA_TOKEN_MAX_AGE = 60 * 60 * 24
 
 
 def _validar_tipo_servicio_y_paquete(tipo_servicio, paquete):
@@ -57,6 +61,97 @@ def calcular_pre_cotizacion(
     )
 
 
+def crear_token_solicitud_publica(cotizacion):
+    return signing.dumps(
+        {
+            "cotizacion_id": cotizacion.id,
+            "telefono": cotizacion.persona.telefono_normalizado,
+        },
+        salt=SOLICITUD_PUBLICA_TOKEN_SALT,
+        compress=True,
+    )
+
+
+def _leer_token_solicitud_publica(token):
+    try:
+        return signing.loads(
+            token,
+            salt=SOLICITUD_PUBLICA_TOKEN_SALT,
+            max_age=SOLICITUD_PUBLICA_TOKEN_MAX_AGE,
+        )
+    except signing.SignatureExpired as exc:
+        raise ValidationError(
+            {
+                "solicitud_token": (
+                    "La sesión de esta pre-cotización expiró. Envía nuevamente "
+                    "el formulario para registrar una nueva solicitud."
+                )
+            }
+        ) from exc
+    except signing.BadSignature as exc:
+        raise ValidationError(
+            {"solicitud_token": "La referencia de la pre-cotización no es válida."}
+        ) from exc
+
+
+def _cotizacion_publica_reutilizable(token, persona):
+    if not token:
+        return None
+    payload = _leer_token_solicitud_publica(token)
+    if payload.get("telefono") != persona.telefono_normalizado:
+        return None
+    return (
+        Cotizacion.objects.select_for_update()
+        .filter(
+            pk=payload.get("cotizacion_id"),
+            persona=persona,
+            origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
+            estado=Cotizacion.Estado.NUEVA,
+        )
+        .first()
+    )
+
+
+def _snapshot_pre_cotizacion(
+    *,
+    calculo,
+    configuracion,
+    numero_invitados,
+    paquete,
+    preferencias,
+    tipo_servicio,
+):
+    if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER:
+        return snapshot_alquiler(
+            configuracion,
+            numero_invitados=numero_invitados,
+            total_estimado=calculo["total_estimado"],
+            origen="formulario_publico",
+        )
+    if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO:
+        if paquete:
+            return snapshot_paquete(
+                paquete,
+                numero_invitados=numero_invitados,
+                total_estimado=calculo["total_estimado"],
+                origen="formulario_publico",
+            )
+        return snapshot_catalogo_servicio_completo(
+            calculo,
+            numero_invitados=numero_invitados,
+            origen="formulario_publico",
+        )
+    return snapshot_no_estoy_seguro(
+        numero_invitados=numero_invitados,
+        total_estimado=None,
+        paquete=None,
+        configuracion=configuracion,
+        preferencias=preferencias,
+        comparacion=calculo,
+        origen="formulario_publico",
+    )
+
+
 @transaction.atomic
 def crear_pre_cotizacion(
     *,
@@ -69,6 +164,7 @@ def crear_pre_cotizacion(
     tipo_servicio,
     observaciones="",
     preferencias=None,
+    solicitud_token=None,
 ):
     calculo = calcular_pre_cotizacion(
         tipo_servicio=tipo_servicio,
@@ -92,42 +188,105 @@ def crear_pre_cotizacion(
         observaciones_finales = f"{observaciones}\n{nota}".strip()
 
     configuracion = obtener_configuracion_activa()
-    if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER:
-        oferta_snapshot = snapshot_alquiler(
-            configuracion,
-            numero_invitados=numero_invitados,
-            total_estimado=calculo["total_estimado"],
-        )
-    elif tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO:
-        oferta_snapshot = snapshot_paquete(
-            paquete,
-            numero_invitados=numero_invitados,
-            total_estimado=calculo["total_estimado"],
-        )
-    else:
-        oferta_snapshot = snapshot_no_estoy_seguro(
-            numero_invitados=numero_invitados,
-            total_estimado=calculo["total_estimado"],
-            paquete=paquete,
-            configuracion=configuracion,
-            preferencias=preferencias,
-        )
-
-    cotizacion = Cotizacion.objects.create(
-        persona=persona,
-        tipo_evento=tipo_evento,
-        paquete=paquete,
-        fecha_tentativa=fecha_tentativa,
+    oferta_snapshot = _snapshot_pre_cotizacion(
+        calculo=calculo,
+        configuracion=configuracion,
         numero_invitados=numero_invitados,
+        paquete=paquete,
+        preferencias=preferencias,
         tipo_servicio=tipo_servicio,
-        estado=Cotizacion.Estado.NUEVA,
-        total_estimado=calculo["total_estimado"],
-        observaciones=observaciones_finales,
-        origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
-        oferta_snapshot=oferta_snapshot,
-        oferta_requiere_revision=False,
     )
 
+    cotizacion = _cotizacion_publica_reutilizable(solicitud_token, persona)
+    creada = cotizacion is None
+    if creada:
+        cotizacion = Cotizacion.objects.create(
+            persona=persona,
+            tipo_evento=tipo_evento,
+            paquete=paquete,
+            fecha_tentativa=fecha_tentativa,
+            numero_invitados=numero_invitados,
+            tipo_servicio=tipo_servicio,
+            estado=Cotizacion.Estado.NUEVA,
+            total_estimado=calculo["total_estimado"],
+            observaciones=observaciones_finales,
+            origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
+            oferta_snapshot=oferta_snapshot,
+            oferta_requiere_revision=False,
+        )
+    else:
+        cotizacion.tipo_evento = tipo_evento
+        cotizacion.paquete = paquete
+        cotizacion.fecha_tentativa = fecha_tentativa
+        cotizacion.numero_invitados = numero_invitados
+        cotizacion.tipo_servicio = tipo_servicio
+        cotizacion.total_estimado = calculo["total_estimado"]
+        cotizacion.observaciones = observaciones_finales
+        cotizacion.oferta_snapshot = oferta_snapshot
+        cotizacion.oferta_requiere_revision = False
+        cotizacion.save(
+            update_fields=[
+                "tipo_evento",
+                "paquete",
+                "fecha_tentativa",
+                "numero_invitados",
+                "tipo_servicio",
+                "total_estimado",
+                "observaciones",
+                "oferta_snapshot",
+                "oferta_requiere_revision",
+                "actualizado_en",
+            ]
+        )
+
+    return cotizacion, calculo, creada
+
+
+@transaction.atomic
+def guardar_preferencia_paquete_publica(*, solicitud_token, paquete):
+    payload = _leer_token_solicitud_publica(solicitud_token)
+    cotizacion = (
+        Cotizacion.objects.select_for_update()
+        .select_related("persona")
+        .filter(
+            pk=payload.get("cotizacion_id"),
+            origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
+            estado=Cotizacion.Estado.NUEVA,
+            tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+        )
+        .first()
+    )
+    if (
+        cotizacion is None
+        or payload.get("telefono") != cotizacion.persona.telefono_normalizado
+    ):
+        raise ValidationError(
+            {"solicitud_token": "La pre-cotización ya no puede actualizarse."}
+        )
+
+    calculo = calcular_pre_cotizacion(
+        tipo_servicio=cotizacion.tipo_servicio,
+        numero_invitados=cotizacion.numero_invitados,
+        paquete=paquete,
+    )
+    cotizacion.paquete = paquete
+    cotizacion.total_estimado = calculo["total_estimado"]
+    cotizacion.oferta_snapshot = _snapshot_pre_cotizacion(
+        calculo=calculo,
+        configuracion=obtener_configuracion_activa(),
+        numero_invitados=cotizacion.numero_invitados,
+        paquete=paquete,
+        preferencias=None,
+        tipo_servicio=cotizacion.tipo_servicio,
+    )
+    cotizacion.save(
+        update_fields=[
+            "paquete",
+            "total_estimado",
+            "oferta_snapshot",
+            "actualizado_en",
+        ]
+    )
     return cotizacion, calculo
 
 
@@ -247,6 +406,14 @@ def convertir_cotizacion_a_contrato(
     valor_final_resuelto = (
         valor_final if valor_final is not None else cotizacion.total_estimado
     )
+    if valor_final_resuelto is None:
+        raise ValidationError(
+            {
+                "valor_final": (
+                    "Define el valor final acordado antes de crear el contrato."
+                )
+            }
+        )
     if tipo_servicio_final == Contrato.TipoServicio.ALQUILER:
         oferta_snapshot = snapshot_alquiler_desde_oferta(
             cotizacion.oferta_snapshot,

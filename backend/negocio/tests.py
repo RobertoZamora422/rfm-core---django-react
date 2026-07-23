@@ -437,7 +437,7 @@ class NegocioApiTests(APITestCase):
         self.assertTrue(configuracion.activo)
         self.assertEqual(configuracion.tarifa_base_alquiler, Decimal("1300.00"))
 
-    def test_configuracion_publica_devuelve_whatsapp_numero_url(self):
+    def test_configuracion_publica_no_expone_parametros_comerciales(self):
         ConfiguracionNegocio.objects.create(
             nombre_negocio="Rancho Flor Maria",
             tarifa_base_alquiler=Decimal("1200.00"),
@@ -451,8 +451,11 @@ class NegocioApiTests(APITestCase):
         response = self.client.get("/api/public/configuracion/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["whatsapp_numero_url"], "593991234567")
+        self.assertTrue(response.data["whatsapp_disponible"])
         self.assertNotIn("whatsapp_negocio", response.data)
+        self.assertNotIn("whatsapp_numero_url", response.data)
+        self.assertNotIn("tarifa_base_alquiler", response.data)
+        self.assertNotIn("costo_invitado_adicional", response.data)
 
     def test_inicio_resumen_usa_datos_reales_del_backend(self):
         hoy = timezone.localdate()

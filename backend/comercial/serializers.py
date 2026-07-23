@@ -109,12 +109,24 @@ class CotizacionSerializer(serializers.ModelSerializer):
             getattr(self.instance, "tipo_servicio", None),
         )
         estado = attrs.get("estado")
+        total_estimado = attrs.get(
+            "total_estimado",
+            getattr(self.instance, "total_estimado", None),
+        )
         persona = attrs.get("persona")
         persona_nueva = attrs.get("persona_nueva")
         errors = {}
 
         if self.instance is None and bool(persona) == bool(persona_nueva):
             errors["persona"] = "Selecciona una persona existente o registra una nueva."
+        if self.instance is None and total_estimado is None:
+            errors["total_estimado"] = "Ingresa el total estimado de la cotización."
+        if (
+            self.instance is not None
+            and "total_estimado" in attrs
+            and attrs["total_estimado"] is None
+        ):
+            errors["total_estimado"] = "El total estimado administrativo no puede quedar vacío."
         if self.instance is not None and persona_nueva:
             errors["persona_nueva"] = "La creación rápida solo está disponible en una nueva cotización."
 
@@ -152,7 +164,6 @@ class CotizacionSerializer(serializers.ModelSerializer):
             errors["paquete"] = "El servicio completo requiere seleccionar un paquete."
         if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER and paquete:
             errors["paquete"] = "El alquiler del local no utiliza un paquete."
-
         if estado == Cotizacion.Estado.CONVERTIDA and (
             self.instance is None
             or self.instance.estado != Cotizacion.Estado.CONVERTIDA
@@ -290,17 +301,17 @@ class CotizacionSerializer(serializers.ModelSerializer):
         return value
 
     def validate_total_estimado(self, value):
-        if value < 0:
+        if value is not None and value < 0:
             raise serializers.ValidationError("El total estimado no puede ser negativo.")
         return value
 
 
 class PreCotizacionSerializer(serializers.Serializer):
     persona = serializers.IntegerField(required=False, write_only=True)
-    nombre_persona = serializers.CharField(required=False, allow_blank=True)
+    nombre_persona = serializers.CharField(required=True, allow_blank=False)
     telefono_persona = serializers.CharField(
-        required=False,
-        allow_blank=True,
+        required=True,
+        allow_blank=False,
         validators=[validate_phone],
     )
     correo_persona = serializers.EmailField(required=False, allow_blank=True, write_only=True)
@@ -317,6 +328,12 @@ class PreCotizacionSerializer(serializers.Serializer):
     numero_invitados = serializers.IntegerField(min_value=1)
     tipo_servicio = serializers.ChoiceField(choices=Cotizacion.TipoServicioInteres.choices)
     observaciones = serializers.CharField(required=False, allow_blank=True)
+    solicitud_token = serializers.CharField(
+        required=False,
+        allow_blank=False,
+        max_length=500,
+        write_only=True,
+    )
     nivel_experiencia = serializers.ChoiceField(
         choices=["esencial", "equilibrado", "completo"],
         required=False,
@@ -330,6 +347,11 @@ class PreCotizacionSerializer(serializers.Serializer):
         write_only=True,
     )
 
+    def validate_persona(self, value):
+        raise serializers.ValidationError(
+            "El flujo público no permite seleccionar personas existentes."
+        )
+
     def validate(self, attrs):
         nombre_persona = (attrs.get("nombre_persona") or "").strip()
         telefono_persona = (attrs.get("telefono_persona") or "").strip()
@@ -337,8 +359,6 @@ class PreCotizacionSerializer(serializers.Serializer):
         tipo_servicio = attrs.get("tipo_servicio")
 
         errors = {}
-        if "persona" in attrs:
-            errors["persona"] = "El flujo público no permite seleccionar personas existentes."
         if not nombre_persona:
             errors["nombre_persona"] = "El nombre de la persona es obligatorio."
         if not telefono_persona:
@@ -346,15 +366,24 @@ class PreCotizacionSerializer(serializers.Serializer):
 
         if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER and paquete:
             errors["paquete"] = "El alquiler del local no utiliza un paquete."
-        if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO and not paquete:
-            errors["paquete"] = "Selecciona el paquete de servicio completo que prefieres."
-
+        if tipo_servicio == Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO and paquete:
+            errors["paquete"] = (
+                "La comparación inicial no registra todavía una preferencia de paquete."
+            )
         if errors:
             raise serializers.ValidationError(errors)
 
         attrs["nombre_persona"] = nombre_persona
         attrs["telefono_persona"] = telefono_persona
         return attrs
+
+
+class PreferenciaPaquetePublicaSerializer(serializers.Serializer):
+    solicitud_token = serializers.CharField(max_length=500)
+    paquete = serializers.PrimaryKeyRelatedField(
+        queryset=Paquete.objects.filter(activo=True),
+        allow_null=True,
+    )
 
 
 class CambiarEstadoCotizacionSerializer(serializers.Serializer):

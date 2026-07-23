@@ -280,18 +280,24 @@ class CotizacionApiTests(APITestCase):
                 "fecha_tentativa": "2026-10-01",
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
-                "paquete": self.paquete.id,
             },
             format="json",
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["cotizacion"]["paquete"], self.paquete.id)
-        self.assertEqual(response.data["cotizacion"]["total_estimado"], "2400.00")
+        self.assertIsNone(response.data["cotizacion"]["paquete"])
+        self.assertIsNone(response.data["cotizacion"]["total_estimado"])
+        self.assertIsNone(response.data["calculo"]["total_estimado"])
+        self.assertEqual(response.data["calculo"]["total_estimado_minimo"], "2400.00")
         paquetes = response.data["calculo"]["paquetes"]
         self.assertEqual(len(paquetes), 1)
         self.assertEqual(paquetes[0]["nombre"], "Servicio completo")
         self.assertEqual(paquetes[0]["total_estimado"], "2400.00")
+        self.assertIn("solicitud_token", response.data)
+        self.assertEqual(
+            response.data["whatsapp"]["principal"]["etiqueta"],
+            "¿Necesitas ayuda para elegir? Escríbenos por WhatsApp",
+        )
 
     def test_pre_cotizacion_comparacion_calcula_alquiler_y_servicio(self):
         self.client.force_authenticate(user=None)
@@ -315,9 +321,151 @@ class CotizacionApiTests(APITestCase):
             Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
         )
         self.assertEqual(response.data["calculo"]["alquiler"]["total_estimado"], "1300.00")
+        self.assertNotIn("paquetes", response.data["calculo"]["servicio_completo"])
+        categorias = response.data["calculo"]["servicio_completo"]["categorias"]
+        self.assertEqual(categorias[0]["categoria"], "estandar")
+        self.assertEqual(categorias[0]["precio_por_persona_desde"], "30.00")
+        self.assertIsNone(response.data["cotizacion"]["total_estimado"])
+
+    def test_pre_cotizacion_recalcula_la_misma_solicitud_con_token(self):
+        self.client.force_authenticate(user=None)
+        payload = {
+            "nombre_persona": "Persona Recalculo",
+            "telefono_persona": "0992223344",
+            "tipo_evento": self.tipo_evento.id,
+            "fecha_tentativa": "2026-10-01",
+            "numero_invitados": 80,
+            "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
+        }
+        primera = self.client.post("/api/pre-cotizacion/", payload, format="json")
+        segunda = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                **payload,
+                "numero_invitados": 90,
+                "solicitud_token": primera.data["solicitud_token"],
+            },
+            format="json",
+        )
+
+        self.assertEqual(primera.status_code, 201)
+        self.assertEqual(segunda.status_code, 200)
         self.assertEqual(
-            response.data["calculo"]["servicio_completo"]["paquetes"][0]["total_estimado"],
-            "2400.00",
+            primera.data["cotizacion"]["id"],
+            segunda.data["cotizacion"]["id"],
+        )
+        self.assertEqual(Cotizacion.objects.filter(persona__telefono="0992223344").count(), 1)
+        self.assertEqual(segunda.data["cotizacion"]["numero_invitados"], 90)
+        self.assertEqual(segunda.data["calculo"]["total_estimado"], "1400.00")
+
+    def test_token_con_otro_telefono_crea_una_solicitud_distinta(self):
+        self.client.force_authenticate(user=None)
+        payload = {
+            "nombre_persona": "Persona Recalculo",
+            "telefono_persona": "0992223345",
+            "tipo_evento": self.tipo_evento.id,
+            "fecha_tentativa": "2026-10-01",
+            "numero_invitados": 80,
+            "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
+        }
+        primera = self.client.post("/api/pre-cotizacion/", payload, format="json")
+        segunda = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                **payload,
+                "telefono_persona": "0992223346",
+                "solicitud_token": primera.data["solicitud_token"],
+            },
+            format="json",
+        )
+
+        self.assertEqual(segunda.status_code, 201)
+        self.assertNotEqual(
+            primera.data["cotizacion"]["id"],
+            segunda.data["cotizacion"]["id"],
+        )
+        self.assertEqual(Cotizacion.objects.count(), 2)
+
+    def test_pre_cotizacion_rechaza_datos_obligatorios_incompletos(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {"tipo_servicio": "alquiler"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        for field in (
+            "nombre_persona",
+            "telefono_persona",
+            "tipo_evento",
+            "fecha_tentativa",
+            "numero_invitados",
+        ):
+            self.assertIn(field, response.data)
+
+    def test_preferencia_de_paquete_es_opcional_y_se_puede_retirar(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre_persona": "Persona Preferencia",
+                "telefono_persona": "0992223347",
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-10-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            },
+            format="json",
+        )
+        token = response.data["solicitud_token"]
+        seleccion = self.client.post(
+            "/api/pre-cotizacion/preferencia/",
+            {"solicitud_token": token, "paquete": self.paquete.id},
+            format="json",
+        )
+        retiro = self.client.post(
+            "/api/pre-cotizacion/preferencia/",
+            {"solicitud_token": token, "paquete": None},
+            format="json",
+        )
+
+        self.assertEqual(seleccion.status_code, 200)
+        self.assertEqual(seleccion.data["cotizacion"]["paquete"], self.paquete.id)
+        self.assertEqual(seleccion.data["cotizacion"]["total_estimado"], "2400.00")
+        self.assertIn(
+            "Paquete de interés: Servicio completo",
+            seleccion.data["whatsapp"]["paquetes"][0]["mensaje"],
+        )
+        self.assertEqual(retiro.status_code, 200)
+        self.assertIsNone(retiro.data["cotizacion"]["paquete"])
+        self.assertIsNone(retiro.data["cotizacion"]["total_estimado"])
+
+    def test_whatsapp_incluye_contexto_e_identificador(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.post(
+            "/api/pre-cotizacion/",
+            {
+                "nombre_persona": "Persona WhatsApp",
+                "telefono_persona": "0992223348",
+                "tipo_evento": self.tipo_evento.id,
+                "fecha_tentativa": "2026-10-01",
+                "numero_invitados": 80,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
+            },
+            format="json",
+        )
+        mensaje = response.data["whatsapp"]["principal"]["mensaje"]
+
+        self.assertIn(f"Solicitud: #{response.data['cotizacion']['id']}", mensaje)
+        self.assertIn("Evento: Boda", mensaje)
+        self.assertIn("Invitados: 80", mensaje)
+        self.assertIn("Modalidad de interés: Alquiler del local", mensaje)
+        self.assertIn("Valor estimado: $1300.00", mensaje)
+        self.assertTrue(
+            response.data["whatsapp"]["principal"]["url"].startswith(
+                "https://wa.me/593991234567?text="
+            )
         )
 
     def test_endpoints_administrativos_siguen_protegidos(self):
@@ -355,12 +503,11 @@ class CotizacionApiTests(APITestCase):
             {"Servicio completo"},
         )
         self.assertEqual(
-            configuracion_response.data["tarifa_base_alquiler"],
-            "1000.00",
-        )
-        self.assertEqual(
-            configuracion_response.data["whatsapp_numero_url"],
-            "593991234567",
+            configuracion_response.data,
+            {
+                "nombre_negocio": "Rancho Flor Maria",
+                "whatsapp_disponible": True,
+            },
         )
 
     def test_cambiar_estado_cotizacion(self):

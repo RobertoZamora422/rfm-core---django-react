@@ -99,6 +99,21 @@ class ReportesApiTests(APITestCase):
         self.assertEqual(response.data["cotizaciones"][0]["contrato_id"], None)
         self.assertIsNotNone(response.data["cotizaciones"][1]["contrato_id"])
 
+    def test_reporte_comercial_conserva_total_nulo_sin_convertirlo_en_cero(self):
+        self.crear_cotizacion(
+            paquete=None,
+            origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
+            total_estimado=None,
+        )
+
+        response = self.client.get(
+            "/api/reportes/comercial/",
+            {"desde": "2026-08-01", "hasta": "2026-08-31"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["cotizaciones"][0]["total_estimado"], None)
+
     def test_reporte_financiero_reutiliza_metricas_backend_del_dashboard(self):
         contrato = self.crear_contrato(
             valor_final=Decimal("3000.00"),

@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from financiero.serializers import ContratoSerializer
 from config.pagination import OptionalPageNumberPagination
+from negocio.selectors import obtener_configuracion_activa
 from negocio.validators import extraer_digitos_telefono, normalizar_telefono_parcial
 
 from .models import Cotizacion
@@ -20,13 +21,17 @@ from .serializers import (
     CambiarEstadoCotizacionSerializer,
     ConvertirContratoSerializer,
     CotizacionSerializer,
+    PreferenciaPaquetePublicaSerializer,
     PreCotizacionSerializer,
 )
 from .services import (
     cambiar_estado_cotizacion,
     convertir_cotizacion_a_contrato,
+    crear_token_solicitud_publica,
     crear_pre_cotizacion,
+    guardar_preferencia_paquete_publica,
 )
+from .whatsapp import construir_acciones_whatsapp
 
 
 def _raise_api_validation_error(exc):
@@ -72,7 +77,7 @@ class PreCotizacionAPIView(APIView):
         }
 
         try:
-            cotizacion, calculo = crear_pre_cotizacion(
+            cotizacion, calculo, creada = crear_pre_cotizacion(
                 persona=None,
                 datos_persona=datos_persona,
                 tipo_evento=data["tipo_evento"],
@@ -91,16 +96,53 @@ class PreCotizacionAPIView(APIView):
                         "indiferente",
                     ),
                 },
+                solicitud_token=data.get("solicitud_token"),
             )
         except DjangoValidationError as exc:
             _raise_api_validation_error(exc)
 
+        configuracion_activa = obtener_configuracion_activa()
         return Response(
             {
                 "cotizacion": CotizacionSerializer(cotizacion).data,
                 "calculo": _serializar_calculo(calculo),
+                "solicitud_token": crear_token_solicitud_publica(cotizacion),
+                "whatsapp": construir_acciones_whatsapp(
+                    cotizacion,
+                    calculo,
+                    configuracion_activa,
+                ),
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_201_CREATED if creada else status.HTTP_200_OK,
+        )
+
+
+class PreCotizacionPreferenciaAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PreferenciaPaquetePublicaSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            cotizacion, calculo = guardar_preferencia_paquete_publica(
+                solicitud_token=serializer.validated_data["solicitud_token"],
+                paquete=serializer.validated_data["paquete"],
+            )
+        except DjangoValidationError as exc:
+            _raise_api_validation_error(exc)
+
+        configuracion = obtener_configuracion_activa()
+        return Response(
+            {
+                "cotizacion": CotizacionSerializer(cotizacion).data,
+                "calculo": _serializar_calculo(calculo),
+                "whatsapp": construir_acciones_whatsapp(
+                    cotizacion,
+                    calculo,
+                    configuracion,
+                ),
+            }
         )
 
 
