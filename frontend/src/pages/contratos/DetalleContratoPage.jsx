@@ -163,10 +163,10 @@ export function DetalleContratoPage() {
         <Card>
           <div className="detail-section">
             <div className="detail-section__header">
-              <h2>Datos del cliente</h2>
+              <h2>Datos de la persona</h2>
             </div>
             <dl className="detail-list">
-              <DetailItem label="Cliente" value={contrato.cliente_nombre} />
+              <DetailItem label="Cliente" value={<Link className="detail-inline-link" to={`/clientes/${contrato.cliente}`}>{contrato.cliente_nombre}</Link>} />
               <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${contrato.cliente_telefono}`}>{formatPhone(contrato.cliente_telefono)}</a>} />
             </dl>
           </div>

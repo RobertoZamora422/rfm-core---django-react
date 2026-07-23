@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -13,11 +14,46 @@ def validate_phone(value):
         raise ValidationError(
             "Ingrese un telefono valido. Use numeros y, opcionalmente, +, espacios, guiones o parentesis."
         )
+    normalizar_telefono(value)
+
+
+def extraer_digitos_telefono(value):
+    return re.sub(r"[^0-9]", "", value or "")
+
+
+def normalizar_telefono(value):
+    """Devuelve la identidad telefónica canónica sin alterar el valor visible."""
+    digits = extraer_digitos_telefono(value)
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if len(digits) == 10 and digits.startswith("0"):
+        digits = f"593{digits[1:]}"
+    if not 7 <= len(digits) <= 15:
+        raise ValidationError("Ingrese un telefono valido de entre 7 y 15 digitos.")
+    return digits
 
 
 def normalizar_telefono_busqueda(value):
-    """Quita los separadores permitidos para comparar teléfonos sin cambiar su presentación."""
-    return re.sub(r"[^0-9]", "", value or "")
+    """Compatibilidad para consumidores anteriores de la normalización telefónica."""
+    return normalizar_telefono(value)
+
+
+def normalizar_telefono_parcial(value):
+    digits = extraer_digitos_telefono(value)
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if digits.startswith("0"):
+        return f"593{digits[1:]}"
+    return digits
+
+
+def normalizar_nombre(value):
+    value = " ".join((value or "").strip().split()).casefold()
+    return "".join(
+        character
+        for character in unicodedata.normalize("NFKD", value)
+        if not unicodedata.combining(character)
+    )
 
 
 def normalizar_whatsapp_ecuador(value):

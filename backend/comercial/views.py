@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from financiero.serializers import ContratoSerializer
 from config.pagination import OptionalPageNumberPagination
+from negocio.validators import extraer_digitos_telefono, normalizar_telefono_parcial
 
 from .models import Cotizacion
 from .selectors import cotizaciones_con_relaciones
@@ -66,6 +67,7 @@ class PreCotizacionAPIView(APIView):
         datos_cliente = {
             "nombre": data.get("nombre_cliente", "").strip(),
             "telefono": data.get("telefono_cliente", "").strip(),
+            "correo": data.get("correo_cliente", "").strip(),
             "observaciones": data.get("observaciones_cliente", ""),
         }
 
@@ -129,13 +131,20 @@ class CotizacionViewSet(viewsets.ModelViewSet):
         if fecha_hasta:
             queryset = queryset.filter(fecha_tentativa__lte=fecha_hasta)
         if buscar:
-            queryset = queryset.filter(
+            criteria = (
                 Q(cliente__nombre__icontains=buscar)
                 | Q(cliente__telefono__icontains=buscar)
                 | Q(tipo_evento__nombre__icontains=buscar)
                 | Q(paquete__nombre__icontains=buscar)
                 | Q(observaciones__icontains=buscar)
             )
+            if extraer_digitos_telefono(buscar):
+                criteria |= Q(
+                    cliente__telefono_normalizado__icontains=normalizar_telefono_parcial(
+                        buscar
+                    )
+                )
+            queryset = queryset.filter(criteria)
         if es_demo is not None:
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset

@@ -22,6 +22,8 @@ La administracion de contratos permite creacion manual, edicion de campos operat
 
 La administracion de cotizaciones permite crear y editar oportunidades comerciales desde el panel sin confundirlas con ingresos reales. Las cotizaciones convertidas bloquean cambios criticos para no romper su contrato asociado.
 
+`/clientes` presenta **Clientes & Interesados** sobre un único registro canónico de persona. La clasificación se deriva de contratos históricos: una persona sin contratos es interesada y pasa a cliente al crear su primer contrato. El teléfono normalizado tiene unicidad en base de datos, el origen inicial no se sobrescribe y los nombres alternativos quedan disponibles en `/clientes/:id`. Cotizaciones y contratos permiten buscar, reutilizar o preparar una persona nueva sin abandonar el formulario; la persona y el documento se crean en una sola transacción.
+
 ## Inicio administrativo, dashboard y reportes
 
 `/inicio` es la pantalla operativa diaria del panel administrativo. Consume `GET /api/inicio-resumen/` y muestra cotizaciones nuevas, cotizaciones del mes, eventos del mes, eventos proximos, pendientes importantes y accesos rapidos agrupados por gestion comercial y finanzas/reportes.
@@ -60,6 +62,7 @@ Rutas administrativas protegidas:
 ```text
 /inicio
 /clientes
+/clientes/:id
 /tipos-evento
 /paquetes
 /configuracion
@@ -218,6 +221,8 @@ Administrativa protegida:
 /api/auth/logout/
 /api/auth/me/
 /api/clientes/
+/api/clientes/resumen/
+/api/clientes/coincidencias/
 /api/tipos-evento/
 /api/paquetes/
 /api/configuracion-negocio/

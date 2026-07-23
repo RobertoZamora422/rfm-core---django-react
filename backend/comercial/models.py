@@ -6,6 +6,10 @@ from negocio.validators import validate_non_negative, validate_positive_integer
 
 
 class Cotizacion(TimeStampedModel):
+    class Origen(models.TextChoices):
+        FORMULARIO_PUBLICO = "formulario_publico", "Formulario público"
+        COTIZACION_MANUAL = "cotizacion_manual", "Cotización manual"
+
     class Estado(models.TextChoices):
         NUEVA = "nueva", "Nueva"
         CONTACTADA = "contactada", "Contactada"
@@ -54,6 +58,11 @@ class Cotizacion(TimeStampedModel):
         validators=[validate_non_negative],
     )
     observaciones = models.TextField(blank=True)
+    origen = models.CharField(
+        max_length=30,
+        choices=Origen.choices,
+        default=Origen.COTIZACION_MANUAL,
+    )
     es_demo = models.BooleanField(default=False)
 
     class Meta:

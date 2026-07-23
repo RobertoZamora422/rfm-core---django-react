@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout } from '../layouts/AdminLayout'
 import { PublicLayout } from '../layouts/PublicLayout'
 import { ClientesPage } from '../pages/admin/ClientesPage'
+import { DetalleClientePage } from '../pages/admin/DetalleClientePage'
 import { ConfiguracionPage } from '../pages/admin/ConfiguracionPage'
 import { PaquetesPage } from '../pages/admin/PaquetesPage'
 import { TiposEventoPage } from '../pages/admin/TiposEventoPage'
@@ -35,6 +36,7 @@ export function AppRouter() {
           <Route element={<Navigate replace to="/inicio" />} index />
           <Route element={<InicioPage />} path="/inicio" />
           <Route element={<ClientesPage />} path="clientes" />
+          <Route element={<DetalleClientePage />} path="clientes/:id" />
           <Route element={<TiposEventoPage />} path="tipos-evento" />
           <Route element={<PaquetesPage />} path="paquetes" />
           <Route element={<ConfiguracionPage />} path="configuracion" />

@@ -202,15 +202,15 @@ export function ContratosPage() {
             <Eye aria-hidden="true" size={18} /><span>Detalle</span>
           </Link>
           <ActionMenu label={`Más acciones para el contrato #${item.id}`}>
-            <Link className="action-menu__item" state={{ from: listLocation }} to={`/contratos/${item.id}/editar`}>
+            <Link className="action-menu__item" role="menuitem" state={{ from: listLocation }} to={`/contratos/${item.id}/editar`}>
               <Edit3 aria-hidden="true" size={17} /> Editar contrato
             </Link>
             {item.estado_contrato !== 'cancelado' ? (
               <>
-                <Link className="action-menu__item" to={`/costos-directos?contrato=${item.id}&nuevo=1`}>
+                <Link className="action-menu__item" role="menuitem" to={`/costos-directos?contrato=${item.id}&nuevo=1`}>
                   <Receipt aria-hidden="true" size={17} /> Registrar costo directo
                 </Link>
-                <button className="action-menu__item action-menu__item--danger" onClick={() => setContractToCancel(item)} type="button">
+                <button className="action-menu__item action-menu__item--danger" onClick={() => setContractToCancel(item)} role="menuitem" type="button">
                   <Ban aria-hidden="true" size={17} /> Cancelar contrato
                 </button>
               </>

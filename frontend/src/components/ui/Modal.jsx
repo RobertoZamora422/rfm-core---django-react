@@ -5,13 +5,21 @@ import { Button } from './Button'
 export function Modal({ children, isOpen, onClose, returnFocusElement, title }) {
   const titleId = useId()
   const modalRef = useRef(null)
+  const onCloseRef = useRef(onClose)
   const returnFocusRef = useRef(null)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (isOpen) return undefined
 
     const rememberTrigger = (event) => {
-      if (event.target instanceof HTMLElement) returnFocusRef.current = event.target
+      const trigger = event.target instanceof Element
+        ? event.target.closest('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+        : null
+      if (trigger instanceof HTMLElement) returnFocusRef.current = trigger
     }
 
     document.addEventListener('pointerdown', rememberTrigger, true)
@@ -32,7 +40,7 @@ export function Modal({ children, isOpen, onClose, returnFocusElement, title }) 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -61,7 +69,7 @@ export function Modal({ children, isOpen, onClose, returnFocusElement, title }) 
       previouslyFocused?.focus?.()
       returnFocusRef.current = null
     }
-  }, [isOpen, onClose, returnFocusElement])
+  }, [isOpen, returnFocusElement])
 
   if (!isOpen) return null
 

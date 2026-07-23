@@ -6,7 +6,6 @@ import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import {
-  clientesService,
   contratosService,
   paquetesService,
   tiposEventoService,
@@ -29,7 +28,6 @@ export function EditarContratoPage() {
   const location = useLocation()
   const returnPath = location.state?.from || `/contratos/${id}`
   const [contrato, setContrato] = useState(null)
-  const [clientes, setClientes] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
   const [paquetes, setPaquetes] = useState([])
   const [fieldErrors, setFieldErrors] = useState({})
@@ -42,16 +40,14 @@ export function EditarContratoPage() {
     setPageError('')
 
     try {
-      const [contratoData, clientesData, tiposData, paquetesData] = await Promise.all([
+      const [contratoData, tiposData, paquetesData] = await Promise.all([
         contratosService.retrieve(id),
-        clientesService.list(),
         tiposEventoService.list({ activo: true }),
         paquetesService.list({ activo: true }),
       ])
       const tiposActivos = toArray(tiposData)
       const paquetesActivos = toArray(paquetesData)
       setContrato(contratoData)
-      setClientes(toArray(clientesData))
       setTiposEvento(
         ensureCurrentOption(tiposActivos, contratoData.tipo_evento, contratoData.tipo_evento_nombre),
       )
@@ -107,7 +103,6 @@ export function EditarContratoPage() {
           <LoadingState label="Cargando contrato" />
         ) : contrato ? (
           <ContratoForm
-            clientes={clientes}
             errors={fieldErrors}
             initialValues={contrato}
             isLoadingCatalogs={isLoading}

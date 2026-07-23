@@ -1,15 +1,25 @@
 from datetime import date
 from decimal import Decimal
 
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
 from rest_framework import serializers
 
 from comercial.models import Cotizacion
+from negocio.models import Cliente
+from negocio.persona_services import PersonaDuplicadaError, crear_persona
+from negocio.serializers import PersonaNuevaSerializer
 from negocio.validators import validate_non_negative, validate_positive_integer
 
 from .models import Contrato, CostoDirecto, GastoFijoMensual
 
 
 class ContratoSerializer(serializers.ModelSerializer):
+    cliente = serializers.PrimaryKeyRelatedField(
+        queryset=Cliente.objects.all(),
+        required=False,
+    )
+    persona_nueva = PersonaNuevaSerializer(required=False, write_only=True)
     cliente_nombre = serializers.CharField(source="cliente.nombre", read_only=True)
     cliente_telefono = serializers.CharField(source="cliente.telefono", read_only=True)
     tipo_evento_nombre = serializers.CharField(
@@ -46,6 +56,7 @@ class ContratoSerializer(serializers.ModelSerializer):
             "cliente",
             "cliente_nombre",
             "cliente_telefono",
+            "persona_nueva",
             "tipo_evento",
             "tipo_evento_nombre",
             "paquete",
@@ -85,12 +96,19 @@ class ContratoSerializer(serializers.ModelSerializer):
             getattr(self.instance, "monto_abonado", 0),
         )
         cotizacion = attrs.get("cotizacion")
+        cliente = attrs.get("cliente")
+        persona_nueva = attrs.get("persona_nueva")
         tipo_evento = attrs.get(
             "tipo_evento",
             getattr(self.instance, "tipo_evento", None),
         )
         paquete = attrs.get("paquete", getattr(self.instance, "paquete", None))
         errors = {}
+
+        if self.instance is None and bool(cliente) == bool(persona_nueva):
+            errors["cliente"] = "Selecciona una persona existente o registra una nueva."
+        if self.instance is not None and persona_nueva:
+            errors["persona_nueva"] = "La creación rápida solo está disponible en un nuevo contrato."
 
         if (
             valor_final is not None
@@ -118,6 +136,28 @@ class ContratoSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        persona_nueva = validated_data.pop("persona_nueva", None)
+        if persona_nueva:
+            try:
+                validated_data["cliente"] = crear_persona(
+                    **persona_nueva,
+                    origen=Cliente.Origen.CONTRATO_DIRECTO,
+                )
+            except PersonaDuplicadaError as exc:
+                raise serializers.ValidationError(
+                    {
+                        "persona_nueva": {
+                            "telefono": exc.message_dict["telefono"],
+                            "persona_existente_id": exc.persona.id,
+                        }
+                    }
+                ) from exc
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError(exc.message_dict) from exc
+        return super().create(validated_data)
 
     def validate_valor_final(self, value):
         validate_non_negative(value)

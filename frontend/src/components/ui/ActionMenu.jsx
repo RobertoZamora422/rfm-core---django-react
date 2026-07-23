@@ -30,9 +30,25 @@ export function ActionMenu({ children, label = 'Más acciones' }) {
     }
 
     const handleKeyDown = (event) => {
-      if (event.key !== 'Escape') return
-      setIsOpen(false)
-      buttonRef.current?.focus()
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+        buttonRef.current?.focus()
+        return
+      }
+
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+      const items = [...(menuRef.current?.querySelectorAll('.action-menu__item') ?? [])]
+      if (!items.length) return
+      event.preventDefault()
+      const currentIndex = items.indexOf(document.activeElement)
+      const nextIndex = event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? items.length - 1
+          : event.key === 'ArrowDown'
+            ? (currentIndex + 1) % items.length
+            : currentIndex <= 0 ? items.length - 1 : currentIndex - 1
+      items[nextIndex]?.focus()
     }
 
     updatePosition()
@@ -48,6 +64,14 @@ export function ActionMenu({ children, label = 'Más acciones' }) {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || !position) return undefined
+    const timeoutId = window.setTimeout(() => {
+      menuRef.current?.querySelector('.action-menu__item')?.focus()
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [isOpen, position])
 
   const toggleMenu = () => setIsOpen((current) => !current)
 
@@ -73,6 +97,7 @@ export function ActionMenu({ children, label = 'Más acciones' }) {
               onClick={() => setIsOpen(false)}
               ref={menuRef}
               role="menu"
+              aria-orientation="vertical"
               style={position}
             >
               {children}

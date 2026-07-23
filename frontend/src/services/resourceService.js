@@ -28,7 +28,19 @@ export function createResourceService(endpoint) {
   }
 }
 
-export const clientesService = createResourceService('/clientes/')
+export const clientesService = {
+  ...createResourceService('/clientes/'),
+
+  async coincidencias(params) {
+    const { data } = await apiClient.get('/clientes/coincidencias/', { params })
+    return data
+  },
+
+  async resumen(params) {
+    const { data } = await apiClient.get('/clientes/resumen/', { params })
+    return data
+  },
+}
 export const tiposEventoService = createResourceService('/tipos-evento/')
 export const paquetesService = createResourceService('/paquetes/')
 export const configuracionNegocioService = createResourceService('/configuracion-negocio/')

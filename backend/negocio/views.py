@@ -1,5 +1,7 @@
-from django.db.models import Q
+from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -10,6 +12,7 @@ from config.pagination import OptionalPageNumberPagination
 from .models import Cliente, ConfiguracionNegocio, Paquete, TipoEvento
 from .serializers import (
     ClienteSerializer,
+    ClienteDetalleSerializer,
     ConfiguracionNegocioSerializer,
     PaqueteSerializer,
     PublicConfiguracionNegocioSerializer,
@@ -17,7 +20,12 @@ from .serializers import (
     PublicTipoEventoSerializer,
     TipoEventoSerializer,
 )
-from .selectors import clientes_con_resumen
+from .selectors import (
+    buscar_cliente_por_telefono,
+    clientes_con_resumen,
+    filtrar_personas,
+    personas_con_detalle,
+)
 from .services import inicio_resumen
 
 
@@ -40,6 +48,11 @@ class ClienteViewSet(viewsets.ModelViewSet):
     pagination_class = OptionalPageNumberPagination
     search_fields = ["nombre", "telefono", "correo"]
 
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return ClienteDetalleSerializer
+        return ClienteSerializer
+
     def get_queryset(self):
         queryset = clientes_con_resumen()
         buscar = (
@@ -48,15 +61,74 @@ class ClienteViewSet(viewsets.ModelViewSet):
             or ""
         ).strip()
         es_demo = self.request.query_params.get("es_demo")
-        if buscar:
-            queryset = queryset.filter(
-                Q(nombre__icontains=buscar)
-                | Q(telefono__icontains=buscar)
-                | Q(correo__icontains=buscar)
-            )
+        clasificacion = self.request.query_params.get("clasificacion")
+        queryset = filtrar_personas(queryset, buscar)
+        if clasificacion == "cliente":
+            queryset = queryset.filter(contratos_count__gt=0)
+        elif clasificacion == "interesado":
+            queryset = queryset.filter(contratos_count=0)
         if es_demo is not None:
             queryset = queryset.filter(es_demo=es_demo.lower() == "true")
         return queryset
+
+    def retrieve(self, request, *args, **kwargs):
+        persona = get_object_or_404(personas_con_detalle(), pk=kwargs["pk"])
+        return Response(self.get_serializer(persona).data)
+
+    def destroy(self, request, *args, **kwargs):
+        raise ValidationError(
+            {
+                "persona": (
+                    "Las personas no se eliminan porque conservan el historial comercial y financiero."
+                )
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path="resumen")
+    def resumen(self, request):
+        queryset = Cliente.objects.all()
+        buscar = (request.query_params.get("buscar") or "").strip()
+        es_demo = request.query_params.get("es_demo")
+        queryset = filtrar_personas(queryset, buscar)
+        if es_demo is not None:
+            queryset = queryset.filter(es_demo=es_demo.lower() == "true")
+        resumen = queryset.aggregate(
+            total=Count("id", distinct=True),
+            clientes=Count("id", filter=Q(contratos__isnull=False), distinct=True),
+        )
+        resumen["interesados"] = resumen["total"] - resumen["clientes"]
+        return Response(resumen)
+
+    @action(detail=False, methods=["get"], url_path="coincidencias")
+    def coincidencias(self, request):
+        buscar = (request.query_params.get("buscar") or "").strip()
+        exclude_id = request.query_params.get("exclude")
+        if len(buscar) < 2:
+            return Response({"exacta_telefono": None, "sugerencias": []})
+
+        exacta = buscar_cliente_por_telefono(buscar, exclude_id=exclude_id)
+        suggestions_queryset = filtrar_personas(clientes_con_resumen(), buscar)
+        if exclude_id:
+            suggestions_queryset = suggestions_queryset.exclude(pk=exclude_id)
+        sugerencias = list(suggestions_queryset[:8])
+        if exacta and all(item.id != exacta.id for item in sugerencias):
+            exacta = clientes_con_resumen().get(pk=exacta.pk)
+            sugerencias.insert(0, exacta)
+
+        serializer = ClienteSerializer(sugerencias, many=True)
+        exacta_data = None
+        if exacta:
+            exacta_resumen = next(
+                (item for item in sugerencias if item.id == exacta.id),
+                exacta,
+            )
+            exacta_data = ClienteSerializer(exacta_resumen).data
+        return Response(
+            {
+                "exacta_telefono": exacta_data,
+                "sugerencias": serializer.data,
+            }
+        )
 
 
 class TipoEventoViewSet(DeactivateInsteadOfDeleteMixin, viewsets.ModelViewSet):

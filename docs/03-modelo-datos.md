@@ -14,6 +14,7 @@
 
 ```text
 Cliente
+NombrePersona
 TipoEvento
 Paquete
 ConfiguracionNegocio
@@ -27,7 +28,7 @@ GastoFijoMensual
 
 Al cierre de la Fase 3, el modelo inicial del dominio se encuentra implementado en backend:
 
-- `negocio`: `Cliente`, `TipoEvento`, `Paquete`, `ConfiguracionNegocio`.
+- `negocio`: `Cliente`, `NombrePersona`, `TipoEvento`, `Paquete`, `ConfiguracionNegocio`.
 - `comercial`: `Cotizacion`.
 - `financiero`: `Contrato`, `CostoDirecto`, `GastoFijoMensual`.
 
@@ -50,8 +51,10 @@ Campos mínimos:
 ```text
 nombre
 telefono
+telefono_normalizado
 correo
 observaciones
+origen
 creado_en
 actualizado_en
 ```
@@ -59,8 +62,25 @@ actualizado_en
 Reglas:
 
 - `nombre` obligatorio.
-- `telefono` obligatorio.
-- Teléfono validado en backend.
+- `telefono` obligatorio y conservado para presentación.
+- `telefono_normalizado` es la identidad canónica, se calcula en backend y tiene restricción única en base de datos.
+- Los números ecuatorianos locales `09XXXXXXXX` se normalizan al equivalente internacional `5939XXXXXXXX`; también se eliminan espacios, guiones, paréntesis, `+` y prefijo `00`.
+- `origen` conserva la fuente inicial: formulario público, cotización manual, contrato directo o registro manual.
+- La clasificación es derivada: `Interesado` si no tiene contratos y `Cliente` desde su primer contrato, incluso si luego se cancela.
+- Una persona no se copia al cambiar de clasificación; cotizaciones y contratos apuntan al mismo registro.
+
+## NombrePersona
+
+Conserva nombres alternativos sin sobrescribir el nombre principal. Cada alias almacena su forma normalizada, origen y fecha, y es único por persona. El formulario público registra como alias cualquier nombre nuevo utilizado con un teléfono ya existente.
+
+La consolidación de datos heredados se administra con:
+
+```text
+python manage.py consolidar_personas_duplicadas --dry-run
+python manage.py consolidar_personas_duplicadas --execute
+```
+
+El comando selecciona el registro más antiguo como canónico, reasigna cotizaciones y contratos dentro de una transacción, mantiene costos mediante sus contratos y conserva nombres, correos y observaciones útiles.
 
 ## TipoEvento
 

@@ -29,8 +29,8 @@ function DetailItem({ label, value }) {
 }
 
 const stateDescriptions = {
-  nueva: 'Pendiente del primer contacto con el cliente.',
-  contactada: 'El cliente ya fue contactado; registra la confirmación cuando acepte continuar.',
+  nueva: 'Pendiente del primer contacto con la persona interesada.',
+  contactada: 'La persona ya fue contactada; registra la confirmación cuando acepte continuar.',
   confirmada: 'La oportunidad está lista para convertirse en contrato.',
   convertida: 'Ya existe una venta asociada. Los datos comerciales críticos están bloqueados.',
   descartada: 'La oportunidad salió del flujo activo y se conserva en el historial.',
@@ -163,7 +163,7 @@ export function DetalleCotizacionPage() {
           <div className="detail-section">
             <div className="detail-section__header"><h2>Resumen comercial</h2><StatusBadge status={cotizacion.estado}>{getEstadoLabel(cotizacion.estado)}</StatusBadge></div>
             <dl className="detail-list">
-              <DetailItem label="Cliente" value={cotizacion.cliente_nombre} />
+              <DetailItem label="Persona" value={<Link className="detail-inline-link" to={`/clientes/${cotizacion.cliente}`}>{cotizacion.cliente_nombre}</Link>} />
               <DetailItem label="Teléfono" value={<a className="inline-contact" href={`tel:${cotizacion.cliente_telefono}`}>{formatPhone(cotizacion.cliente_telefono)}</a>} />
               <DetailItem label="Tipo de evento" value={cotizacion.tipo_evento_nombre} />
               <DetailItem label="Fecha tentativa" value={formatDate(cotizacion.fecha_tentativa)} />
@@ -171,6 +171,9 @@ export function DetalleCotizacionPage() {
               <DetailItem label="Servicio" value={TIPO_SERVICIO_LABELS[cotizacion.tipo_servicio] ?? cotizacion.tipo_servicio} />
               <DetailItem label="Paquete" value={cotizacion.paquete_nombre || 'Sin paquete'} />
               <DetailItem label="Total estimado" value={formatCurrency(cotizacion.total_estimado)} />
+              <DetailItem label="Origen" value={cotizacion.origen_display} />
+              <DetailItem label="Creado" value={formatDate(cotizacion.creado_en)} />
+              <DetailItem label="Actualizado" value={formatDate(cotizacion.actualizado_en)} />
             </dl>
           </div>
         </Card>

@@ -3,11 +3,12 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Textarea } from '../../components/ui/Textarea'
+import { PersonaSelector } from '../../components/personas/PersonaSelector'
+import { PERSON_ORIGIN_LABELS } from '../../components/personas/personaConstants'
 import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 
 function buildInitialForm(initialValues) {
   return {
-    cliente: initialValues?.cliente ?? '',
     tipo_evento: initialValues?.tipo_evento ?? '',
     paquete: initialValues?.paquete ?? '',
     fecha_evento: initialValues?.fecha_evento ?? '',
@@ -19,8 +20,8 @@ function buildInitialForm(initialValues) {
 }
 
 export function ContratoForm({
-  clientes,
   errors,
+  initialPerson,
   initialValues,
   isLoadingCatalogs,
   isSubmitting,
@@ -31,6 +32,17 @@ export function ContratoForm({
   tiposEvento,
 }) {
   const [form, setForm] = useState(() => buildInitialForm(initialValues))
+  const [personSelection, setPersonSelection] = useState(() => initialPerson ?? (
+    initialValues?.cliente
+      ? {
+          id: initialValues.cliente,
+          nombre: initialValues.cliente_nombre,
+          telefono: initialValues.cliente_telefono,
+          clasificacion_display: 'Persona registrada',
+          isNew: false,
+        }
+      : null
+  ))
   useFocusFirstError(errors)
 
   const handleChange = (event) => {
@@ -40,8 +52,19 @@ export function ContratoForm({
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    const personPayload = personSelection?.isNew
+      ? {
+          persona_nueva: {
+            nombre: personSelection.nombre,
+            telefono: personSelection.telefono,
+            correo: personSelection.correo ?? '',
+            observaciones: personSelection.observaciones ?? '',
+          },
+        }
+      : { cliente: personSelection?.id ?? '' }
+
     onSubmit({
-      cliente: form.cliente ? Number(form.cliente) : '',
+      ...personPayload,
       tipo_evento: form.tipo_evento ? Number(form.tipo_evento) : '',
       paquete: form.paquete ? Number(form.paquete) : null,
       fecha_evento: form.fecha_evento,
@@ -55,26 +78,16 @@ export function ContratoForm({
   return (
     <form className="resource-form" onSubmit={handleSubmit}>
       <fieldset className="form-section">
-        <legend>Cliente y evento</legend>
+        <legend>Persona y evento</legend>
         <div className="form-grid">
-        <Select
-          autoFocus
+        <PersonaSelector
+          allowCreate={!initialValues}
           disabled={isLoadingCatalogs}
-          error={errors.cliente}
-          id="contrato-cliente"
-          label="Cliente"
-          name="cliente"
-          onChange={handleChange}
-          required
-          value={form.cliente}
-        >
-          <option value="">Seleccione un cliente</option>
-          {clientes.map((cliente) => (
-            <option key={cliente.id} value={cliente.id}>
-              {cliente.nombre} · {cliente.telefono}
-            </option>
-          ))}
-        </Select>
+          error={errors.cliente || errors.persona_nueva}
+          onChange={setPersonSelection}
+          originLabel={PERSON_ORIGIN_LABELS.contrato_directo}
+          selection={personSelection}
+        />
         <Select
           disabled={isLoadingCatalogs}
           error={errors.tipo_evento}

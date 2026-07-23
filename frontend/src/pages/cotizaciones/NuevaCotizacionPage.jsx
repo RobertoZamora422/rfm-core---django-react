@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { ErrorMessage } from '../../components/ui/ErrorMessage'
@@ -20,7 +20,9 @@ function toArray(data) {
 
 export function NuevaCotizacionPage() {
   const navigate = useNavigate()
-  const [clientes, setClientes] = useState([])
+  const [searchParams] = useSearchParams()
+  const preselectedPersonId = searchParams.get('cliente')
+  const [initialPerson, setInitialPerson] = useState(null)
   const [tiposEvento, setTiposEvento] = useState([])
   const [paquetes, setPaquetes] = useState([])
   const [fieldErrors, setFieldErrors] = useState({})
@@ -33,12 +35,12 @@ export function NuevaCotizacionPage() {
     setPageError('')
 
     try {
-      const [clientesData, tiposData, paquetesData] = await Promise.all([
-        clientesService.list(),
+      const [personData, tiposData, paquetesData] = await Promise.all([
+        preselectedPersonId ? clientesService.retrieve(preselectedPersonId) : Promise.resolve(null),
         tiposEventoService.list({ activo: true }),
         paquetesService.list({ activo: true }),
       ])
-      setClientes(toArray(clientesData))
+      setInitialPerson(personData)
       setTiposEvento(toArray(tiposData))
       setPaquetes(toArray(paquetesData))
     } catch (error) {
@@ -46,7 +48,7 @@ export function NuevaCotizacionPage() {
     } finally {
       setIsLoadingCatalogs(false)
     }
-  }, [])
+  }, [preselectedPersonId])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(loadCatalogs, 0)
@@ -90,8 +92,8 @@ export function NuevaCotizacionPage() {
           <LoadingState label="Cargando datos del formulario" />
         ) : (
           <CotizacionForm
-            clientes={clientes}
             errors={fieldErrors}
+            initialPerson={initialPerson}
             isLoadingCatalogs={isLoadingCatalogs}
             isSubmitting={isSaving}
             onCancel={() => navigate('/cotizaciones')}

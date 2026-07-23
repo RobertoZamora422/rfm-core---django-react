@@ -3,6 +3,8 @@ from django.db import models
 from django.db.models import Q
 
 from .validators import (
+    normalizar_nombre,
+    normalizar_telefono,
     normalizar_whatsapp_ecuador,
     validate_non_negative,
     validate_phone,
@@ -29,17 +31,70 @@ class TimeStampedModel(CleanOnSaveModel):
 
 
 class Cliente(TimeStampedModel):
+    class Origen(models.TextChoices):
+        FORMULARIO_PUBLICO = "formulario_publico", "Formulario público"
+        COTIZACION_MANUAL = "cotizacion_manual", "Cotización manual"
+        CONTRATO_DIRECTO = "contrato_directo", "Contrato directo"
+        REGISTRO_MANUAL = "registro_manual", "Registro manual"
+
     nombre = models.CharField(max_length=150)
     telefono = models.CharField(max_length=30, validators=[validate_phone])
+    telefono_normalizado = models.CharField(max_length=15, unique=True, editable=False)
     correo = models.EmailField(blank=True)
     observaciones = models.TextField(blank=True)
+    origen = models.CharField(
+        max_length=30,
+        choices=Origen.choices,
+        default=Origen.REGISTRO_MANUAL,
+    )
     es_demo = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["nombre"]
 
+    def clean(self):
+        super().clean()
+        self.nombre = " ".join((self.nombre or "").strip().split())
+        self.telefono = (self.telefono or "").strip()
+        self.correo = (self.correo or "").strip()
+        self.telefono_normalizado = normalizar_telefono(self.telefono)
+
     def __str__(self):
         return self.nombre
+
+
+class NombrePersona(TimeStampedModel):
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.CASCADE,
+        related_name="nombres_utilizados",
+    )
+    nombre = models.CharField(max_length=150)
+    nombre_normalizado = models.CharField(max_length=150, editable=False)
+    origen = models.CharField(
+        max_length=30,
+        choices=Cliente.Origen.choices,
+        default=Cliente.Origen.REGISTRO_MANUAL,
+    )
+
+    class Meta:
+        ordering = ["creado_en", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cliente", "nombre_normalizado"],
+                name="nombre_persona_unico_por_cliente",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        self.nombre = " ".join((self.nombre or "").strip().split())
+        self.nombre_normalizado = normalizar_nombre(self.nombre)
+        if not self.nombre_normalizado:
+            raise ValidationError({"nombre": "El nombre es obligatorio."})
+
+    def __str__(self):
+        return f"{self.nombre} ({self.cliente})"
 
 
 class TipoEvento(TimeStampedModel):

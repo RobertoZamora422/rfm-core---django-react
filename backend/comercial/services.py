@@ -6,8 +6,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from financiero.models import Contrato
-from negocio.models import Cliente
-from negocio.selectors import buscar_cliente_por_telefono, obtener_configuracion_activa
+from negocio.persona_services import obtener_o_crear_persona_publica
+from negocio.selectors import obtener_configuracion_activa
 
 from .models import Cotizacion
 from .pre_cotizacion_strategies import obtener_estrategia_pre_cotizacion
@@ -62,9 +62,12 @@ def crear_pre_cotizacion(
 
     if cliente is None:
         datos_cliente = datos_cliente or {}
-        cliente = buscar_cliente_por_telefono(datos_cliente.get("telefono"))
-        if cliente is None:
-            cliente = Cliente.objects.create(**datos_cliente)
+        cliente, _ = obtener_o_crear_persona_publica(
+            nombre=datos_cliente.get("nombre", ""),
+            telefono=datos_cliente.get("telefono", ""),
+            correo=datos_cliente.get("correo", ""),
+            observaciones=datos_cliente.get("observaciones", ""),
+        )
 
     observaciones_finales = observaciones
     if tipo_servicio == Cotizacion.TipoServicioInteres.NO_SEGURO:
@@ -81,6 +84,7 @@ def crear_pre_cotizacion(
         estado=Cotizacion.Estado.NUEVA,
         total_estimado=calculo["total_estimado"],
         observaciones=observaciones_finales,
+        origen=Cotizacion.Origen.FORMULARIO_PUBLICO,
     )
 
     return cotizacion, calculo

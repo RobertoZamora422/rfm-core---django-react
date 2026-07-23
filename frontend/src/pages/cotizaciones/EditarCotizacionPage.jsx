@@ -6,7 +6,6 @@ import { ErrorMessage } from '../../components/ui/ErrorMessage'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { PageHeader } from '../../components/ui/PageHeader'
 import {
-  clientesService,
   cotizacionesService,
   paquetesService,
   tiposEventoService,
@@ -36,7 +35,6 @@ export function EditarCotizacionPage() {
   const location = useLocation()
   const returnPath = location.state?.from || `/cotizaciones/${id}`
   const [cotizacion, setCotizacion] = useState(null)
-  const [clientes, setClientes] = useState([])
   const [tiposEvento, setTiposEvento] = useState([])
   const [paquetes, setPaquetes] = useState([])
   const [fieldErrors, setFieldErrors] = useState({})
@@ -49,16 +47,14 @@ export function EditarCotizacionPage() {
     setPageError('')
 
     try {
-      const [cotizacionData, clientesData, tiposData, paquetesData] = await Promise.all([
+      const [cotizacionData, tiposData, paquetesData] = await Promise.all([
         cotizacionesService.retrieve(id),
-        clientesService.list(),
         tiposEventoService.list({ activo: true }),
         paquetesService.list({ activo: true }),
       ])
       const tiposActivos = toArray(tiposData)
       const paquetesActivos = toArray(paquetesData)
       setCotizacion(cotizacionData)
-      setClientes(toArray(clientesData))
       setTiposEvento(
         ensureCurrentOption(
           tiposActivos,
@@ -120,7 +116,6 @@ export function EditarCotizacionPage() {
           <LoadingState label="Cargando cotizacion" />
         ) : cotizacion ? (
           <CotizacionForm
-            clientes={clientes}
             errors={fieldErrors}
             initialValues={cotizacion}
             isLoadingCatalogs={isLoading}

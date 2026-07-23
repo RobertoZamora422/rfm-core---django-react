@@ -27,7 +27,7 @@ export const navigationSections = [
       { label: 'Contratos', path: '/contratos', icon: BriefcaseBusiness },
       { label: 'Paquetes', path: '/paquetes', icon: Package },
       { label: 'Tipos de evento', path: '/tipos-evento', icon: Tags },
-      { label: 'Clientes', path: '/clientes', icon: Users },
+      { label: 'Clientes & Interesados', path: '/clientes', icon: Users },
     ],
   },
   {

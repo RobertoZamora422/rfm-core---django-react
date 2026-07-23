@@ -252,15 +252,15 @@ export function CotizacionesPage() {
               <Button icon={FilePlus2} onClick={() => openConversion(item)}>Convertir</Button>
             ) : null}
             <ActionMenu label={`Más acciones para la cotización #${item.id}`}>
-              <Link className="action-menu__item" state={{ from: listLocation }} to={`/cotizaciones/${item.id}/editar`}>
+              <Link className="action-menu__item" role="menuitem" state={{ from: listLocation }} to={`/cotizaciones/${item.id}/editar`}>
                 <Edit3 aria-hidden="true" size={17} /> Editar
               </Link>
               {item.estado === 'descartada' ? (
-                <button className="action-menu__item" onClick={() => setPendingStateAction({ cotizacion: item, estado: 'nueva' })} type="button">
+                <button className="action-menu__item" onClick={() => setPendingStateAction({ cotizacion: item, estado: 'nueva' })} role="menuitem" type="button">
                   <RotateCcw aria-hidden="true" size={17} /> Reactivar como nueva
                 </button>
               ) : item.estado !== 'convertida' ? (
-                <button className="action-menu__item action-menu__item--danger" onClick={() => setPendingStateAction({ cotizacion: item, estado: 'descartada' })} type="button">
+                <button className="action-menu__item action-menu__item--danger" onClick={() => setPendingStateAction({ cotizacion: item, estado: 'descartada' })} role="menuitem" type="button">
                   <XCircle aria-hidden="true" size={17} /> Descartar
                 </button>
               ) : null}
