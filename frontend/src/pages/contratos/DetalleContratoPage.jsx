@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router'
 import { ArrowLeft, ClipboardList, Edit3, Plus } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'

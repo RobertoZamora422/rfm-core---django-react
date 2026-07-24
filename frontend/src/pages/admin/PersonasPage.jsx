@@ -1,6 +1,6 @@
 import { Edit3, Eye, FilePlus2, Plus, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { PersonaForm } from '../../components/personas/PersonaForm'
 import { ActionMenu } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Edit3, Plus, Power, PowerOff, Search } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { DataTable } from '../ui/DataTable'

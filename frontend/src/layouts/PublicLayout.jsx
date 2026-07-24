@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router'
 import logotipoRancho from '../assets/logotipo-rancho.svg'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 import { obtenerConfiguracionPublica } from '../services/preCotizacionService'

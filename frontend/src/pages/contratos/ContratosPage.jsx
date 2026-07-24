@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router'
 import { Ban, Edit3, Eye, Plus, Receipt, Search } from 'lucide-react'
 import { ActionMenu } from '../../components/ui/ActionMenu'
 import { Button } from '../../components/ui/Button'

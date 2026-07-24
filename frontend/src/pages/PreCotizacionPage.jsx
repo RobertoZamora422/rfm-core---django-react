@@ -9,7 +9,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react'
-import { useOutletContext } from 'react-router-dom'
+import { useOutletContext } from 'react-router'
 import { PreCotizacionResult } from '../components/preCotizacion/PreCotizacionResult'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'

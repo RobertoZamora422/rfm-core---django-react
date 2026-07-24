@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router'
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react'
 import ranchoLogo from '../assets/logotipo-rancho.svg'
 import { Button } from '../components/ui/Button'
