@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import (
@@ -17,6 +18,7 @@ from .persona_services import (
     crear_persona,
 )
 from .selectors import buscar_persona_por_telefono
+from .validators import normalizar_nombre_persona, normalizar_telefono
 
 
 def _raise_persona_validation_error(exc):
@@ -39,19 +41,16 @@ class PersonaNuevaSerializer(serializers.Serializer):
     observaciones = serializers.CharField(required=False, allow_blank=True)
 
     def validate_nombre(self, value):
-        value = " ".join((value or "").strip().split())
-        if not value:
-            raise serializers.ValidationError("El nombre es obligatorio.")
-        return value
+        try:
+            return normalizar_nombre_persona(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages[0]) from exc
 
     def validate_telefono(self, value):
-        value = (value or "").strip()
-        from .validators import validate_phone
-
         try:
-            validate_phone(value)
+            value = normalizar_telefono(value)
         except DjangoValidationError as exc:
-            raise serializers.ValidationError(exc.messages) from exc
+            raise serializers.ValidationError(exc.messages[0]) from exc
         duplicate = buscar_persona_por_telefono(value)
         if duplicate:
             raise serializers.ValidationError(
@@ -95,10 +94,10 @@ class PersonaSerializer(serializers.ModelSerializer):
         ]
 
     def validate_nombre(self, value):
-        value = (value or "").strip()
-        if not value:
-            raise serializers.ValidationError("El nombre es obligatorio.")
-        return value
+        try:
+            return normalizar_nombre_persona(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages[0]) from exc
 
     def get_cotizaciones_count(self, obj):
         if hasattr(obj, "cotizaciones_count"):
@@ -117,7 +116,10 @@ class PersonaSerializer(serializers.ModelSerializer):
         return "Cliente" if self.get_clasificacion(obj) == "cliente" else "Interesado"
 
     def validate_telefono(self, value):
-        value = (value or "").strip()
+        try:
+            value = normalizar_telefono(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages[0]) from exc
         duplicate = buscar_persona_por_telefono(
             value,
             exclude_id=getattr(self.instance, "id", None),
@@ -518,14 +520,19 @@ class ConfiguracionNegocioSerializer(serializers.ModelSerializer):
 
 class PublicConfiguracionNegocioSerializer(serializers.ModelSerializer):
     whatsapp_disponible = serializers.SerializerMethodField()
+    fecha_minima_cotizacion = serializers.SerializerMethodField()
 
     class Meta:
         model = ConfiguracionNegocio
         fields = [
             "nombre_negocio",
             "whatsapp_disponible",
+            "fecha_minima_cotizacion",
         ]
         read_only_fields = fields
 
     def get_whatsapp_disponible(self, obj):
         return bool(obj.whatsapp_numero_url)
+
+    def get_fecha_minima_cotizacion(self, obj):
+        return timezone.localdate().isoformat()

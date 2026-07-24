@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 
 MODALIDADES = {
-    "alquiler": "Alquiler del local",
+    "alquiler": "Solo alquiler",
     "servicio_completo": "Servicio completo",
     "no_estoy_seguro": "No estoy seguro",
 }
@@ -36,7 +36,7 @@ def _lineas_base(cotizacion, configuracion):
     nombre_negocio = configuracion.nombre_negocio if configuracion else "Rancho Flor María"
     return [
         f"Hola, vengo de la pre-cotización web de {nombre_negocio}.",
-        f"Solicitud: #{cotizacion.id}",
+        f"Pre-cotización: #{cotizacion.id}",
         f"Nombre: {cotizacion.persona.nombre}",
         f"Evento: {cotizacion.tipo_evento.nombre}",
         f"Fecha tentativa: {cotizacion.fecha_tentativa.strftime('%d/%m/%Y')}",
@@ -57,7 +57,7 @@ def construir_acciones_whatsapp(cotizacion, calculo, configuracion):
 
     if cotizacion.tipo_servicio == "alquiler":
         respuesta["principal"] = _accion(
-            etiqueta="Consultar disponibilidad por WhatsApp",
+            etiqueta="Continuar por WhatsApp",
             lineas=[
                 *base,
                 f"Valor estimado: {_money(calculo.get('total_estimado'))}",
@@ -68,12 +68,21 @@ def construir_acciones_whatsapp(cotizacion, calculo, configuracion):
         return respuesta
 
     if cotizacion.tipo_servicio == "servicio_completo":
+        paquete_seleccionado = calculo.get("paquete_seleccionado") or {}
+        preferencia = (
+            [
+                f"Paquete preferido: {paquete_seleccionado.get('nombre')}",
+                f"Estimación del paquete: {_money(paquete_seleccionado.get('total_estimado'))}",
+            ]
+            if paquete_seleccionado.get("nombre")
+            else ["Aún no he elegido un paquete."]
+        )
         respuesta["principal"] = _accion(
-            etiqueta="¿Necesitas ayuda para elegir? Escríbenos por WhatsApp",
+            etiqueta="Continuar por WhatsApp",
             lineas=[
                 *base,
-                "Todavía no he elegido un paquete.",
-                "Deseo orientación para encontrar la opción adecuada.",
+                *preferencia,
+                "Quisiera orientación para personalizar mi evento.",
             ],
             numero=numero,
         )
@@ -96,10 +105,10 @@ def construir_acciones_whatsapp(cotizacion, calculo, configuracion):
         return respuesta
 
     respuesta["principal"] = _accion(
-        etiqueta="Quiero orientación por WhatsApp",
+        etiqueta="Continuar por WhatsApp",
         lineas=[
             *base,
-            "Todavía necesito ayuda para elegir la modalidad.",
+            "Quisiera orientación para elegir y personalizar la mejor opción para mi evento.",
         ],
         numero=numero,
     )

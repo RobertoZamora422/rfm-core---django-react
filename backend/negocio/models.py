@@ -4,9 +4,11 @@ from django.db.models import Q
 
 from .validators import (
     normalizar_nombre,
+    normalizar_nombre_persona,
     normalizar_telefono,
     normalizar_whatsapp_ecuador,
     validate_non_negative,
+    validate_person_name,
     validate_phone,
     validate_positive_integer,
     validate_whatsapp_ecuador,
@@ -37,7 +39,7 @@ class Persona(TimeStampedModel):
         CONTRATO_DIRECTO = "contrato_directo", "Contrato directo"
         REGISTRO_MANUAL = "registro_manual", "Registro manual"
 
-    nombre = models.CharField(max_length=150)
+    nombre = models.CharField(max_length=150, validators=[validate_person_name])
     telefono = models.CharField(max_length=30, validators=[validate_phone])
     telefono_normalizado = models.CharField(max_length=15, unique=True, editable=False)
     correo = models.EmailField(blank=True)
@@ -52,10 +54,10 @@ class Persona(TimeStampedModel):
 
     def clean(self):
         super().clean()
-        self.nombre = " ".join((self.nombre or "").strip().split())
-        self.telefono = (self.telefono or "").strip()
+        self.nombre = normalizar_nombre_persona(self.nombre)
+        self.telefono = normalizar_telefono(self.telefono)
         self.correo = (self.correo or "").strip()
-        self.telefono_normalizado = normalizar_telefono(self.telefono)
+        self.telefono_normalizado = self.telefono
 
     def __str__(self):
         return self.nombre
@@ -67,7 +69,7 @@ class NombrePersona(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="nombres_utilizados",
     )
-    nombre = models.CharField(max_length=150)
+    nombre = models.CharField(max_length=150, validators=[validate_person_name])
     nombre_normalizado = models.CharField(max_length=150, editable=False)
     origen = models.CharField(
         max_length=30,
@@ -86,10 +88,8 @@ class NombrePersona(TimeStampedModel):
 
     def clean(self):
         super().clean()
-        self.nombre = " ".join((self.nombre or "").strip().split())
+        self.nombre = normalizar_nombre_persona(self.nombre)
         self.nombre_normalizado = normalizar_nombre(self.nombre)
-        if not self.nombre_normalizado:
-            raise ValidationError({"nombre": "El nombre es obligatorio."})
 
     def __str__(self):
         return f"{self.nombre} ({self.persona})"

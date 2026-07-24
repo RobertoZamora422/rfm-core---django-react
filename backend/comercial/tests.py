@@ -1,9 +1,10 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from financiero.models import Contrato
@@ -64,7 +65,9 @@ class CotizacionCleanDatabaseApiTests(APITestCase):
                 "nombre_persona": "Persona Pública",
                 "telefono_persona": "0991234567",
                 "tipo_evento": tipo_evento.id,
-                "fecha_tentativa": "2026-05-20",
+                "fecha_tentativa": (
+                    timezone.localdate() + timedelta(days=30)
+                ).isoformat(),
                 "numero_invitados": 80,
                 "tipo_servicio": "alquiler",
                 "observaciones": "",
@@ -298,7 +301,7 @@ class CotizacionApiTests(APITestCase):
         self.assertIn("solicitud_token", response.data)
         self.assertEqual(
             response.data["whatsapp"]["principal"]["etiqueta"],
-            "¿Necesitas ayuda para elegir? Escríbenos por WhatsApp",
+            "Continuar por WhatsApp",
         )
 
     def test_pre_cotizacion_comparacion_calcula_alquiler_y_servicio(self):
@@ -459,10 +462,10 @@ class CotizacionApiTests(APITestCase):
         )
         mensaje = response.data["whatsapp"]["principal"]["mensaje"]
 
-        self.assertIn(f"Solicitud: #{response.data['cotizacion']['id']}", mensaje)
+        self.assertIn(f"Pre-cotización: #{response.data['cotizacion']['id']}", mensaje)
         self.assertIn("Evento: Boda", mensaje)
         self.assertIn("Invitados: 80", mensaje)
-        self.assertIn("Modalidad de interés: Alquiler del local", mensaje)
+        self.assertIn("Modalidad de interés: Solo alquiler", mensaje)
         self.assertIn("Valor estimado: $1300.00", mensaje)
         self.assertTrue(
             response.data["whatsapp"]["principal"]["url"].startswith(
@@ -520,6 +523,7 @@ class CotizacionApiTests(APITestCase):
             {
                 "nombre_negocio": "Rancho Flor Maria",
                 "whatsapp_disponible": True,
+                "fecha_minima_cotizacion": timezone.localdate().isoformat(),
             },
         )
 

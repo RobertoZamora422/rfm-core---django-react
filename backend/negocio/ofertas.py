@@ -207,6 +207,7 @@ def snapshot_alquiler(
     total_estimado,
     origen="operacion",
     parametros_disponibles=True,
+    beneficios_principales=None,
 ):
     snapshot = {
         "version": SNAPSHOT_VERSION,
@@ -216,6 +217,15 @@ def snapshot_alquiler(
         "total_estimado": money(total_estimado),
         "alquiler": {
             "parametros_disponibles": bool(configuracion and parametros_disponibles),
+            "beneficios_principales": deepcopy(
+                beneficios_principales
+                if beneficios_principales is not None
+                else [
+                    serializar_beneficio(item)
+                    for item in beneficios_comunes_activos()
+                    if item.tipo == BeneficioPaquete.Tipo.PRINCIPAL
+                ]
+            ),
         },
     }
     if configuracion and parametros_disponibles:
@@ -281,6 +291,9 @@ def snapshot_alquiler_desde_oferta(
             "costo_invitado_adicional": money(costo_invitado_adicional),
             "invitados_adicionales": adicionales,
             "costo_adicional": money(costo_adicional),
+            "beneficios_principales": deepcopy(
+                parametros.get("beneficios_principales") or []
+            ),
         },
     }
 

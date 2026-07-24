@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 
-from negocio.models import Paquete
+from negocio.models import BeneficioPaquete, Paquete
 from negocio.ofertas import (
     beneficios_comunes_activos,
     serializar_beneficio,
@@ -80,6 +80,11 @@ class AlquilerPreCotizacionStrategy(PreCotizacionStrategy):
             Decimal(invitados_adicionales) * configuracion.costo_invitado_adicional
         )
         total_estimado = configuracion.tarifa_base_alquiler + costo_adicional
+        beneficios_principales = [
+            serializar_beneficio(item)
+            for item in beneficios_comunes_activos()
+            if item.tipo == BeneficioPaquete.Tipo.PRINCIPAL
+        ]
         return {
             "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             "numero_invitados": numero_invitados,
@@ -89,29 +94,7 @@ class AlquilerPreCotizacionStrategy(PreCotizacionStrategy):
             "invitados_adicionales": invitados_adicionales,
             "costo_invitado_adicional": configuracion.costo_invitado_adicional,
             "costo_adicional": costo_adicional,
-            "presentacion": {
-                "recomendado_para": [
-                    "Personas que ya cuentan con equipo o proveedores.",
-                    "Quienes desean organizar el evento por su cuenta.",
-                    "Eventos privados, reuniones familiares y celebraciones.",
-                ],
-                "incluidos": [
-                    {
-                        "titulo": "Uso del local",
-                        "detalle": (
-                            "La tarifa base contempla hasta "
-                            f"{configuracion.invitados_incluidos_alquiler} invitados."
-                        ),
-                    }
-                ],
-                "condiciones": [
-                    "La disponibilidad y la fecha deben ser confirmadas por Rancho Flor María.",
-                    (
-                        "Los invitados que excedan la cantidad incluida se calculan "
-                        "con la tarifa adicional configurada."
-                    ),
-                ],
-            },
+            "beneficios_principales": beneficios_principales,
         }
 
 

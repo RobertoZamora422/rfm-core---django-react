@@ -29,8 +29,10 @@ Representa a cualquier persona relacionada con Rancho Flor María.
 Campos principales:
 
 - `nombre`: nombre principal editable.
-- `telefono`: representación legible ingresada por el usuario.
-- `telefono_normalizado`: valor canónico, único y no editable.
+- `telefono`: celular ecuatoriano almacenado como `09XXXXXXXX`.
+- `telefono_normalizado`: el mismo valor canónico `09XXXXXXXX`, único y no
+  editable. Los formatos `5939XXXXXXXX` y `+5939XXXXXXXX` se convierten antes
+  de buscar, comparar o guardar.
 - `correo` y `observaciones`.
 - `origen`: formulario público, cotización manual, contrato directo o registro manual.
 - `creado_en` y `actualizado_en`.
@@ -116,7 +118,9 @@ Parámetros vigentes para la pre-cotización pública. Solo puede existir una co
 
 ## Integridad
 
-- unicidad de `Persona.telefono_normalizado`;
+- unicidad de `Persona.telefono_normalizado` en formato canónico
+  `09XXXXXXXX`;
+- nombre de Persona con al menos tres letras y separadores internos válidos;
 - aliases únicos por persona y nombre normalizado;
 - valores monetarios no negativos;
 - versiones recurrentes con vigencia válida e inicio único por recurrencia;
@@ -129,6 +133,9 @@ Parámetros vigentes para la pre-cotización pública. Solo puede existir una co
 ## Migraciones de nomenclatura
 
 - `negocio.0006_rename_cliente_persona`: renombra modelo, tabla y FK de alias; elimina el marcador demo.
+- `negocio.0009_person_name_and_ecuador_mobile_validation`: normaliza celulares
+  ecuatorianos existentes al formato `09XXXXXXXX` y registra los validadores
+  compartidos de nombres.
 - `comercial.0005_rename_cliente_persona`: renombra la FK de Cotización y elimina el marcador demo.
 - `financiero.0004_rename_cliente_persona`: renombra la FK de Contrato y elimina marcadores demo financieros.
 - `financiero.0005_gastos_recurrentes_y_adicionales`: conserva los gastos

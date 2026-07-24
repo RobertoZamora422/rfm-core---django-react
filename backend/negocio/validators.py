@@ -5,15 +5,19 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 
 
-PHONE_PATTERN = re.compile(r"^\+?[0-9\s\-()]{7,20}$")
+PERSON_NAME_PATTERN = re.compile(
+    r"^[^\W\d_]+(?:[ '\-’][^\W\d_]+)*$",
+    flags=re.UNICODE,
+)
+PHONE_PATTERN = re.compile(r"^\+?[0-9\s\-()]+$")
 WHATSAPP_ECUADOR_PATTERN = re.compile(r"^09\d{8}$")
+PERSON_NAME_ERROR = "Ingrese su nombre."
+PHONE_ERROR = "Ingrese su teléfono para validar su solicitud."
 
 
 def validate_phone(value):
     if not PHONE_PATTERN.match(value or ""):
-        raise ValidationError(
-            "Ingrese un telefono valido. Use numeros y, opcionalmente, +, espacios, guiones o parentesis."
-        )
+        raise ValidationError(PHONE_ERROR)
     normalizar_telefono(value)
 
 
@@ -22,15 +26,18 @@ def extraer_digitos_telefono(value):
 
 
 def normalizar_telefono(value):
-    """Devuelve la identidad telefónica canónica sin alterar el valor visible."""
+    """Devuelve un celular ecuatoriano en formato canónico 09XXXXXXXX."""
+    if not PHONE_PATTERN.fullmatch(value or ""):
+        raise ValidationError(PHONE_ERROR)
     digits = extraer_digitos_telefono(value)
-    if digits.startswith("00"):
-        digits = digits[2:]
-    if len(digits) == 10 and digits.startswith("0"):
-        digits = f"593{digits[1:]}"
-    if not 7 <= len(digits) <= 15:
-        raise ValidationError("Ingrese un telefono valido de entre 7 y 15 digitos.")
-    return digits
+    if len(digits) == 10 and digits.startswith("09"):
+        canonical = digits
+    elif len(digits) == 12 and digits.startswith("5939"):
+        canonical = f"0{digits[3:]}"
+    else:
+        raise ValidationError(PHONE_ERROR)
+
+    return canonical
 
 
 def normalizar_telefono_busqueda(value):
@@ -40,11 +47,23 @@ def normalizar_telefono_busqueda(value):
 
 def normalizar_telefono_parcial(value):
     digits = extraer_digitos_telefono(value)
-    if digits.startswith("00"):
-        digits = digits[2:]
-    if digits.startswith("0"):
-        return f"593{digits[1:]}"
+    if digits.startswith("593") and len(digits) > 3:
+        return f"0{digits[3:]}"
     return digits
+
+
+def normalizar_nombre_persona(value):
+    value = " ".join((value or "").strip().split())
+    if (
+        len([character for character in value if character.isalpha()]) < 3
+        or not PERSON_NAME_PATTERN.fullmatch(value)
+    ):
+        raise ValidationError(PERSON_NAME_ERROR)
+    return value
+
+
+def validate_person_name(value):
+    normalizar_nombre_persona(value)
 
 
 def normalizar_nombre(value):

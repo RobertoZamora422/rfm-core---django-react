@@ -21,7 +21,7 @@ class PersonaIdentityTests(TestCase):
 
         self.assertEqual(
             {normalizar_telefono(value) for value in values},
-            {"593912345678"},
+            {"0912345678"},
         )
 
     def test_restriccion_unica_impide_duplicados_y_no_fusiona_por_nombre(self):

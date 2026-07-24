@@ -1,12 +1,6 @@
-import { Check, ChevronDown, MessageCircle, PackageCheck, Sparkles, X } from 'lucide-react'
+import { Check, ChevronDown, PackageCheck, Sparkles, X } from 'lucide-react'
 import { formatCurrency } from '../../utils/formatters'
 import { Button } from '../ui/Button'
-
-const CATEGORY_LABELS = {
-  estandar: 'Estándar',
-  premium: 'Premium',
-  vip: 'VIP',
-}
 
 function BenefitList({ items }) {
   if (!items.length) return null
@@ -28,7 +22,7 @@ function BenefitList({ items }) {
   )
 }
 
-function PackageCard({ action, isSelected, onConsult, paquete }) {
+function PackageCard({ isSaving, isSelected, onSelect, paquete }) {
   const principales = (paquete.beneficios ?? []).filter((item) => item.tipo === 'principal')
   const detalle = (paquete.beneficios ?? []).filter((item) => item.tipo !== 'principal')
   const descriptionId = `paquete-${paquete.id}-description`
@@ -62,46 +56,45 @@ function PackageCard({ action, isSelected, onConsult, paquete }) {
           <BenefitList items={[...principales.slice(4), ...detalle]} />
         </details>
       ) : null}
-      {action?.url ? (
-        <a
-          aria-describedby={descriptionId}
-          className="button whatsapp-link public-package-card__cta"
-          href={action.url}
-          onClick={() => onConsult(paquete.id)}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          <MessageCircle aria-hidden="true" size={17} />
-          <span>{action.etiqueta}</span>
-        </a>
-      ) : (
-        <Button className="public-package-card__cta" disabled type="button">
-          WhatsApp no disponible
-        </Button>
-      )}
+      <Button
+        aria-describedby={descriptionId}
+        className="public-package-card__cta"
+        disabled={isSaving}
+        icon={isSelected ? X : Check}
+        isLoading={isSaving && isSelected}
+        loadingLabel="Guardando preferencia…"
+        onClick={() => onSelect(isSelected ? null : paquete.id)}
+        type="button"
+        variant={isSelected ? 'secondary' : 'primary'}
+      >
+        {isSelected ? 'Quitar preferencia' : 'Elegir este paquete'}
+      </Button>
     </article>
   )
 }
 
 export function PackageSelector({
   catalog,
+  isSaving = false,
   onClearSelection,
-  onConsult,
+  onSelect,
   selectedId,
-  whatsappActions = [],
 }) {
   const paquetes = catalog.paquetes ?? []
-  const actionsByPackage = new Map(
-    whatsappActions.map((action) => [String(action.paquete_id), action]),
-  )
   const selected = paquetes.find((paquete) => String(paquete.id) === String(selectedId))
-  const grouped = Object.entries(CATEGORY_LABELS)
-    .map(([category, label]) => ({
-      category,
-      label,
-      items: paquetes.filter((paquete) => paquete.categoria === category),
-    }))
-    .filter((group) => group.items.length)
+  const grouped = paquetes.reduce((groups, paquete) => {
+    const existing = groups.find((group) => group.category === paquete.categoria)
+    if (existing) {
+      existing.items.push(paquete)
+    } else {
+      groups.push({
+        category: paquete.categoria,
+        label: paquete.categoria_display || paquete.categoria,
+        items: [paquete],
+      })
+    }
+    return groups
+  }, [])
 
   return (
     <div className="public-package-selector">
@@ -113,7 +106,13 @@ export function PackageSelector({
           </div>
           <ul>
             {catalog.incluidos_en_todos.map((item) => (
-              <li key={item.id}><Check aria-hidden="true" size={14} /> {item.titulo}</li>
+              <li key={item.id}>
+                <Check aria-hidden="true" size={14} />
+                <span>
+                  <strong>{item.titulo}</strong>
+                  {item.detalle ? <small>{item.detalle}</small> : null}
+                </span>
+              </li>
             ))}
           </ul>
         </section>
@@ -128,10 +127,10 @@ export function PackageSelector({
           <div className="public-package-grid">
             {group.items.map((paquete) => (
               <PackageCard
-                action={actionsByPackage.get(String(paquete.id))}
+                isSaving={isSaving}
                 isSelected={String(paquete.id) === String(selectedId)}
                 key={paquete.id}
-                onConsult={onConsult}
+                onSelect={onSelect}
                 paquete={paquete}
               />
             ))}
@@ -145,7 +144,7 @@ export function PackageSelector({
           <div><span>Paquete de interés</span><strong>{selected.nombre}</strong></div>
           <div><span>Por persona</span><strong>{formatCurrency(selected.precio_por_persona)}</strong></div>
           <div><span>Total estimado</span><strong>{formatCurrency(selected.total_estimado)}</strong></div>
-          <Button icon={X} onClick={onClearSelection} type="button" variant="ghost">
+          <Button disabled={isSaving} icon={X} onClick={onClearSelection} type="button" variant="ghost">
             Quitar preferencia
           </Button>
         </aside>

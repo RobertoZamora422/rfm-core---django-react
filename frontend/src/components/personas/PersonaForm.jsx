@@ -1,7 +1,15 @@
 import { Search, UserCheck } from 'lucide-react'
 import { useRef, useState } from 'react'
+import { useFocusFirstError } from '../../hooks/useFocusFirstError'
 import { usePersonaMatches } from '../../hooks/usePersonaMatches'
 import { formatPhone } from '../../utils/formatters'
+import {
+  ECUADOR_MOBILE_ERROR,
+  isValidPersonName,
+  normalizeEcuadorMobile,
+  normalizePersonName,
+  PERSON_NAME_ERROR,
+} from '../../utils/personValidation'
 import { Button } from '../ui/Button'
 import { ErrorMessage } from '../ui/ErrorMessage'
 import { Input } from '../ui/Input'
@@ -43,17 +51,34 @@ export function PersonaForm({
   })
   const [nameLookup, setNameLookup] = useState(initialValues?.nombre ?? '')
   const [phoneLookup, setPhoneLookup] = useState(initialValues?.telefono ?? '')
+  const [localErrors, setLocalErrors] = useState({})
   const nameMatches = usePersonaMatches(nameLookup, { exclude: initialValues?.id })
   const phoneMatches = usePersonaMatches(phoneLookup, { exclude: initialValues?.id })
+  const fieldErrors = { ...errors, ...localErrors }
+  useFocusFirstError(fieldErrors)
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
+    setLocalErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
     if (name === 'nombre') setNameLookup(value)
     if (name === 'telefono') setPhoneLookup(value)
   }
 
   const submitPerson = () => {
+    const nextErrors = {}
+    if (!isValidPersonName(form.nombre)) nextErrors.nombre = PERSON_NAME_ERROR
+    const normalizedPhone = normalizeEcuadorMobile(form.telefono)
+    if (!normalizedPhone) nextErrors.telefono = ECUADOR_MOBILE_ERROR
+    if (Object.keys(nextErrors).length) {
+      setLocalErrors(nextErrors)
+      return
+    }
     const invalidField = containerRef.current?.querySelector('input:invalid, textarea:invalid')
     if (invalidField) {
       invalidField.reportValidity()
@@ -62,8 +87,8 @@ export function PersonaForm({
     }
     if (isSubmitting || phoneMatches.exacta_telefono || isPhoneCheckPending) return
     onSubmit({
-      nombre: form.nombre.trim(),
-      telefono: form.telefono.trim(),
+      nombre: normalizePersonName(form.nombre),
+      telefono: normalizedPhone,
       correo: form.correo.trim(),
       observaciones: form.observaciones.trim(),
     })
@@ -83,8 +108,7 @@ export function PersonaForm({
   const suggestions = [...phoneMatches.sugerencias, ...nameMatches.sugerencias]
     .filter((person, index, all) => all.findIndex((item) => item.id === person.id) === index)
     .filter((person) => person.id !== phoneMatches.exacta_telefono?.id)
-  const phoneDigits = form.telefono.replace(/\D/g, '')
-  const isPhoneCheckPending = phoneDigits.length >= 7
+  const isPhoneCheckPending = Boolean(normalizeEcuadorMobile(form.telefono))
     && (phoneMatches.query !== form.telefono.trim() || phoneMatches.isLoading)
   const isSearching = nameMatches.isLoading || phoneMatches.isLoading
   const searchError = nameMatches.error || phoneMatches.error
@@ -102,21 +126,32 @@ export function PersonaForm({
         <Input
           autoComplete="name"
           autoFocus
-          error={errors.nombre}
+          error={fieldErrors.nombre}
           id="persona-nombre"
           label="Nombre principal"
           name="nombre"
+          onBlur={() => {
+            const nombre = normalizePersonName(form.nombre)
+            setForm((current) => ({ ...current, nombre }))
+            setNameLookup(nombre)
+          }}
           onChange={handleChange}
           required
           value={form.nombre}
         />
         <Input
           autoComplete="tel"
-          error={errors.telefono}
+          error={fieldErrors.telefono}
           helpText="El teléfono identifica a la persona, aunque cambie la forma de escribirlo."
           id="persona-telefono"
           label="Teléfono"
           name="telefono"
+          onBlur={() => {
+            const telefono = normalizeEcuadorMobile(form.telefono)
+            if (!telefono) return
+            setForm((current) => ({ ...current, telefono }))
+            setPhoneLookup(telefono)
+          }}
           onChange={handleChange}
           required
           type="tel"
@@ -125,7 +160,7 @@ export function PersonaForm({
       </div>
       <Input
         autoComplete="email"
-        error={errors.correo}
+        error={fieldErrors.correo}
         id="persona-correo"
         label="Correo"
         name="correo"
@@ -159,7 +194,7 @@ export function PersonaForm({
       ) : null}
 
       <Textarea
-        error={errors.observaciones}
+        error={fieldErrors.observaciones}
         id="persona-observaciones"
         label="Observaciones"
         name="observaciones"

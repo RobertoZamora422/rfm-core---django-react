@@ -34,6 +34,26 @@ POST /api/pre-cotizacion/preferencia/
 Las escrituras públicas tienen throttling. La pre-cotización no acepta un ID de
 Persona y no revela coincidencias administrativas.
 
+### Reglas de la pre-cotización pública
+
+- `nombre_persona`: obligatorio, normalizado y con al menos tres letras; admite
+  espacios, apóstrofes y guiones internos.
+- `telefono_persona`: celular ecuatoriano `09XXXXXXXX`,
+  `5939XXXXXXXX` o `+5939XXXXXXXX`. Se guarda y compara como `09XXXXXXXX`.
+- `tipo_evento`: catálogo público activo.
+- `fecha_tentativa`: fecha actual o futura según la zona horaria configurada.
+- `numero_invitados`: entero mayor que cero.
+- `tipo_servicio`: `alquiler`, `servicio_completo` o `no_estoy_seguro`.
+- `paquete`: opcional y únicamente compatible con `servicio_completo`.
+
+La respuesta incluye la cotización, el cálculo producido por la estrategia,
+beneficios y paquetes activos aplicables, acciones de WhatsApp y un
+`solicitud_token`. El mismo token permite recalcular la solicitud o cambiar la
+preferencia opcional de paquete sin crear una segunda cotización.
+
+`GET /api/public/configuracion/` incluye `fecha_minima_cotizacion`, además del
+número de WhatsApp y los indicadores públicos de disponibilidad.
+
 ## Recursos administrativos
 
 Los recursos DRF aceptan `GET` de lista/detalle y, según corresponda, `POST`,

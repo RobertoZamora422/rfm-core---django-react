@@ -36,10 +36,6 @@
   box-sizing: border-box;
 }
 
-html {
-  min-width: 320px;
-}
-
 body {
   margin: 0;
 }
@@ -2594,6 +2590,302 @@ a {
   }
 }
 
+/* Public pre-quote: progressive form, event summary and commercial results */
+.public-form-card {
+  max-width: 1020px;
+}
+
+.public-precotizacion-page .service-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.public-precotizacion-page .service-option {
+  align-content: center;
+  gap: 11px;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  min-height: 116px;
+  padding: 16px;
+  text-align: center;
+}
+
+.public-precotizacion-page .service-option__icon {
+  background: linear-gradient(145deg, #e9f3ec, #f7faf8);
+  border: 1px solid #d9e8dd;
+  border-radius: 50%;
+  height: 46px;
+  width: 46px;
+}
+
+.public-precotizacion-page .service-option__copy strong {
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.public-event-summary {
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--color-forest) 7%, white), white 55%),
+    white;
+  border: 1px solid color-mix(in srgb, var(--color-forest) 18%, transparent);
+  border-radius: 1rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.public-event-summary > div {
+  align-items: center;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  position: relative;
+}
+
+.public-event-summary > div:not(:last-child)::after {
+  background: color-mix(in srgb, var(--color-forest) 15%, transparent);
+  content: '';
+  height: 58%;
+  position: absolute;
+  right: 0;
+  top: 21%;
+  width: 1px;
+}
+
+.public-event-summary svg {
+  color: var(--color-forest);
+  flex: 0 0 auto;
+}
+
+.public-event-summary__copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.public-event-summary__copy strong {
+  color: var(--color-text);
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: normal;
+}
+
+.public-event-summary__copy span {
+  color: var(--color-text-muted);
+  display: block;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.public-benefits-panel,
+.public-calculation-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.public-benefits-panel {
+  background: linear-gradient(145deg, #fbf8f1, #fffdf9);
+  border-color: #e7dcc6;
+}
+
+.public-benefits-panel__heading {
+  align-items: center;
+  color: #9a7136;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.public-benefits-panel h4,
+.public-calculation-panel h4,
+.public-whatsapp-cta h4 {
+  color: var(--color-forest);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.public-calculation-panel {
+  background: #fbfcfb;
+}
+
+.public-rental-grid {
+  align-items: stretch;
+}
+
+.public-rental-grid > section {
+  height: 100%;
+}
+
+.public-whatsapp-cta {
+  align-items: center;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(180, 154, 104, 0.16), transparent 32%),
+    linear-gradient(135deg, #f7faf8, #fbf8f1);
+  border: 1px solid color-mix(in srgb, var(--color-forest) 18%, transparent);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: auto minmax(0, 1fr) minmax(13.5rem, auto);
+  min-width: 0;
+  padding: 1rem;
+}
+
+.public-whatsapp-cta__icon {
+  align-items: center;
+  background: var(--color-forest);
+  border-radius: 50%;
+  color: white;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  width: 44px;
+}
+
+.public-whatsapp-cta > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.public-whatsapp-cta p {
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.public-whatsapp-cta .whatsapp-link {
+  min-width: 13.5rem;
+  width: auto;
+}
+
+.public-comparison-result {
+  gap: 1rem;
+}
+
+.public-comparison-result .comparison-public-card {
+  gap: 1rem;
+}
+
+.public-comparison-result .comparison-public-card__heading h4 {
+  margin: 0;
+}
+
+.comparison-public-card--rental {
+  background: linear-gradient(140deg, #fbfcfb, #f5f9f6);
+}
+
+.comparison-public-card--service {
+  background: linear-gradient(140deg, #fffdf9, #fbfcfb);
+}
+
+.comparison-public-card .public-calculation-panel {
+  background: white;
+}
+
+.public-common-benefits li > span {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.public-common-benefits li strong {
+  color: var(--color-text);
+}
+
+.public-common-benefits li small {
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.public-package-card__cta {
+  justify-self: stretch;
+}
+
+@media (max-width: 760px) {
+  .public-whatsapp-cta {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .public-whatsapp-cta .whatsapp-link {
+    grid-column: 1 / -1;
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .public-precotizacion-page .service-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .public-precotizacion-page .service-option {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    min-height: 0;
+    text-align: left;
+  }
+
+  .public-event-summary > div {
+    align-content: start;
+    gap: 0.35rem;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    padding: 0.7rem 0.35rem;
+    text-align: center;
+  }
+
+  .public-event-summary__copy strong {
+    font-size: 0.78rem;
+  }
+
+  .public-event-summary__copy span {
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+  }
+
+  .public-event-summary svg {
+    height: 18px;
+    width: 18px;
+  }
+}
+
+@media (max-width: 430px) {
+  .public-result-card {
+    padding: 1rem;
+  }
+
+  .public-event-summary > div {
+    padding-inline: 0.22rem;
+  }
+
+  .public-event-summary__copy strong {
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+  }
+
+  .public-event-summary__copy span {
+    font-size: 0.6rem;
+  }
+
+  .public-whatsapp-cta {
+    padding: 0.9rem;
+  }
+}
+
 .not-found-page {
   align-items: center;
   background:
@@ -2646,7 +2938,7 @@ a {
   margin-top: 2rem;
 }
 
-/* Public pre-quote: contact-first vertical flow and post-submit results */
+/* Public pre-quote: progressive vertical flow and post-submit results */
 .public-form-card {
   margin-inline: auto;
   max-width: 960px;
@@ -2655,6 +2947,29 @@ a {
 
 .public-form-grid--event {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.public-form,
+.public-form > *,
+.public-form-section,
+.public-form-grid,
+.public-actions,
+.public-actions > *,
+.public-precotizacion-page .field,
+.public-precotizacion-page .field__control-wrap,
+.service-choice {
+  min-width: 0;
+}
+
+.public-precotizacion-page .field__control {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.public-calculate-button {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
 }
 
 .public-result-section {

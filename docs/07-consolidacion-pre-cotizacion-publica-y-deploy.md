@@ -17,10 +17,26 @@ POST /api/pre-cotizacion/
 }
 ```
 
-El backend limita longitudes, tamaño y frecuencia. Normaliza el teléfono,
-reutiliza Persona, conserva alias, calcula mediante estrategia, guarda la
-cotización y devuelve una estimación referencial. La respuesta no revela si la
-identidad ya existía.
+El backend limita longitudes, tamaño y frecuencia. Solo admite celulares
+ecuatorianos en formato nacional `09XXXXXXXX` o internacional
+`5939XXXXXXXX`/`+5939XXXXXXXX`; antes de buscar o guardar los convierte al
+formato canónico `09XXXXXXXX`. Así, las representaciones nacional e
+internacional reutilizan la misma `Persona`.
+
+El nombre se normaliza, requiere al menos tres letras y admite espacios,
+apóstrofes y guiones internos. La fecha tentativa acepta hoy o una fecha
+posterior según la zona horaria de Django, y los invitados deben ser un entero
+positivo. El tipo de evento debe estar activo y la modalidad es obligatoria. En
+servicio completo el paquete sigue siendo opcional.
+
+La página solicita primero la información del evento, después la modalidad y al
+final los datos de contacto. El cálculo se realiza mediante la estrategia del
+backend, guarda una sola cotización durante la sesión mediante
+`solicitud_token` y devuelve estimaciones, beneficios configurados y acciones de
+WhatsApp contextuales. La respuesta no revela si la identidad ya existía.
+
+`GET /api/public/configuracion/` expone `fecha_minima_cotizacion` para que el
+calendario aplique visualmente la misma regla diaria que valida el servidor.
 
 ## Arquitectura
 

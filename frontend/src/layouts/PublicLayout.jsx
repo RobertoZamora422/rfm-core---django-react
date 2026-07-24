@@ -50,6 +50,7 @@ export function PublicLayout() {
             configuracion,
             configError,
             isConfigLoading: configuracion === null,
+            reloadConfiguracion: loadConfiguracion,
           }}
         />
       </main>

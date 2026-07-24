@@ -1,25 +1,27 @@
 import {
-  Building2,
+  CalendarDays,
   Check,
-  CheckCircle2,
-  Info,
+  Compass,
+  Gift,
   MessageCircle,
+  PartyPopper,
   RefreshCw,
-  Sparkles,
+  TreePine,
   UsersRound,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '../../utils/formatters'
-import { PackageSelector } from './PackageSelector'
 import { Card } from '../ui/Card'
 import { LoadingState } from '../ui/LoadingState'
+import { PackageSelector } from './PackageSelector'
 
 const serviceLabels = {
-  alquiler: 'Alquiler del local',
+  alquiler: 'Solo alquiler',
   servicio_completo: 'Servicio completo',
   no_estoy_seguro: 'No estoy seguro',
 }
 
-function WhatsappLink({ action, className = '' }) {
+function WhatsappLink({ action, className = '', label }) {
   if (!action?.url) {
     return (
       <p className="warning-message" role="status">
@@ -35,113 +37,174 @@ function WhatsappLink({ action, className = '' }) {
       target="_blank"
     >
       <MessageCircle aria-hidden="true" size={18} />
-      <span>{action.etiqueta}</span>
+      <span>{label ?? action.etiqueta}</span>
     </a>
   )
 }
 
-function ResultMeta({ cotizacion }) {
-  const items = [
-    ['Evento', cotizacion.tipo_evento_nombre],
-    ['Fecha', formatDate(cotizacion.fecha_tentativa)],
-    ['Invitados', cotizacion.numero_invitados],
-    ['Modalidad', serviceLabels[cotizacion.tipo_servicio]],
-  ]
+function WhatsappCta({ action }) {
   return (
-    <dl className="public-result-meta">
-      {items.map(([label, value]) => (
-        <div key={label}>
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-    </dl>
+    <aside className="public-whatsapp-cta">
+      <span className="public-whatsapp-cta__icon" aria-hidden="true">
+        <MessageCircle size={22} />
+      </span>
+      <div>
+        <h4>¿Necesitas ayuda para elegir?</h4>
+        <p>
+          Escríbenos por WhatsApp y te orientamos según tu tipo de evento, invitados y
+          presupuesto.
+        </p>
+      </div>
+      <WhatsappLink action={action} label="Continuar por WhatsApp" />
+    </aside>
   )
 }
 
-function EstimateNotice() {
+function ResultSummaryBanner({ cotizacion }) {
+  const serviceIcons = {
+    alquiler: TreePine,
+    servicio_completo: UtensilsCrossed,
+    no_estoy_seguro: Compass,
+  }
+  const items = [
+    {
+      icon: PartyPopper,
+      label: 'Tipo de evento',
+      value: cotizacion.tipo_evento_nombre,
+    },
+    {
+      icon: CalendarDays,
+      label: 'Fecha tentativa',
+      value: formatDate(cotizacion.fecha_tentativa),
+    },
+    {
+      icon: UsersRound,
+      label: 'Cantidad',
+      value: `${cotizacion.numero_invitados} invitados`,
+    },
+    {
+      icon: serviceIcons[cotizacion.tipo_servicio] ?? Compass,
+      label: 'Modalidad elegida',
+      value: serviceLabels[cotizacion.tipo_servicio],
+    },
+  ]
+
   return (
-    <div className="public-info-box public-info-box--result">
-      <Info aria-hidden="true" size={18} />
-      <p>
-        Esta es una estimación inicial. La disponibilidad, la fecha y las condiciones finales
-        deben ser confirmadas directamente con Rancho Flor María.
-      </p>
+    <div aria-label="Resumen del evento" className="public-event-summary" role="group">
+      {items.map((item) => (
+        <div key={item.label}>
+          <item.icon aria-hidden="true" size={20} />
+          <div className="public-event-summary__copy">
+            <strong>{item.value}</strong>
+            <span>{item.label}</span>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
-function TextList({ items }) {
+function BenefitList({ items }) {
   if (!items?.length) return null
   return (
     <ul className="public-commercial-list">
       {items.map((item, index) => (
-        <li key={item.titulo ?? item ?? index}>
+        <li key={item.id ?? item.titulo ?? index}>
           <Check aria-hidden="true" size={16} />
-          {typeof item === 'string' ? (
-            <span>{item}</span>
-          ) : (
-            <span>
-              <strong>{item.titulo}</strong>
-              {item.detalle ? <small>{item.detalle}</small> : null}
-            </span>
-          )}
+          <span>
+            <strong>{item.titulo}</strong>
+            {item.detalle ? <small>{item.detalle}</small> : null}
+          </span>
         </li>
       ))}
     </ul>
   )
 }
 
+function BenefitsPanel({ items, title }) {
+  const principales = (items ?? []).filter((item) => item.tipo === 'principal')
+  if (!principales.length) return null
+  return (
+    <section className="public-benefits-panel">
+      <div className="public-benefits-panel__heading">
+        <Gift aria-hidden="true" size={20} />
+        <h4>{title}</h4>
+      </div>
+      <BenefitList items={principales} />
+    </section>
+  )
+}
+
+function RentalBreakdown({ calculo }) {
+  const hasAdditionalGuests = Number(calculo.invitados_adicionales) > 0
+  return (
+    <section className="public-calculation-panel">
+      <h4>Detalle de tu estimación</h4>
+      <dl className="calculation-list">
+        <div>
+          <dt>Uso del local</dt>
+          <dd>{formatCurrency(calculo.tarifa_base_alquiler)}</dd>
+        </div>
+        <div>
+          <dt>Invitados contemplados</dt>
+          <dd>{calculo.invitados_incluidos_alquiler}</dd>
+        </div>
+        {hasAdditionalGuests ? (
+          <>
+            <div>
+              <dt>Invitados adicionales</dt>
+              <dd>{calculo.invitados_adicionales}</dd>
+            </div>
+            <div>
+              <dt>Valor por invitado adicional</dt>
+              <dd>{formatCurrency(calculo.costo_invitado_adicional)}</dd>
+            </div>
+            <div>
+              <dt>Subtotal adicional</dt>
+              <dd>{formatCurrency(calculo.costo_adicional)}</dd>
+            </div>
+          </>
+        ) : null}
+      </dl>
+    </section>
+  )
+}
+
 function AlquilerResult({ calculo, whatsapp }) {
-  const presentacion = calculo.presentacion ?? {}
   return (
     <div className="public-result-mode public-rental-result">
       <div className="public-result-hero">
         <div>
           <span className="public-result-eyebrow">Solo alquiler</span>
-          <h3>Tu espacio, tu forma de organizar</h3>
-          <p>Una alternativa para celebrar con tu propio equipo y proveedores.</p>
+          <h3>Esta opción es ideal para ti</h3>
+          <p>
+            ¿Ya tienes tu propio equipo o planeas organizar el evento por tu cuenta? Entonces
+            Rancho Flor María puede ser el escenario de tu celebración.
+          </p>
         </div>
         <div className="result-total">
-          <span>Valor estimado</span>
+          <span>Tu estimación</span>
           <strong>{formatCurrency(calculo.total_estimado)}</strong>
         </div>
       </div>
 
       <div className="public-rental-grid">
-        <section>
-          <h4>Puede ser ideal si…</h4>
-          <TextList items={presentacion.recomendado_para} />
-        </section>
-        <section>
-          <h4>Lo contemplado en esta estimación</h4>
-          <TextList items={presentacion.incluidos} />
-          <dl className="calculation-list">
-            <div><dt>Invitados contemplados</dt><dd>{calculo.invitados_incluidos_alquiler}</dd></div>
-            <div><dt>Invitados adicionales</dt><dd>{calculo.invitados_adicionales}</dd></div>
-            {calculo.invitados_adicionales > 0 ? (
-              <>
-                <div><dt>Valor por invitado adicional</dt><dd>{formatCurrency(calculo.costo_invitado_adicional)}</dd></div>
-                <div><dt>Subtotal adicional</dt><dd>{formatCurrency(calculo.costo_adicional)}</dd></div>
-              </>
-            ) : null}
-          </dl>
-        </section>
+        <BenefitsPanel
+          items={calculo.beneficios_principales}
+          title="Beneficios incluidos"
+        />
+        <RentalBreakdown calculo={calculo} />
       </div>
-
-      <div className="public-result-conditions">
-        <h4>Condiciones importantes</h4>
-        <TextList items={presentacion.condiciones} />
-      </div>
-      <WhatsappLink action={whatsapp?.principal} />
+      <WhatsappLink action={whatsapp?.principal} label="Continuar por WhatsApp" />
     </div>
   )
 }
 
 function ServicioCompletoResult({
   calculo,
+  isSavingPreference,
   onClearPackage,
-  onPackageConsult,
+  onPackageSelect,
   preferenceError,
   selectedPackageId,
   whatsapp,
@@ -150,24 +213,18 @@ function ServicioCompletoResult({
     <div className="public-result-mode public-service-result">
       <div className="public-result-section-heading">
         <span className="public-result-eyebrow">Servicio completo</span>
-        <h3>Opciones pensadas para disfrutar el evento</h3>
-        <p>
-          Revisa todas las alternativas. Elegir un paquete es opcional y solo expresa tu
-          preferencia para continuar la conversación.
-        </p>
+        <h3>Nosotros nos encargamos, tú solo disfrutas</h3>
+        <p>Explora nuestros paquetes o cuéntanos tu idea.</p>
       </div>
       {preferenceError ? <p className="warning-message" role="alert">{preferenceError}</p> : null}
       <PackageSelector
         catalog={calculo}
+        isSaving={isSavingPreference}
         onClearSelection={onClearPackage}
-        onConsult={onPackageConsult}
+        onSelect={onPackageSelect}
         selectedId={selectedPackageId}
-        whatsappActions={whatsapp?.paquetes}
       />
-      <div className="public-general-help">
-        <p>¿Todavía estás comparando? Podemos orientarte según tu evento y prioridades.</p>
-        <WhatsappLink action={whatsapp?.principal} />
-      </div>
+      <WhatsappCta action={whatsapp?.principal} />
     </div>
   )
 }
@@ -181,74 +238,66 @@ function formatRange(desde, hasta) {
 function NoEstoySeguroResult({ calculo, whatsapp }) {
   const alquiler = calculo.alquiler ?? {}
   const servicio = calculo.servicio_completo ?? {}
-  const presentacionAlquiler = alquiler.presentacion ?? {}
   return (
-    <div className="public-result-mode">
+    <div className="public-result-mode public-comparison-result">
       <div className="public-result-section-heading">
-        <span className="public-result-eyebrow">Comparación breve</span>
-        <h3>Dos caminos posibles para tu evento</h3>
-        <p>Puedes conversar con nosotros sobre cualquiera de las dos opciones sin decidir ahora.</p>
+        <span className="public-result-eyebrow">Explora con libertad</span>
+        <h3>Cualquier camino es posible para tu evento</h3>
+        <p>Conversa con nosotros y empecemos a personalizar tu propuesta.</p>
       </div>
-      <div className="comparison-public-grid comparison-public-grid--wide">
-        <article className="comparison-public-card">
-          <div className="comparison-public-card__heading">
-            <span aria-hidden="true"><Building2 size={20} /></span>
-            <div>
-              <small>Más libertad para organizar</small>
-              <h4>Solo alquiler</h4>
-            </div>
-          </div>
-          <p>Para quienes ya cuentan con proveedores o desean gestionar el evento por su cuenta.</p>
-          <div className="comparison-public-card__total">
-            <small>Estimación según tus invitados</small>
-            <strong>{formatCurrency(alquiler.total_estimado)}</strong>
-          </div>
-          <TextList items={presentacionAlquiler.incluidos} />
-          <p className="comparison-public-card__notice">
-            Disponibilidad y fecha sujetas a confirmación.
-          </p>
-          <WhatsappLink action={whatsapp?.alternativas?.alquiler} />
-        </article>
 
-        <article className="comparison-public-card">
-          <div className="comparison-public-card__heading">
-            <span aria-hidden="true"><Sparkles size={20} /></span>
-            <div>
-              <small>Una propuesta integral</small>
-              <h4>Servicio completo</h4>
-            </div>
-          </div>
-          {(servicio.incluidos_en_todos ?? []).length ? (
-            <div>
-              <h5>Beneficios comunes</h5>
-              <TextList items={servicio.incluidos_en_todos.slice(0, 4)} />
-            </div>
-          ) : null}
-          <div className="comparison-category-list">
-            {(servicio.categorias ?? []).map((categoria) => (
-              <article key={categoria.categoria}>
-                <div>
-                  <strong>{categoria.categoria_display}</strong>
-                  <small>{categoria.resumen}</small>
-                </div>
-                <span>
-                  {formatRange(
-                    categoria.precio_por_persona_desde,
-                    categoria.precio_por_persona_hasta,
-                  )} / persona
-                </span>
-              </article>
-            ))}
-          </div>
-          <WhatsappLink action={whatsapp?.alternativas?.servicio_completo} />
-        </article>
-      </div>
+      <article className="comparison-public-card comparison-public-card--rental">
+        <div className="comparison-public-card__heading">
+          <span aria-hidden="true"><TreePine size={20} /></span>
+          <h4>Solo alquiler</h4>
+        </div>
+        <p>
+          Para quienes cuentan con su propio equipo o proveedores, o simplemente desean
+          organizar el evento por su cuenta.
+        </p>
+        <div className="comparison-public-card__total">
+          <small>Tu estimación</small>
+          <strong>{formatCurrency(alquiler.total_estimado)}</strong>
+        </div>
+        <RentalBreakdown calculo={alquiler} />
+      </article>
+
+      <BenefitsPanel
+        items={alquiler.beneficios_principales}
+        title="Beneficios comunes"
+      />
+
+      <article className="comparison-public-card comparison-public-card--service">
+        <div className="comparison-public-card__heading">
+          <span aria-hidden="true"><UtensilsCrossed size={20} /></span>
+          <h4>Servicio completo</h4>
+        </div>
+        <div className="comparison-category-list">
+          {(servicio.categorias ?? []).map((categoria) => (
+            <article key={categoria.categoria}>
+              <div>
+                <strong>{categoria.categoria_display}</strong>
+                {categoria.resumen ? <small>{categoria.resumen}</small> : null}
+              </div>
+              <span>
+                {formatRange(
+                  categoria.precio_por_persona_desde,
+                  categoria.precio_por_persona_hasta,
+                )} / persona
+              </span>
+            </article>
+          ))}
+        </div>
+      </article>
+
+      <WhatsappCta action={whatsapp?.principal} />
     </div>
   )
 }
 
 export function PreCotizacionResult({
   headingRef,
+  isSavingPreference,
   isStale,
   isSubmitting,
   onClearPackage,
@@ -265,7 +314,7 @@ export function PreCotizacionResult({
         {isSubmitting ? (
           <div className="public-result-loading" role="status">
             <LoadingState label="Preparando tus opciones y estimación" />
-            <p>Estamos consultando los valores y condiciones vigentes del negocio.</p>
+            <p>Estamos consultando los valores y beneficios vigentes.</p>
           </div>
         ) : isStale ? (
           <div className="public-result-stale" role="status">
@@ -275,8 +324,8 @@ export function PreCotizacionResult({
                 Tus opciones necesitan actualizarse
               </h2>
               <p>
-                Cambiaste información del evento. Confirma nuevamente para evitar mostrar
-                valores anteriores como vigentes.
+                Cambiaste información del evento. Confirma nuevamente para ver los valores
+                actualizados.
               </p>
             </div>
           </div>
@@ -285,23 +334,22 @@ export function PreCotizacionResult({
             <header className="public-result-card__heading">
               <div>
                 <span className="public-result-eyebrow">
-                  <CheckCircle2 aria-hidden="true" size={16} /> Solicitud registrada #{result.cotizacion.id}
+                  Pre-cotización #{result.cotizacion.id}
                 </span>
                 <h2 id="public-result-title" ref={headingRef} tabIndex="-1">
-                  Estas son tus opciones
+                  Tu evento, en un vistazo
                 </h2>
-                <p>Úsalas como referencia inicial y continúa la conversación por WhatsApp.</p>
               </div>
-              <UsersRound aria-hidden="true" size={34} />
             </header>
-            <ResultMeta cotizacion={result.cotizacion} />
+            <ResultSummaryBanner cotizacion={result.cotizacion} />
             {result.calculo.tipo_servicio === 'alquiler' ? (
               <AlquilerResult calculo={result.calculo} whatsapp={result.whatsapp} />
             ) : result.calculo.tipo_servicio === 'servicio_completo' ? (
               <ServicioCompletoResult
                 calculo={result.calculo}
+                isSavingPreference={isSavingPreference}
                 onClearPackage={onClearPackage}
-                onPackageConsult={onPackageConsult}
+                onPackageSelect={onPackageConsult}
                 preferenceError={preferenceError}
                 selectedPackageId={selectedPackageId}
                 whatsapp={result.whatsapp}
@@ -309,7 +357,6 @@ export function PreCotizacionResult({
             ) : (
               <NoEstoySeguroResult calculo={result.calculo} whatsapp={result.whatsapp} />
             )}
-            <EstimateNotice />
           </>
         )}
       </Card>

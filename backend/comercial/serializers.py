@@ -1,8 +1,10 @@
+import re
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from financiero.models import Contrato
@@ -19,7 +21,7 @@ from negocio.ofertas import (
 from negocio.persona_services import PersonaDuplicadaError, crear_persona
 from negocio.selectors import obtener_configuracion_activa
 from negocio.serializers import PersonaNuevaSerializer
-from negocio.validators import validate_phone
+from negocio.validators import normalizar_nombre_persona, normalizar_telefono
 
 from .models import Cotizacion
 
@@ -306,18 +308,49 @@ class CotizacionSerializer(serializers.ModelSerializer):
         return value
 
 
+class StrictPositiveIntegerField(serializers.IntegerField):
+    default_error_messages = {
+        "required": "Ingrese una cantidad válida de invitados.",
+        "null": "Ingrese una cantidad válida de invitados.",
+        "invalid": "Ingrese una cantidad válida de invitados.",
+        "min_value": "Ingrese una cantidad válida de invitados.",
+    }
+
+    def to_internal_value(self, data):
+        if isinstance(data, bool):
+            self.fail("invalid")
+        if isinstance(data, int):
+            value = data
+        elif isinstance(data, str) and re.fullmatch(r"\d+", data.strip()):
+            value = int(data.strip())
+        else:
+            self.fail("invalid")
+        if value < 1:
+            self.fail("min_value")
+        return value
+
+
 class PreCotizacionSerializer(serializers.Serializer):
     persona = serializers.IntegerField(required=False, write_only=True)
     nombre_persona = serializers.CharField(
         required=True,
         allow_blank=False,
         max_length=150,
+        error_messages={
+            "required": "Ingrese su nombre.",
+            "blank": "Ingrese su nombre.",
+            "max_length": "Ingrese su nombre.",
+        },
     )
     telefono_persona = serializers.CharField(
         required=True,
         allow_blank=False,
         max_length=30,
-        validators=[validate_phone],
+        error_messages={
+            "required": "Ingrese su teléfono para validar su solicitud.",
+            "blank": "Ingrese su teléfono para validar su solicitud.",
+            "max_length": "Ingrese su teléfono para validar su solicitud.",
+        },
     )
     correo_persona = serializers.EmailField(
         required=False,
@@ -332,15 +365,32 @@ class PreCotizacionSerializer(serializers.Serializer):
     )
     tipo_evento = serializers.PrimaryKeyRelatedField(
         queryset=TipoEvento.objects.filter(activo=True),
+        error_messages={
+            "required": "Seleccione un tipo de evento.",
+            "null": "Seleccione un tipo de evento.",
+            "does_not_exist": "Seleccione un tipo de evento.",
+            "incorrect_type": "Seleccione un tipo de evento.",
+        },
     )
     paquete = serializers.PrimaryKeyRelatedField(
         queryset=Paquete.objects.filter(activo=True),
         required=False,
         allow_null=True,
     )
-    fecha_tentativa = serializers.DateField()
-    numero_invitados = serializers.IntegerField(min_value=1)
-    tipo_servicio = serializers.ChoiceField(choices=Cotizacion.TipoServicioInteres.choices)
+    fecha_tentativa = serializers.DateField(
+        error_messages={
+            "required": "Seleccione una fecha válida.",
+            "invalid": "Seleccione una fecha válida.",
+        }
+    )
+    numero_invitados = StrictPositiveIntegerField()
+    tipo_servicio = serializers.ChoiceField(
+        choices=Cotizacion.TipoServicioInteres.choices,
+        error_messages={
+            "required": "Seleccione una modalidad.",
+            "invalid_choice": "Seleccione una modalidad.",
+        },
+    )
     observaciones = serializers.CharField(
         required=False,
         allow_blank=True,
@@ -370,18 +420,30 @@ class PreCotizacionSerializer(serializers.Serializer):
             "El flujo público no permite seleccionar personas existentes."
         )
 
+    def validate_nombre_persona(self, value):
+        try:
+            return normalizar_nombre_persona(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError("Ingrese su nombre.") from exc
+
+    def validate_telefono_persona(self, value):
+        try:
+            return normalizar_telefono(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                "Ingrese su teléfono para validar su solicitud."
+            ) from exc
+
+    def validate_fecha_tentativa(self, value):
+        if value < timezone.localdate():
+            raise serializers.ValidationError("Seleccione una fecha válida.")
+        return value
+
     def validate(self, attrs):
-        nombre_persona = (attrs.get("nombre_persona") or "").strip()
-        telefono_persona = (attrs.get("telefono_persona") or "").strip()
         paquete = attrs.get("paquete")
         tipo_servicio = attrs.get("tipo_servicio")
 
         errors = {}
-        if not nombre_persona:
-            errors["nombre_persona"] = "El nombre de la persona es obligatorio."
-        if not telefono_persona:
-            errors["telefono_persona"] = "El teléfono de la persona es obligatorio."
-
         if tipo_servicio == Cotizacion.TipoServicioInteres.ALQUILER and paquete:
             errors["paquete"] = "El alquiler del local no utiliza un paquete."
         if tipo_servicio == Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO and paquete:
@@ -391,8 +453,6 @@ class PreCotizacionSerializer(serializers.Serializer):
         if errors:
             raise serializers.ValidationError(errors)
 
-        attrs["nombre_persona"] = nombre_persona
-        attrs["telefono_persona"] = telefono_persona
         return attrs
 
 

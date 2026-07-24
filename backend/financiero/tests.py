@@ -214,7 +214,7 @@ class FinancieroApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["persona_telefono"], "+593 999999111")
+        self.assertEqual(response.data["persona_telefono"], "0999999111")
         self.assertEqual(response.data["estado_pago"], Contrato.EstadoPago.ABONADO)
         self.assertEqual(response.data["saldo_pendiente"], "1500.00")
 
@@ -556,7 +556,7 @@ class FinancieroApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item["id"] for item in response.data], [costo_objetivo.id])
         self.assertEqual(response.data[0]["persona_nombre"], "Persona API")
-        self.assertEqual(response.data[0]["persona_telefono"], "+593 999999111")
+        self.assertEqual(response.data[0]["persona_telefono"], "0999999111")
         self.assertEqual(response.data[0]["tipo_evento_nombre"], "Boda")
         self.assertEqual(
             response.data[0]["contrato_estado"],

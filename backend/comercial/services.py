@@ -127,6 +127,7 @@ def _snapshot_pre_cotizacion(
             numero_invitados=numero_invitados,
             total_estimado=calculo["total_estimado"],
             origen="formulario_publico",
+            beneficios_principales=calculo.get("beneficios_principales"),
         )
     if tipo_servicio == Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO:
         if paquete:
