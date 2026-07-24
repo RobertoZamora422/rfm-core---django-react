@@ -152,6 +152,9 @@ describe('PreCotizacionPage', () => {
 
     expect(eventHeading.compareDocumentPosition(modality) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(modality.compareDocumentPosition(contactHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(modality.querySelector('.lucide-tree-deciduous')).toBeInTheDocument()
+    expect(modality.querySelector('.lucide-hand-platter')).toBeInTheDocument()
+    expect(modality.querySelector('.lucide-signpost')).toBeInTheDocument()
     const dateInput = screen.getByLabelText(/Fecha tentativa/)
     expect(dateInput).toHaveAttribute('min', '2026-07-24')
 

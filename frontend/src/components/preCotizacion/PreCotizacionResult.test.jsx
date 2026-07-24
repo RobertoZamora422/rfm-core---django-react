@@ -15,6 +15,16 @@ const whatsapp = {
     etiqueta: 'Continuar por WhatsApp',
     url: 'https://wa.me/593991234567?text=Nombre%3A%20Ana',
   },
+  alternativas: {
+    alquiler: {
+      etiqueta: 'Quiero consultar el alquiler',
+      url: 'https://wa.me/593991234567?text=Modalidad%3A%20Solo%20alquiler',
+    },
+    servicio_completo: {
+      etiqueta: 'Quiero conocer los paquetes',
+      url: 'https://wa.me/593991234567?text=Modalidad%3A%20Servicio%20completo',
+    },
+  },
 }
 
 const rentalCalculation = {
@@ -118,6 +128,9 @@ describe('PreCotizacionResult', () => {
     expect(screen.getByText('Invitados adicionales')).toBeInTheDocument()
     expect(screen.getByText('Valor por invitado adicional')).toBeInTheDocument()
     expect(screen.getByText('Subtotal adicional')).toBeInTheDocument()
+    expect(
+      document.querySelector('.public-rental-result .lucide-tree-deciduous'),
+    ).toBeInTheDocument()
   })
 
   it('muestra todos los paquetes de servicio completo y permite continuar sin elegir', () => {
@@ -130,9 +143,12 @@ describe('PreCotizacionResult', () => {
     expect(screen.getByRole('heading', { name: 'VIP' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Elegir este paquete' })).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'Continuar por WhatsApp' })).toBeInTheDocument()
+    expect(
+      document.querySelector('.public-service-result .lucide-hand-platter'),
+    ).toBeInTheDocument()
   })
 
-  it('ordena alquiler, beneficios comunes, servicio completo y CTA al comparar', () => {
+  it('ordena beneficios, opciones comparativas y CTA usando las acciones del backend', () => {
     const comparison = {
       tipo_servicio: 'no_estoy_seguro',
       alquiler: rentalCalculation,
@@ -156,10 +172,31 @@ describe('PreCotizacionResult', () => {
     const service = screen.getByRole('heading', { name: 'Servicio completo' })
     const cta = screen.getByRole('heading', { name: '¿Necesitas ayuda para elegir?' })
 
-    expect(rental.compareDocumentPosition(benefits) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(benefits.compareDocumentPosition(service) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(benefits.compareDocumentPosition(rental) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(rental.compareDocumentPosition(service) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(service.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByText('Cualquier camino es posible para tu evento')).toBeInTheDocument()
+
+    const choicesGrid = rental.closest('.comparison-public-grid--choices')
+    expect(choicesGrid).toContainElement(service)
+    expect(
+      screen.getByRole('link', { name: 'Quiero consultar el alquiler' }),
+    ).toHaveAttribute('href', whatsapp.alternativas.alquiler.url)
+    expect(
+      screen.getByRole('link', { name: 'Quiero conocer los paquetes' }),
+    ).toHaveAttribute('href', whatsapp.alternativas.servicio_completo.url)
+    expect(
+      screen.getByRole('link', { name: 'Continuar por WhatsApp' }),
+    ).toHaveAttribute('href', whatsapp.principal.url)
+    expect(
+      document.querySelector('.public-comparison-result .lucide-signpost'),
+    ).toBeInTheDocument()
+    expect(
+      document.querySelector('.comparison-public-card--rental .lucide-tree-deciduous'),
+    ).toBeInTheDocument()
+    expect(
+      document.querySelector('.comparison-public-card--service .lucide-hand-platter'),
+    ).toBeInTheDocument()
   })
 
   it('mantiene la composición móvil completa sin errores de consola', () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AUTH_EXPIRED_EVENT,
   clearStoredAuth,
@@ -14,6 +14,18 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(storedAuth.user)
   const [token, setToken] = useState(storedAuth.token)
   const [isCheckingSession, setIsCheckingSession] = useState(Boolean(storedAuth.token))
+  const sessionVersionRef = useRef(0)
+  const activeTokenRef = useRef(storedAuth.token)
+
+  const invalidateSession = useCallback(() => {
+    sessionVersionRef.current += 1
+    activeTokenRef.current = null
+    clearStoredAuth()
+    setAuthToken(null)
+    setToken(null)
+    setUser(null)
+    setIsCheckingSession(false)
+  }, [])
 
   useEffect(() => {
     setAuthToken(token)
@@ -21,37 +33,38 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleExpiredSession = () => {
-      setToken(null)
-      setUser(null)
-      setIsCheckingSession(false)
+      invalidateSession()
     }
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpiredSession)
-  }, [])
+  }, [invalidateSession])
 
   useEffect(() => {
-    if (!token) {
+    if (!token || activeTokenRef.current !== token) {
       return
     }
 
     let isActive = true
+    const requestVersion = sessionVersionRef.current
+    const canCommit = () => (
+      isActive
+      && sessionVersionRef.current === requestVersion
+      && activeTokenRef.current === token
+    )
 
     meRequest()
       .then((currentUser) => {
-        if (!isActive) return
+        if (!canCommit()) return
         setUser(currentUser)
         setStoredAuth({ token, user: currentUser })
       })
       .catch(() => {
-        if (!isActive) return
-        clearStoredAuth()
-        setAuthToken(null)
-        setToken(null)
-        setUser(null)
+        if (!canCommit()) return
+        invalidateSession()
       })
       .finally(() => {
-        if (isActive) {
+        if (canCommit()) {
           setIsCheckingSession(false)
         }
       })
@@ -59,10 +72,19 @@ export function AuthProvider({ children }) {
     return () => {
       isActive = false
     }
-  }, [token])
+  }, [invalidateSession, token])
 
   const login = useCallback(async ({ username, password }) => {
+    const operationVersion = sessionVersionRef.current + 1
+    sessionVersionRef.current = operationVersion
+    activeTokenRef.current = null
     const response = await loginRequest({ username, password })
+
+    if (sessionVersionRef.current !== operationVersion) {
+      throw new Error('La operación de autenticación fue invalidada.')
+    }
+
+    activeTokenRef.current = response.auth.token
     setStoredAuth({
       token: response.auth.token,
       user: response.user,
@@ -74,17 +96,15 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(async () => {
+    const logoutPromise = logoutRequest()
+    invalidateSession()
+
     try {
-      await logoutRequest()
+      await logoutPromise
     } catch {
       // El cierre local debe funcionar aunque el servidor ya no esté disponible.
-    } finally {
-      clearStoredAuth()
-      setAuthToken(null)
-      setToken(null)
-      setUser(null)
     }
-  }, [])
+  }, [invalidateSession])
 
   const value = useMemo(
     () => ({

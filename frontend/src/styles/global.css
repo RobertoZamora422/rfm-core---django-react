@@ -1727,7 +1727,15 @@ a {
   box-shadow: 0 8px 20px rgba(35, 122, 77, 0.14);
   color: #ffffff;
   min-height: 48px;
+  white-space: normal;
   width: 100%;
+}
+
+.whatsapp-link span {
+  overflow: visible;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .whatsapp-link:hover {
@@ -2886,58 +2894,6 @@ a {
   }
 }
 
-.not-found-page {
-  align-items: center;
-  background:
-    radial-gradient(circle at top left, rgba(192, 165, 111, 0.16), transparent 34rem),
-    var(--rfm-ivory);
-  display: flex;
-  justify-content: center;
-  min-height: 100vh;
-  padding: clamp(1.25rem, 4vw, 3rem);
-}
-
-.not-found-card {
-  background: var(--rfm-paper);
-  border: 1px solid var(--rfm-line);
-  border-radius: 1.5rem;
-  box-shadow: var(--rfm-shadow);
-  max-width: 40rem;
-  padding: clamp(2rem, 6vw, 4rem);
-  text-align: center;
-}
-
-.not-found-card__code {
-  color: var(--rfm-gold-700);
-  display: block;
-  font-family: Georgia, serif;
-  font-size: clamp(4rem, 13vw, 7rem);
-  font-weight: 700;
-  line-height: 0.85;
-  margin-bottom: 1.5rem;
-}
-
-.not-found-card h1 {
-  color: var(--rfm-forest-950);
-  font-size: clamp(2rem, 5vw, 3rem);
-  margin: 0.4rem 0 0.8rem;
-}
-
-.not-found-card > p:last-of-type {
-  color: var(--rfm-muted);
-  line-height: 1.65;
-  margin: 0 auto;
-  max-width: 32rem;
-}
-
-.not-found-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: center;
-  margin-top: 2rem;
-}
-
 /* Public pre-quote: progressive vertical flow and post-submit results */
 .public-form-card {
   margin-inline: auto;
@@ -3194,13 +3150,21 @@ a {
   grid-template-columns: auto minmax(0, 1fr) auto auto auto;
 }
 
-.comparison-public-grid--wide {
+.comparison-public-grid--choices {
+  align-items: stretch;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.comparison-public-card {
+.public-comparison-result .comparison-public-card {
   align-content: start;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: clamp(1rem, 2.4vw, 1.35rem);
+}
+
+.public-comparison-result .comparison-public-card > .whatsapp-link {
+  margin-top: auto;
 }
 
 .comparison-public-card__heading > div {
@@ -3224,13 +3188,6 @@ a {
   color: var(--color-text-muted);
   line-height: 1.5;
   margin: 0;
-}
-
-.comparison-public-card__notice {
-  background: var(--color-cream);
-  border-radius: 0.65rem;
-  font-size: 0.82rem;
-  padding: 0.7rem;
 }
 
 .comparison-category-list {
@@ -3277,7 +3234,7 @@ a {
 
   .public-result-hero,
   .public-rental-grid,
-  .comparison-public-grid--wide {
+  .comparison-public-grid--choices {
     grid-template-columns: 1fr;
   }
 

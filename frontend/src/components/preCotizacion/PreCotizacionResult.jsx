@@ -1,25 +1,20 @@
 import {
   CalendarDays,
   Check,
-  Compass,
   Gift,
   MessageCircle,
   PartyPopper,
   RefreshCw,
-  TreePine,
   UsersRound,
-  UtensilsCrossed,
 } from 'lucide-react'
+import {
+  getPreCotizacionMode,
+  PRE_COTIZACION_MODES,
+} from '../../config/preCotizacionModes'
 import { formatCurrency, formatDate } from '../../utils/formatters'
 import { Card } from '../ui/Card'
 import { LoadingState } from '../ui/LoadingState'
 import { PackageSelector } from './PackageSelector'
-
-const serviceLabels = {
-  alquiler: 'Solo alquiler',
-  servicio_completo: 'Servicio completo',
-  no_estoy_seguro: 'No estoy seguro',
-}
 
 function WhatsappLink({ action, className = '', label }) {
   if (!action?.url) {
@@ -60,12 +55,18 @@ function WhatsappCta({ action }) {
   )
 }
 
+function ModeEyebrow({ mode }) {
+  const Icon = mode.icon
+  return (
+    <span className="public-result-eyebrow">
+      <Icon aria-hidden="true" size={17} />
+      <span>{mode.label}</span>
+    </span>
+  )
+}
+
 function ResultSummaryBanner({ cotizacion }) {
-  const serviceIcons = {
-    alquiler: TreePine,
-    servicio_completo: UtensilsCrossed,
-    no_estoy_seguro: Compass,
-  }
+  const serviceMode = getPreCotizacionMode(cotizacion.tipo_servicio)
   const items = [
     {
       icon: PartyPopper,
@@ -83,9 +84,9 @@ function ResultSummaryBanner({ cotizacion }) {
       value: `${cotizacion.numero_invitados} invitados`,
     },
     {
-      icon: serviceIcons[cotizacion.tipo_servicio] ?? Compass,
+      icon: serviceMode.icon,
       label: 'Modalidad elegida',
-      value: serviceLabels[cotizacion.tipo_servicio],
+      value: serviceMode.label,
     },
   ]
 
@@ -175,11 +176,10 @@ function AlquilerResult({ calculo, whatsapp }) {
     <div className="public-result-mode public-rental-result">
       <div className="public-result-hero">
         <div>
-          <span className="public-result-eyebrow">Solo alquiler</span>
+          <ModeEyebrow mode={PRE_COTIZACION_MODES.alquiler} />
           <h3>Esta opción es ideal para ti</h3>
           <p>
-            ¿Ya tienes tu propio equipo o planeas organizar el evento por tu cuenta? Entonces
-            Rancho Flor María puede ser el escenario de tu celebración.
+            ¿Ya tienes tu propio equipo o planeas organizar el evento por tu cuenta? Entonces...
           </p>
         </div>
         <div className="result-total">
@@ -195,7 +195,7 @@ function AlquilerResult({ calculo, whatsapp }) {
         />
         <RentalBreakdown calculo={calculo} />
       </div>
-      <WhatsappLink action={whatsapp?.principal} label="Continuar por WhatsApp" />
+      <WhatsappLink action={whatsapp?.principal} label="Consultar disponibilidad por WhatsApp" />
     </div>
   )
 }
@@ -212,7 +212,7 @@ function ServicioCompletoResult({
   return (
     <div className="public-result-mode public-service-result">
       <div className="public-result-section-heading">
-        <span className="public-result-eyebrow">Servicio completo</span>
+        <ModeEyebrow mode={PRE_COTIZACION_MODES.servicio_completo} />
         <h3>Nosotros nos encargamos, tú solo disfrutas</h3>
         <p>Explora nuestros paquetes o cuéntanos tu idea.</p>
       </div>
@@ -238,57 +238,63 @@ function formatRange(desde, hasta) {
 function NoEstoySeguroResult({ calculo, whatsapp }) {
   const alquiler = calculo.alquiler ?? {}
   const servicio = calculo.servicio_completo ?? {}
+  const RentalIcon = PRE_COTIZACION_MODES.alquiler.icon
+  const ServiceIcon = PRE_COTIZACION_MODES.servicio_completo.icon
   return (
     <div className="public-result-mode public-comparison-result">
       <div className="public-result-section-heading">
-        <span className="public-result-eyebrow">Explora con libertad</span>
+        <ModeEyebrow mode={PRE_COTIZACION_MODES.no_estoy_seguro} />
         <h3>Cualquier camino es posible para tu evento</h3>
         <p>Conversa con nosotros y empecemos a personalizar tu propuesta.</p>
       </div>
-
-      <article className="comparison-public-card comparison-public-card--rental">
-        <div className="comparison-public-card__heading">
-          <span aria-hidden="true"><TreePine size={20} /></span>
-          <h4>Solo alquiler</h4>
-        </div>
-        <p>
-          Para quienes cuentan con su propio equipo o proveedores, o simplemente desean
-          organizar el evento por su cuenta.
-        </p>
-        <div className="comparison-public-card__total">
-          <small>Tu estimación</small>
-          <strong>{formatCurrency(alquiler.total_estimado)}</strong>
-        </div>
-        <RentalBreakdown calculo={alquiler} />
-      </article>
 
       <BenefitsPanel
         items={alquiler.beneficios_principales}
         title="Beneficios comunes"
       />
 
-      <article className="comparison-public-card comparison-public-card--service">
-        <div className="comparison-public-card__heading">
-          <span aria-hidden="true"><UtensilsCrossed size={20} /></span>
-          <h4>Servicio completo</h4>
-        </div>
-        <div className="comparison-category-list">
-          {(servicio.categorias ?? []).map((categoria) => (
-            <article key={categoria.categoria}>
-              <div>
-                <strong>{categoria.categoria_display}</strong>
-                {categoria.resumen ? <small>{categoria.resumen}</small> : null}
-              </div>
-              <span>
-                {formatRange(
-                  categoria.precio_por_persona_desde,
-                  categoria.precio_por_persona_hasta,
-                )} / persona
-              </span>
-            </article>
-          ))}
-        </div>
-      </article>
+      <div className="comparison-public-grid comparison-public-grid--choices">
+        <article className="comparison-public-card comparison-public-card--rental">
+          <div className="comparison-public-card__heading">
+            <span aria-hidden="true"><RentalIcon size={20} /></span>
+            <h4>{PRE_COTIZACION_MODES.alquiler.label}</h4>
+          </div>
+          <p>
+            Para quienes cuentan con su propio equipo o proveedores, o simplemente desean
+            organizar el evento por su cuenta.
+          </p>
+          <div className="comparison-public-card__total">
+            <small>Tu estimación</small>
+            <strong>{formatCurrency(alquiler.total_estimado)}</strong>
+          </div>
+          <RentalBreakdown calculo={alquiler} />
+          <WhatsappLink action={whatsapp?.alternativas?.alquiler} />
+        </article>
+
+        <article className="comparison-public-card comparison-public-card--service">
+          <div className="comparison-public-card__heading">
+            <span aria-hidden="true"><ServiceIcon size={20} /></span>
+            <h4>{PRE_COTIZACION_MODES.servicio_completo.label}</h4>
+          </div>
+          <div className="comparison-category-list">
+            {(servicio.categorias ?? []).map((categoria) => (
+              <article key={categoria.categoria}>
+                <div>
+                  <strong>{categoria.categoria_display}</strong>
+                  {categoria.resumen ? <small>{categoria.resumen}</small> : null}
+                </div>
+                <span>
+                  {formatRange(
+                    categoria.precio_por_persona_desde,
+                    categoria.precio_por_persona_hasta,
+                  )} / persona
+                </span>
+              </article>
+            ))}
+          </div>
+          <WhatsappLink action={whatsapp?.alternativas?.servicio_completo} />
+        </article>
+      </div>
 
       <WhatsappCta action={whatsapp?.principal} />
     </div>

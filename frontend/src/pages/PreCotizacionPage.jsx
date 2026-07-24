@@ -3,14 +3,11 @@ import {
   ArrowRight,
   CalendarDays,
   ClipboardList,
-  Compass,
   PartyPopper,
   Phone,
   ShieldCheck,
-  TreePine,
   UserRound,
   UsersRound,
-  UtensilsCrossed,
 } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
 import { PreCotizacionResult } from '../components/preCotizacion/PreCotizacionResult'
@@ -20,6 +17,7 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { Input } from '../components/ui/Input'
 import { LoadingState } from '../components/ui/LoadingState'
 import { Select } from '../components/ui/Select'
+import { PRE_COTIZACION_MODE_OPTIONS } from '../config/preCotizacionModes'
 import { useFocusFirstError } from '../hooks/useFocusFirstError'
 import {
   crearPreCotizacion,
@@ -54,24 +52,6 @@ const invalidatingFields = new Set([
   'numero_invitados',
   'tipo_servicio',
 ])
-
-const serviceOptions = [
-  {
-    value: 'alquiler',
-    label: 'Solo alquiler',
-    icon: TreePine,
-  },
-  {
-    value: 'servicio_completo',
-    label: 'Servicio completo',
-    icon: UtensilsCrossed,
-  },
-  {
-    value: 'no_estoy_seguro',
-    label: 'No estoy seguro',
-    icon: Compass,
-  },
-]
 
 function buildPayload(form, solicitudToken) {
   return {
@@ -416,7 +396,7 @@ export function PreCotizacionPage() {
                 <span className="field__required" aria-hidden="true">*</span>
               </legend>
               <div className="service-options">
-                {serviceOptions.map((option) => (
+                {PRE_COTIZACION_MODE_OPTIONS.map((option) => (
                   <label
                     className={
                       option.value === form.tipo_servicio
