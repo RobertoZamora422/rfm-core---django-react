@@ -132,7 +132,7 @@ class LimpiarDatosOperativosCommandTests(TestCase):
             precio_por_persona=Decimal("25.00"),
         )
         persona = Persona.objects.create(nombre="Persona temporal", telefono="0991234567")
-        cotizacion = Cotizacion.objects.create(
+        Cotizacion.objects.create(
             persona=persona,
             tipo_evento=tipo_evento,
             paquete=paquete,

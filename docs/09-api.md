@@ -2,6 +2,11 @@
 
 Base local: `http://127.0.0.1:8000/api`.
 
+Base productiva: `https://rfm-core-backend.onrender.com/api`.
+
+La aplicación pública oficial es `https://ranchoflormaria.com`; la URL de
+Render es técnica y se usa solo como origen de API.
+
 ## Autenticación
 
 ```http

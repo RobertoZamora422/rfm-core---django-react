@@ -55,6 +55,8 @@ frontend/.vite/
 .coverage
 htmlcov/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 coverage/
 
 # IDEs and OS

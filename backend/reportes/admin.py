@@ -1,3 +1,1 @@
-from django.contrib import admin
-
-# Register your models here.
+"""Reportes no registra modelos propios en Django Admin."""

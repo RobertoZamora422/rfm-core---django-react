@@ -1,6 +1,6 @@
 # Estado actual de RFM Core
 
-Fecha de referencia: 23 de julio de 2026.
+Fecha de referencia: 30 de julio de 2026.
 
 ## Implementado
 
@@ -46,25 +46,33 @@ se crean explícitamente.
 - clasificación y conteos anotados;
 - evolución del dashboard consultada por rango en vez de repetir todo por mes;
 - índices compuestos sobre estados, fechas, pagos, soft delete y vigencias;
-- búsqueda remota con debounce y paginación administrativa opcional.
+- búsqueda remota con debounce y paginación administrativa opcional;
+- páginas administrativas cargadas por ruta con `React.lazy`: el build auditado
+  redujo el chunk inicial de 902,03 kB a 335,31 kB y aisló el dashboard con
+  Recharts en un chunk de 397,66 kB.
 
 ## Despliegue oficial
 
-- Cloudflare Pages: React/Vite.
-- Koyeb: Django/DRF y Gunicorn.
-- Neon: PostgreSQL con TLS.
-- GitHub: código y activación de despliegues.
-- GitHub Actions: validación de backend y frontend en push y pull request.
+- Cloudflare Registrar administra `ranchoflormaria.com`.
+- Cloudflare DNS, `Always Use HTTPS` y una regla 301 llevan HTTP y `www` al
+  dominio raíz, conservando ruta y query string.
+- Cloudflare Worker `ranchoflormaria` sirve React/Vite mediante Static Assets.
+- Render Web Service publica Django/DRF y Gunicorn en
+  `rfm-core-backend.onrender.com`.
+- Neon `rfm-core-production` aporta PostgreSQL 17 mediante URL pooled.
+- GitHub `main` activa CI, Cloudflare Workers Build y el despliegue de Render.
+- Cron-Job.org consulta `/api/health/` cada 10 minutos; no usa `/api/ready/`.
 
-El objetivo es $0/mes dentro de las cuotas gratuitas. Render solo pertenece al
-historial documental anterior.
+La infraestructura está desplegada y las migraciones ya fueron aplicadas. El
+objetivo sigue siendo USD 0 mensual fuera del dominio anual.
 
-## Pendiente operativo
+## Seguimiento operativo
 
-1. Crear proyecto y credenciales reales en Neon, Koyeb y Cloudflare.
-2. Aplicar migraciones con una conexión directa de Neon.
-3. Crear el administrador inicial y retirar su contraseña del entorno.
-4. Registrar configuración y catálogos reales.
-5. Ejecutar el recorrido de aceptación sobre las URLs productivas.
-6. Evaluar Recharts 3 en una tarea separada; la rama 2 está deprecada, aunque
-   la auditoría npm actual no reporta vulnerabilidades.
+1. Mantener sincronizadas las variables de Cloudflare y Render con los ejemplos
+   versionados, sin copiar valores secretos.
+2. Probar respaldos lógicos y recuperación en una base aislada.
+3. Revisar CI y despliegues automáticos después de cada cambio en `main`.
+4. Evaluar Recharts 3 en una tarea separada: la versión 2.15.4 está deprecada,
+   pero una migración mayor requiere pruebas visuales y de gráficos.
+5. Retirar servicios heredados solo después de confirmar que no reciben tráfico
+   ni conservan automatizaciones necesarias.

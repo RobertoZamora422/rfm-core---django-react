@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+"""Reportes se construye sobre datos de otros módulos."""

@@ -24,12 +24,13 @@
 - consultas relacionadas y agregaciones en ORM;
 - dashboard de seis periodos consolidado por rango;
 - índices para filtros financieros y comerciales frecuentes;
-- búsqueda remota, debounce y paginación.
+- búsqueda remota, debounce y paginación;
+- code splitting por ruta administrativa, incluido el dashboard con Recharts.
 
 ### Frontend y UX
 
 - composición visual Rancho Flor María;
-- navegación protegida, ruta 404 y cierre local sin red;
+- navegación protegida, alias `/dashboard`, fallback público y cierre local sin red;
 - estados de carga, error, vacío, reintento y envío;
 - tablas que cambian a cards/listas en móvil;
 - labels, foco visible, modales con trampa/restauración de foco y reduced motion;
@@ -37,10 +38,14 @@
 
 ### Despliegue
 
-- Cloudflare Pages: `_redirects`, `_headers`, Node fijado y build `dist`;
-- Koyeb: Python fijado, Procfile, Gunicorn, logging, staticfiles y readiness;
-- Neon: SSL, conexión saludable y compatibilidad con pooler;
-- ejemplos de entorno y documentación sin Render como opción vigente.
+- Cloudflare Workers Static Assets: Wrangler versionado, fallback SPA,
+  `_headers`, Node fijado y URLs técnicas desactivadas;
+- Render: Python fijado, Procfile, Gunicorn, logging, staticfiles, health y
+  readiness separados;
+- Neon: PostgreSQL 17, TLS, URL pooled de runtime y directa para administración;
+- GitHub: CI y despliegues automáticos desde `main`;
+- Cron-Job.org: health cada 10 minutos sin despertar Neon;
+- documentación y ejemplos alineados con `ranchoflormaria.com`.
 
 ## Convenciones
 
@@ -76,5 +81,5 @@ pages -> tareas del usuario
 
 - auditoría inmutable de eventos, si se define el nivel de trazabilidad;
 - segundo factor o identidad externa, si cambia el riesgo operativo;
-- cache/throttling compartido, si Koyeb escala a varias instancias;
+- cache/throttling compartido, si Render escala a varias instancias;
 - importación masiva, cuando existan datos y reglas de conciliación reales.

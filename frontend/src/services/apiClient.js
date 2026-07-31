@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL
+const envApiBaseUrl = import.meta.env.VITE_API_BASE_URL
 
 if (import.meta.env.PROD && !envApiBaseUrl) {
   throw new Error('VITE_API_BASE_URL es obligatoria para compilar el frontend en produccion.')

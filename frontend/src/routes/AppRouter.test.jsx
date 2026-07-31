@@ -79,4 +79,15 @@ describe('AppRouter', () => {
       screen.getByRole('heading', { name: 'Acceso administrativo' }),
     ).toBeInTheDocument()
   })
+
+  it('mantiene /dashboard como alias protegido del dashboard financiero', async () => {
+    renderRouter('/dashboard')
+
+    await waitFor(() => {
+      expect(screen.getByTestId('current-path')).toHaveTextContent('/login')
+    })
+    expect(
+      screen.getByRole('heading', { name: 'Acceso administrativo' }),
+    ).toBeInTheDocument()
+  })
 })

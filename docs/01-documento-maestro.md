@@ -1,7 +1,8 @@
 # Documento Maestro del Sistema
 
-> Estado: implementado y vigente al 23 de julio de 2026. La arquitectura
-> productiva oficial es Cloudflare Pages, Koyeb y Neon PostgreSQL.
+> Estado: implementado y vigente al 30 de julio de 2026. La arquitectura
+> productiva oficial es Cloudflare Workers Static Assets, Render Web Service y
+> Neon PostgreSQL bajo `https://ranchoflormaria.com`.
 
 ## Propósito
 
@@ -65,3 +66,15 @@ El sidebar muestra `Personas`. La pantalla se titula `Clientes & Interesados`, c
 ## Datos iniciales
 
 Una instalación limpia no inserta datos operativos. Los usuarios, la configuración y los catálogos reales se crean explícitamente. No se ejecutan fixtures ni semillas demo al migrar o desplegar.
+
+## Plataforma productiva
+
+El usuario entra por Cloudflare DNS/HTTPS al dominio raíz. El Worker entrega la
+SPA y esta consume la API Django alojada en Render; Django conserva la lógica y
+persiste en Neon. GitHub `main` dispara despliegues automáticos y Cron-Job.org
+mantiene activo Render mediante el health check sin consultar la base.
+
+Cloudflare gestiona por panel el dominio personalizado, la redirección 301 de
+`www` y `Always Use HTTPS`. Esas reglas no se simulan con archivos del
+repositorio. Las credenciales, los datos personales y la información de
+facturación nunca forman parte de esta documentación.

@@ -15,22 +15,28 @@ El backend es la fuente de verdad para identidad, estados, autorizaciones y
 cálculos financieros. React presenta los datos y mejora la interacción, pero no
 recalcula reglas críticas.
 
-Arquitectura oficial:
+Arquitectura productiva definitiva:
 
 ```text
-GitHub
-  |-- Cloudflare Pages: React/Vite
-  |        |
-  |        `-- HTTPS -> Koyeb: Django/DRF + Gunicorn
-  |                         |
-  |                         `-- TLS -> Neon PostgreSQL
+Usuario
+  -> Cloudflare DNS, HTTPS y redirecciones
+  -> https://ranchoflormaria.com
+  -> Cloudflare Workers Static Assets (React/Vite)
+  -> https://rfm-core-backend.onrender.com/api (Django/DRF en Render)
+  -> Neon PostgreSQL
 ```
 
-- Frontend: Cloudflare Pages.
-- Backend: Koyeb.
-- Base de datos: Neon PostgreSQL.
-- Código y despliegues: GitHub.
-- Objetivo: $0/mes dentro de los límites gratuitos vigentes de cada proveedor.
+- Dominio y registrador: Cloudflare Registrar administra `ranchoflormaria.com`.
+- Dominio canónico: `https://ranchoflormaria.com`.
+- `www` redirige con 301 a la raíz conservando ruta y query string.
+- Cloudflare fuerza HTTP a HTTPS mediante `Always Use HTTPS`.
+- Frontend: Worker `ranchoflormaria`, Static Assets y dominio personalizado.
+- Backend: Render Web Service en `rfm-core-backend.onrender.com`.
+- Base: proyecto Neon `rfm-core-production`, PostgreSQL 17 en AWS `us-east-1`;
+  runtime mediante URL pooled.
+- Código: GitHub; `main` activa los despliegues automáticos.
+- Disponibilidad: Cron-Job.org consulta `/api/health/` cada 10 minutos.
+- Costo objetivo: USD 0 mensual fuera de la renovación anual del dominio.
 
 No existe dependencia de archivos persistentes en el contenedor. SQLite se
 reserva para desarrollo y pruebas; producción exige PostgreSQL.
@@ -54,7 +60,8 @@ reserva para desarrollo y pruebas; producción exige PostgreSQL.
 
 - Python 3.13.7, Django 5.2.16, Django REST Framework y Gunicorn.
 - PostgreSQL/Neon en producción; SQLite en local.
-- React 19, Vite 8, React Router, Axios, Recharts y Lucide.
+- React 19, Vite 8, React Router 8, Axios, Recharts y Lucide.
+- Cloudflare Vite plugin y Wrangler 4 para Workers Static Assets.
 - CSS propio con identidad visual de Rancho Flor María.
 - Pruebas Django y Vitest/Testing Library.
 
@@ -79,7 +86,7 @@ docs/             documentación funcional y técnica
 ## Requisitos
 
 - Python 3.13 compatible.
-- Node.js 22 y npm 10.
+- Node.js 22.23.1 y npm 10.
 - Git.
 - PostgreSQL solo si se desea reproducir el entorno productivo.
 
@@ -117,11 +124,11 @@ Backend:
 |---|---|
 | `DJANGO_SECRET_KEY` | secreto largo; obligatorio en producción |
 | `DJANGO_DEBUG` | `False` en producción |
-| `DJANGO_ALLOWED_HOSTS` | host de Koyeb, sin esquema |
-| `DATABASE_URL` | URL PostgreSQL de Neon |
-| `CORS_ALLOWED_ORIGINS` | orígenes HTTPS exactos de Cloudflare |
+| `DJANGO_ALLOWED_HOSTS` | `rfm-core-backend.onrender.com`, sin esquema |
+| `DATABASE_URL` | URL pooled de Neon para el runtime |
+| `CORS_ALLOWED_ORIGINS` | `https://ranchoflormaria.com` |
 | `CSRF_TRUSTED_ORIGINS` | orígenes confiables con esquema |
-| `FRONTEND_PUBLIC_URL` | URL pública del frontend |
+| `FRONTEND_PUBLIC_URL` | `https://ranchoflormaria.com` |
 | `AUTH_TOKEN_TTL_HOURS` | vigencia del token; 24 por defecto |
 | `THROTTLE_*` | límites del login y escrituras públicas |
 | `DATABASE_CONN_MAX_AGE` | reutilización de conexión; 60 s por defecto |
@@ -229,7 +236,8 @@ npm ci
 npm test
 npm run lint
 npm run build
-npm audit --omit=dev
+npm audit
+npx wrangler deploy --dry-run
 
 cd ..
 git diff --check
@@ -249,60 +257,101 @@ No se editan migraciones ya aplicadas. El flujo es:
 .\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
 ```
 
-Antes de producción se valida desde una base vacía y sobre una copia o rama de
-Neon. Las migraciones deben usar el endpoint directo de Neon, no el pooler
-transaccional, y ejecutarse como una única tarea antes de iniciar tráfico.
+Las migraciones productivas vigentes ya están aplicadas. Una migración nueva
+debe probarse primero desde una base vacía y sobre una rama restaurable de Neon.
+Se ejecuta una sola vez desde Render Shell o un entorno administrativo,
+reemplazando temporalmente `DATABASE_URL` por la conexión directa de Neon. No se
+incluye `migrate` en build, deploy ni Gunicorn y no se usa `--fake`.
 
 ## Despliegue oficial
 
-### 1. Neon
+### Flujo automático del frontend
 
-1. Crear proyecto, rol y base PostgreSQL.
-2. Conservar dos URLs secretas: directa para migraciones y `-pooler` para runtime.
-3. Usar `sslmode=require`; no versionar ninguna URL.
-4. Aplicar migraciones una vez con la URL directa.
+```text
+GitHub main
+  -> Cloudflare Workers Build
+  -> npm ci
+  -> npm run build
+  -> npx wrangler deploy
+```
 
-### 2. Koyeb
+Configuración de Cloudflare:
 
-- GitHub repository y branch de producción.
-- Work directory: `backend`.
-- Builder: buildpack.
-- Build command: `python manage.py collectstatic --noinput`.
-- Run command: el contenido de `backend/Procfile`.
-- Health check HTTP: `/api/ready/`.
-- Puerto: variable `PORT` proporcionada por Koyeb.
-- Variables: las descritas en `backend/.env.example`.
-
-Ejecutar migraciones como tarea única con la URL directa. No se incluyen en el
-comando Gunicorn para evitar carreras entre workers. Después, ejecutar
-`create_admin_from_env` una vez y retirar la contraseña del entorno si la
-plataforma y el procedimiento operativo lo permiten.
-
-### 3. Cloudflare Pages
-
-- Repository: el mismo GitHub.
+- Worker: `ranchoflormaria`.
 - Root directory: `frontend`.
-- Install: `npm ci`.
+- Production branch: `main`.
 - Build: `npm run build`.
-- Output: `dist`.
-- Variable: `VITE_API_BASE_URL=https://<koyeb-host>/api`.
+- Deploy: `npx wrangler deploy`.
+- Non-production version: `npx wrangler versions upload`.
+- Variables de compilación: `VITE_API_BASE_URL` y `VITE_API_TIMEOUT_MS`.
+- Dominio personalizado y reglas de redirección: administrados en el panel.
 
-`frontend/public/_redirects` preserva las rutas de React al recargar y
-`frontend/public/_headers` añade cabeceras defensivas básicas.
+`frontend/wrangler.jsonc` es la fuente versionada. Mantiene
+`assets.not_found_handling: single-page-application`, `workers_dev: false` y
+`preview_urls: false`. El dominio personalizado permanece en el panel para no
+duplicar la ruta en el repositorio. `public/_redirects` no existe y no debe
+regenerarse; `public/_headers` sí es compatible con Static Assets.
 
-### 4. Dominios y CORS
+### Render
 
-Primero desplegar Koyeb, después configurar su URL en Cloudflare y finalmente
-registrar el dominio real de Cloudflare en `CORS_ALLOWED_ORIGINS`,
-`CSRF_TRUSTED_ORIGINS` y `FRONTEND_PUBLIC_URL`. Todo el tráfico productivo debe
-usar HTTPS.
+- Tipo: Web Service conectado a GitHub y rama `main`.
+- Root directory: `backend`.
+- Python: `backend/.python-version`.
+- Build seguro: instalar `requirements.txt` y ejecutar `collectstatic`; no
+  ejecutar migraciones automáticamente.
+- Start: comando Gunicorn de `backend/Procfile`; Render aporta `PORT`.
+- Health check del servicio: `/api/health/`.
+- Readiness manual o diagnóstica: `/api/ready/`.
+- Variables: las descritas en `backend/.env.example`, almacenadas en Render.
 
-### 5. GitHub
+`DJANGO_ALLOWED_HOSTS` contiene únicamente el host técnico del backend.
+`CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` y `FRONTEND_PUBLIC_URL` usan
+`https://ranchoflormaria.com`; no se añaden HTTP ni `www`.
 
-`.github/workflows/ci.yml` ejecuta checks, migraciones pendientes, 158 pruebas
-backend, pruebas frontend, lint y build en cada pull request y push a `main`.
-Cloudflare y Koyeb deben conectarse al mismo repositorio después de que CI quede
-verde.
+### Neon
+
+- Proyecto: `rfm-core-production`, PostgreSQL 17, AWS N. Virginia.
+- Runtime: URL pooled secreta con TLS.
+- Migraciones, `pg_dump` y `pg_restore`: URL directa secreta.
+- Ninguna credencial ni cadena de conexión se guarda en Git.
+
+### Cron-Job.org
+
+```text
+Cada 10 minutos
+  -> GET https://rfm-core-backend.onrender.com/api/health/
+  -> mantiene activo el proceso de Render sin consultar PostgreSQL
+```
+
+No cambiar el cron a `/api/ready/`: readiness ejecuta `SELECT 1` y despertaría
+Neon innecesariamente.
+
+### GitHub
+
+`.github/workflows/ci.yml` ejecuta checks, migraciones pendientes, la suite
+backend completa, pruebas frontend, lint y build en pull requests y en `main`.
+Cloudflare y Render consumen el mismo repositorio. Los despliegues productivos
+solo se aceptan después de CI verde.
+
+## Respaldo y recuperación
+
+1. Antes de una migración o cambio de alto riesgo, confirmar el restore window
+   disponible en el plan actual de Neon y crear una rama restaurable.
+2. Generar periódicamente un `pg_dump` con la URL directa; cifrarlo, almacenarlo
+   fuera del repositorio y limitar su acceso. Nunca usar el endpoint pooled.
+3. Verificar el respaldo mediante `pg_restore --list` y una restauración de
+   ensayo en una base aislada.
+4. Ante una pérdida, detener escrituras, elegir recuperación temporal de Neon o
+   restaurar el último dump, validar conteos/FK y recién entonces cambiar
+   `DATABASE_URL`.
+5. Rotar credenciales expuestas y comprobar `/api/ready/`, login y recorridos
+   críticos. No copiar datos personales ni credenciales a documentos o tickets.
+
+Servicios que deben conservarse: Cloudflare Registrar/DNS/Worker, Render Web
+Service, Neon, GitHub y Cron-Job.org. Pueden eliminarse, después de comprobar
+que no tienen tráfico ni automatizaciones activas, los antiguos proyectos de
+Cloudflare Pages, Render Static Site, Koyeb, Render PostgreSQL y cualquier
+frontend técnico anterior. La URL técnica de Render del backend sí se conserva.
 
 ## Problemas comunes
 
@@ -310,7 +359,8 @@ verde.
 - `403`: el usuario existe pero no tiene `is_staff=True`.
 - Error CORS: el origen debe coincidir exactamente, sin ruta ni slash sobrante.
 - Build Vite falla: falta `VITE_API_BASE_URL` en el entorno de producción.
-- Koyeb no queda ready: comprobar `DATABASE_URL`, TLS, migraciones y `/api/ready/`.
+- Render no responde: comprobar deploy, `PORT`, Procfile y `/api/health/`.
+- Readiness devuelve 503: comprobar Neon, URL pooled, TLS y migraciones.
 - `DisallowedHost`: añadir solo el hostname real a `DJANGO_ALLOWED_HOSTS`.
 - Manifest de estáticos: ejecutar `collectstatic` antes de Gunicorn.
 

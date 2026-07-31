@@ -11,7 +11,7 @@ from .models import (
     Persona,
     TipoEvento,
 )
-from .ofertas import presentacion_paquete, serializar_paquete
+from .ofertas import presentacion_paquete
 from .persona_services import (
     PersonaDuplicadaError,
     actualizar_persona,
@@ -445,33 +445,6 @@ class PaqueteSerializer(serializers.ModelSerializer):
         paquete = super().update(instance, validated_data)
         self._guardar_beneficios(paquete, beneficios)
         return paquete
-
-
-class PublicPaqueteSerializer(serializers.ModelSerializer):
-    categoria_display = serializers.CharField(
-        source="get_categoria_display",
-        read_only=True,
-    )
-    beneficios = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Paquete
-        fields = [
-            "id",
-            "nombre",
-            "categoria",
-            "categoria_display",
-            "orden",
-            "resumen_corto",
-            "etiqueta_comercial",
-            "destacado",
-            "precio_por_persona",
-            "beneficios",
-        ]
-        read_only_fields = fields
-
-    def get_beneficios(self, obj):
-        return serializar_paquete(obj)["beneficios"]
 
 
 class ConfiguracionNegocioSerializer(serializers.ModelSerializer):

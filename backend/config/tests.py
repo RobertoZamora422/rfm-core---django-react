@@ -36,14 +36,14 @@ class HealthCheckTests(TestCase):
         )
         self.assertEqual(data["frontend"], "http://localhost:5173")
 
-    @override_settings(FRONTEND_PUBLIC_URL="https://rfm-core-frontend.onrender.com")
+    @override_settings(FRONTEND_PUBLIC_URL="https://ranchoflormaria.com")
     def test_backend_root_usa_frontend_public_url_configurable(self):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["frontend"], "https://rfm-core-frontend.onrender.com")
+        self.assertEqual(data["frontend"], "https://ranchoflormaria.com")
         self.assertEqual(
             data["public_precotizacion"],
-            "https://rfm-core-frontend.onrender.com/pre-cotizacion",
+            "https://ranchoflormaria.com/pre-cotizacion",
         )

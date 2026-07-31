@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+"""Accounts usa el modelo de usuario integrado de Django."""

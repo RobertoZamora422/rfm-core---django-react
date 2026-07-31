@@ -1,7 +1,8 @@
 # Diseño UI/UX
 
-> Estado: implementado y vigente. La ruta desconocida muestra una salida 404
-> comprensible y la sesión puede cerrarse localmente aunque falle la red.
+> Estado: implementado y vigente. Las rutas desconocidas vuelven a la
+> pre-cotización pública y la sesión puede cerrarse localmente aunque falle la
+> red.
 
 ## Identidad
 
@@ -15,6 +16,10 @@ El flujo público no muestra navegación administrativa. El panel protegido orga
 - Comercial: Personas, Cotizaciones, Contratos, Tipos de evento y Paquetes;
 - Finanzas: Dashboard, Costos directos, Gastos y Reportes;
 - Configuración.
+
+`/dashboard` se conserva como alias protegido de `/dashboard-financiero` para
+que los enlaces operativos y las recargas directas no terminen en el flujo
+público.
 
 ## Personas
 

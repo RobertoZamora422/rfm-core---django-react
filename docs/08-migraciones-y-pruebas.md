@@ -9,13 +9,18 @@ Secuencia:
 
 1. revisar `migrate --plan`;
 2. migrar SQLite temporal desde cero;
-3. migrar una copia o rama de Neon con endpoint directo;
-4. comparar conteos, claves y restricciones;
-5. ejecutar `makemigrations --check --dry-run`;
-6. respaldar o exportar antes de producción.
+3. crear un respaldo y una rama restaurable de Neon;
+4. migrar esa rama con endpoint directo;
+5. comparar conteos, claves y restricciones;
+6. ejecutar `makemigrations --check --dry-run`;
+7. programar la aplicación productiva como una única tarea administrativa.
 
 El endpoint pooler es para runtime. Migraciones y `pg_dump` usan la conexión
 directa. `migrate` no forma parte del comando de Gunicorn.
+
+La base productiva no se usa para pruebas, no se resetea y no recibe fixtures.
+Nunca se modifican migraciones ya aplicadas ni se usa `--fake` para sortear un
+error real.
 
 ## Backend
 
@@ -36,9 +41,12 @@ rutas protegidas y cierre local cuando la red falla.
 
 ```powershell
 cd frontend
+npm ci
 npm test
 npm run lint
 npm run build
+npm audit
+npx wrangler deploy --dry-run
 ```
 
 Las pruebas automatizadas no sustituyen el recorrido real en navegador ni la

@@ -23,7 +23,6 @@ from .serializers import (
     PaqueteSerializer,
     BeneficioPaqueteSerializer,
     PublicConfiguracionNegocioSerializer,
-    PublicPaqueteSerializer,
     PublicTipoEventoSerializer,
     TipoEventoSerializer,
 )

@@ -41,46 +41,98 @@ calendario aplique visualmente la misma regla diaria que valida el servidor.
 ## Arquitectura
 
 ```text
-GitHub -> Cloudflare Pages -> Koyeb -> Neon PostgreSQL
+Usuario
+  -> Cloudflare DNS, HTTPS y redirecciones
+  -> ranchoflormaria.com
+  -> Cloudflare Workers Static Assets
+  -> Render Web Service
+  -> Neon PostgreSQL
 ```
 
-### Cloudflare Pages
+```text
+GitHub main
+  -> Cloudflare Workers Build
+  -> npm ci
+  -> npm run build
+  -> npx wrangler deploy
+```
 
+### Cloudflare
+
+- Registrar: Cloudflare administra `ranchoflormaria.com`.
+- Worker: `ranchoflormaria`.
+- Dominio canónico: `https://ranchoflormaria.com`.
 - Root: `frontend`.
 - Install: `npm ci`.
 - Build: `npm run build`.
-- Output: `dist`.
+- Production deploy: `npx wrangler deploy`.
+- Non-production version: `npx wrangler versions upload`.
 - Node: `.node-version`.
-- Variable: `VITE_API_BASE_URL=https://<koyeb>.koyeb.app/api`.
-- SPA y headers: `frontend/public`.
+- Variables: `VITE_API_BASE_URL=https://rfm-core-backend.onrender.com/api` y
+  `VITE_API_TIMEOUT_MS=15000`.
+- SPA: `assets.not_found_handling: single-page-application`.
+- Headers: `frontend/public/_headers`.
+- URLs técnicas: `workers_dev: false` y `preview_urls: false`.
 
-### Koyeb
+La redirección HTTP→HTTPS (`Always Use HTTPS`), la redirección 301
+`www`→raíz y el dominio personalizado son configuración del panel. La
+redirección conserva ruta y query string. No existe `public/_redirects` porque
+la regla histórica de Pages entraba en bucle bajo Workers Static Assets.
 
+### Render
+
+- Servicio: `rfm-core-backend`.
+- URL: `https://rfm-core-backend.onrender.com`.
 - Work directory: `backend`.
-- Builder: buildpack.
-- Build: `python manage.py collectstatic --noinput`.
+- Build: instalar requirements y `python manage.py collectstatic --noinput`.
 - Run: `backend/Procfile`.
-- Health check: `/api/ready/`.
+- Health check: `/api/health/`.
+- Readiness: `/api/ready/`.
 - Entorno: `backend/.env.example`.
 
-El arranque no ejecuta migraciones para evitar carreras entre workers.
+El build y el arranque no ejecutan migraciones para evitar carreras entre
+workers. `DJANGO_ALLOWED_HOSTS` usa el host técnico; CORS, CSRF y
+`FRONTEND_PUBLIC_URL` usan únicamente el dominio raíz HTTPS.
+
+Cron-Job.org hace `GET /api/health/` cada 10 minutos. No debe apuntar a
+readiness, porque readiness consulta PostgreSQL.
 
 ### Neon
 
+- Proyecto: `rfm-core-production`.
+- Motor y región: PostgreSQL 17, AWS US East 1 / N. Virginia.
 - Runtime: URL `-pooler` con TLS.
 - Migraciones y exportaciones: URL directa.
 - Django: conexiones saludables, vida corta y cursores de servidor desactivados.
 
-Ejecutar como una sola tarea antes de tráfico:
+Las migraciones vigentes ya están aplicadas. Para una migración futura, ejecutar
+como una sola tarea controlada con respaldo previo:
 
 ```powershell
 cd backend
 $env:DATABASE_URL="<neon-direct-url>"
 .\.venv\Scripts\python.exe manage.py migrate
+```
+
+Para crear el superusuario inicial de forma idempotente:
+
+```powershell
+$env:DJANGO_SUPERUSER_USERNAME="<usuario>"
+$env:DJANGO_SUPERUSER_EMAIL="<correo>"
+$env:DJANGO_SUPERUSER_PASSWORD="<secreto-temporal>"
 .\.venv\Scripts\python.exe manage.py create_admin_from_env
 ```
 
-No guardar URLs ni contraseñas en Git o scripts.
+Retirar la contraseña temporal del entorno después de comprobar el acceso. No
+guardar URLs, contraseñas, datos personales ni información de facturación en Git
+o en esta guía.
+
+### Respaldo
+
+Usar `pg_dump` con la URL directa, cifrar el resultado y guardarlo fuera del
+repositorio. Verificar con `pg_restore --list` y restaurar periódicamente en una
+base aislada. Antes de cambios de alto riesgo, confirmar en Neon el restore
+window efectivo del plan y crear una rama recuperable.
 
 ## Verificación
 
@@ -90,5 +142,8 @@ flujos administrativos principales.
 
 ## Nota histórica
 
-Versiones anteriores describían Render. Ya no es la arquitectura oficial ni
-debe usarse como procedimiento vigente.
+Cloudflare Pages, Koyeb, Render Static Site, Render PostgreSQL, la antigua URL
+pública del frontend de Render y cualquier URL `workers.dev` solo describen
+iteraciones anteriores. Pueden eliminarse de los paneles cuando se confirme que
+no reciben tráfico ni sostienen automatizaciones. El Render Web Service del
+backend y su URL técnica sí son parte de la arquitectura vigente.

@@ -2,7 +2,7 @@ from datetime import date
 
 from django.core.exceptions import ValidationError
 
-from negocio.validators import validate_non_negative
+from negocio.validators import validate_non_negative as validate_non_negative
 
 
 def validate_month(value):
