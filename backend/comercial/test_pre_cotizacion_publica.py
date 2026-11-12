@@ -1,6 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -17,6 +18,7 @@ from .models import Cotizacion
 
 class PreCotizacionPublicaValidationTests(APITestCase):
     def setUp(self):
+        self.addCleanup(cache.clear)
         self.tipo_evento = TipoEvento.objects.create(nombre="Boda pública")
         self.tipo_evento_inactivo = TipoEvento.objects.create(
             nombre="Evento inactivo",

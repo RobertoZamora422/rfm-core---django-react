@@ -29,10 +29,32 @@ identidad, flujo integral, gastos, reportes, permisos y autenticación.
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py test
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --disable-pip-version-check -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py check
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py makemigrations
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py test
 ```
+
+El lanzador desactiva la carga de `.env`, descarta las variables de configuración
+heredadas de la aplicación y comprueba que el único alias de Django apunta a
+SQLite en memoria. `makemigrations` ejecuta la comprobación con `--check --dry-run --noinput`.
+La suite aplica las migraciones en una base desechable y usa una caché local en
+memoria.
+
+Para reproducir los módulos de E04 o cambiar el orden de la suite:
+
+```powershell
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py test comercial financiero negocio
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py test --shuffle 41304
+```
+
+El [flujo CI](../.github/workflows/ci.yml) usa el mismo lanzador en Ubuntu con
+Python 3.13. Su paso `check --deploy` comprueba por separado los ajustes de
+producción con variables de CI y una URL de PostgreSQL de loopback. El chequeo
+es de configuración y se ejecuta sin abrir una conexión a PostgreSQL.
+Consulta el [resumen de E04](evidencias/E04/informe.md) para la cobertura.
 
 ## Frontend
 

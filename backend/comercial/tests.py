@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
@@ -42,6 +43,7 @@ class CotizacionModelTests(TestCase):
 
 class CotizacionCleanDatabaseApiTests(APITestCase):
     def setUp(self):
+        self.addCleanup(cache.clear)
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
@@ -81,6 +83,8 @@ class CotizacionCleanDatabaseApiTests(APITestCase):
 
 class CotizacionApiTests(APITestCase):
     def setUp(self):
+        self.addCleanup(cache.clear)
+        self.fecha_publica = (timezone.localdate() + timedelta(days=30)).isoformat()
         self.user = get_user_model().objects.create_user(
             username="admin",
             password="test-pass",
@@ -219,7 +223,7 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona Nueva",
                 "telefono_persona": "+593 999999222",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-09-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
                 "observaciones": "Solicitud inicial",
@@ -241,7 +245,7 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona Sin Tope",
                 "telefono_persona": "+593 999999223",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-09-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 201,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             },
@@ -258,7 +262,7 @@ class CotizacionApiTests(APITestCase):
             {
                 "persona": self.persona.id,
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-09-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             },
@@ -282,7 +286,7 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona Servicio",
                 "telefono_persona": "+593 999999224",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-10-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             },
@@ -312,7 +316,7 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona Indecisa",
                 "telefono_persona": "+593 999999225",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-11-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.NO_ESTOY_SEGURO,
             },
@@ -338,11 +342,12 @@ class CotizacionApiTests(APITestCase):
             "nombre_persona": "Persona Recalculo",
             "telefono_persona": "0992223344",
             "tipo_evento": self.tipo_evento.id,
-            "fecha_tentativa": "2026-10-01",
+            "fecha_tentativa": self.fecha_publica,
             "numero_invitados": 80,
             "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
         }
         primera = self.client.post("/api/pre-cotizacion/", payload, format="json")
+        self.assertEqual(primera.status_code, 201, primera.data)
         segunda = self.client.post(
             "/api/pre-cotizacion/",
             {
@@ -353,7 +358,6 @@ class CotizacionApiTests(APITestCase):
             format="json",
         )
 
-        self.assertEqual(primera.status_code, 201)
         self.assertEqual(segunda.status_code, 200)
         self.assertEqual(
             primera.data["cotizacion"]["id"],
@@ -369,11 +373,12 @@ class CotizacionApiTests(APITestCase):
             "nombre_persona": "Persona Recalculo",
             "telefono_persona": "0992223345",
             "tipo_evento": self.tipo_evento.id,
-            "fecha_tentativa": "2026-10-01",
+            "fecha_tentativa": self.fecha_publica,
             "numero_invitados": 80,
             "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
         }
         primera = self.client.post("/api/pre-cotizacion/", payload, format="json")
+        self.assertEqual(primera.status_code, 201, primera.data)
         segunda = self.client.post(
             "/api/pre-cotizacion/",
             {
@@ -417,12 +422,13 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona Preferencia",
                 "telefono_persona": "0992223347",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-10-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
             },
             format="json",
         )
+        self.assertEqual(response.status_code, 201, response.data)
         token = response.data["solicitud_token"]
         seleccion = self.client.post(
             "/api/pre-cotizacion/preferencia/",
@@ -454,12 +460,13 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona WhatsApp",
                 "telefono_persona": "0992223348",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-10-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             },
             format="json",
         )
+        self.assertEqual(response.status_code, 201, response.data)
         mensaje = response.data["whatsapp"]["principal"]["mensaje"]
 
         self.assertIn(f"Pre-cotización: #{response.data['cotizacion']['id']}", mensaje)
@@ -687,7 +694,7 @@ class CotizacionApiTests(APITestCase):
                 "nombre_persona": "Persona API",
                 "telefono_persona": "+593-999999111",
                 "tipo_evento": self.tipo_evento.id,
-                "fecha_tentativa": "2026-09-01",
+                "fecha_tentativa": self.fecha_publica,
                 "numero_invitados": 80,
                 "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
             },
