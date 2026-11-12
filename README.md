@@ -225,11 +225,10 @@ eliminación lógica.
 
 ```powershell
 cd backend
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py check --deploy
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe manage.py test
 .\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py check
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py makemigrations
+.\.venv\Scripts\python.exe -I -B -u run_ci_checks.py test
 
 cd ..\frontend
 npm ci
@@ -243,8 +242,10 @@ cd ..
 git diff --check
 ```
 
-`check --deploy` debe ejecutarse con variables equivalentes a producción; con
-la configuración local de desarrollo reportará advertencias esperadas.
+GitHub Actions ejecuta las mismas verificaciones del backend con SQLite en
+memoria. La revisión de ajustes de despliegue usa un perfil de CI con una URL
+de PostgreSQL de loopback. Consulta la
+[estrategia de migraciones y pruebas](docs/08-migraciones-y-pruebas.md).
 
 ## Migraciones
 

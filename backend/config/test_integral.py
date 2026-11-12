@@ -2,6 +2,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
@@ -12,6 +13,7 @@ from negocio.models import ConfiguracionNegocio, Paquete, TipoEvento
 
 class FlujoIntegralRfmCoreTests(APITestCase):
     def setUp(self):
+        self.addCleanup(cache.clear)
         self.user = get_user_model().objects.create_user(
             username="admin-integral",
             password="test-pass",

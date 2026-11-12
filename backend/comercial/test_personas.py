@@ -1,7 +1,10 @@
+from datetime import timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from negocio.models import Persona, ConfiguracionNegocio, NombrePersona, TipoEvento
@@ -11,6 +14,7 @@ from .models import Cotizacion
 
 class PublicPersonFlowTests(APITestCase):
     def setUp(self):
+        self.addCleanup(cache.clear)
         self.tipo_evento = TipoEvento.objects.create(nombre="Evento público")
         ConfiguracionNegocio.objects.create(
             nombre_negocio="RFM",
@@ -25,7 +29,7 @@ class PublicPersonFlowTests(APITestCase):
             "nombre_persona": nombre,
             "telefono_persona": telefono,
             "tipo_evento": self.tipo_evento.id,
-            "fecha_tentativa": "2026-12-10",
+            "fecha_tentativa": (timezone.localdate() + timedelta(days=30)).isoformat(),
             "numero_invitados": 60,
             "tipo_servicio": Cotizacion.TipoServicioInteres.ALQUILER,
         }

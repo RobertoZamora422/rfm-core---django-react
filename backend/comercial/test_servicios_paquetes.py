@@ -1,7 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from financiero.models import Contrato
@@ -18,6 +20,7 @@ from .models import Cotizacion
 
 class ServiciosPaquetesDomainTests(APITestCase):
     def setUp(self):
+        self.addCleanup(cache.clear)
         self.user = get_user_model().objects.create_user(
             username="servicios-paquetes",
             password="test-pass",
@@ -72,7 +75,7 @@ class ServiciosPaquetesDomainTests(APITestCase):
             "nombre_persona": "Persona Pública",
             "telefono_persona": telefono,
             "tipo_evento": self.tipo_evento.id,
-            "fecha_tentativa": "2026-10-20",
+            "fecha_tentativa": (timezone.localdate() + timedelta(days=30)).isoformat(),
             "numero_invitados": 80,
             "tipo_servicio": tipo_servicio,
         }
@@ -269,6 +272,41 @@ class ServiciosPaquetesDomainTests(APITestCase):
         )
         self.assertEqual(response.data["contrato"]["paquete"], self.paquete.id)
 
+    def test_conversion_confirmada_de_servicio_completo_sin_paquete_se_rechaza(self):
+        self.client.force_authenticate(user=None)
+        solicitud = self.client.post(
+            "/api/pre-cotizacion/",
+            self.public_payload(
+                telefono="0991112206",
+                tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            ),
+            format="json",
+        )
+        self.assertEqual(solicitud.status_code, 201, solicitud.data)
+        cotizacion_id = solicitud.data["cotizacion"]["id"]
+
+        self.client.force_authenticate(self.user)
+        confirmacion = self.client.post(
+            f"/api/cotizaciones/{cotizacion_id}/cambiar-estado/",
+            {"estado": Cotizacion.Estado.CONFIRMADA},
+            format="json",
+        )
+        self.assertEqual(confirmacion.status_code, 200, confirmacion.data)
+        self.assertIsNone(confirmacion.data["paquete"])
+
+        conversion = self.client.post(
+            f"/api/cotizaciones/{cotizacion_id}/convertir-contrato/",
+            {"valor_final": "1500.00"},
+            format="json",
+        )
+
+        self.assertEqual(conversion.status_code, 400, conversion.data)
+        self.assertEqual(set(conversion.data), {"paquete"})
+        self.assertFalse(Contrato.objects.exists())
+        cotizacion = Cotizacion.objects.get(pk=cotizacion_id)
+        self.assertEqual(cotizacion.estado, Cotizacion.Estado.CONFIRMADA)
+        self.assertIsNone(cotizacion.paquete_id)
+
     def test_conversion_no_estoy_seguro_exige_resolucion(self):
         cotizacion = Cotizacion.objects.create(
             persona=self.persona,
@@ -374,6 +412,17 @@ class ServiciosPaquetesDomainTests(APITestCase):
             },
             format="json",
         )
+        self.assertEqual(response.status_code, 201, response.data)
+        paquete_historico = response.data["oferta_snapshot"]["paquete"]
+        self.assertEqual(paquete_historico["nombre"], "Premium 18")
+        self.assertEqual(paquete_historico["precio_por_persona"], "18.00")
+        beneficios = {item["titulo"]: item for item in paquete_historico["beneficios"]}
+        self.assertIn("Catering completo", beneficios)
+        self.assertEqual(beneficios["Decoración sin costo"]["minimo_invitados"], 125)
+        self.assertEqual(
+            paquete_historico["incluidos_en_todos"][0]["titulo"],
+            "Local iluminado",
+        )
         cotizacion = Cotizacion.objects.get(pk=response.data["id"])
         self.confirmar(cotizacion)
 
@@ -383,51 +432,53 @@ class ServiciosPaquetesDomainTests(APITestCase):
         self.beneficio_principal.titulo = "Beneficio modificado"
         self.beneficio_principal.save()
         self.condicion.delete()
+        self.beneficio_comun.activo = False
+        self.beneficio_comun.save()
 
         detalle = self.client.patch(
             f"/api/cotizaciones/{cotizacion.id}/",
             {"total_estimado": "2400.00"},
             format="json",
         )
+        self.assertEqual(detalle.status_code, 200, detalle.data)
+        self.assertEqual(detalle.data["oferta_snapshot"]["paquete"], paquete_historico)
         conversion = self.client.post(
             f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
             {},
             format="json",
         )
+        self.assertEqual(conversion.status_code, 201, conversion.data)
+        contrato = conversion.data["contrato"]
+        self.assertEqual(contrato["oferta_snapshot"]["paquete"], paquete_historico)
+        self.assertEqual(contrato["valor_final"], "2400.00")
         contrato_editado = self.client.patch(
-            f"/api/contratos/{conversion.data['contrato']['id']}/",
-            {"valor_final": "2400.00"},
+            f"/api/contratos/{contrato['id']}/",
+            {"numero_invitados": 140, "valor_final": "2500.00"},
             format="json",
         )
-        snapshot = detalle.data["oferta_snapshot"]["paquete"]
-        beneficios = {item["titulo"]: item for item in snapshot["beneficios"]}
-
-        self.assertEqual(snapshot["nombre"], "Premium 18")
-        self.assertEqual(snapshot["precio_por_persona"], "18.00")
-        self.assertIn("Catering completo", beneficios)
+        self.assertEqual(contrato_editado.status_code, 200, contrato_editado.data)
+        self.assertEqual(contrato_editado.data["valor_final"], "2500.00")
         self.assertEqual(
-            beneficios["Decoración sin costo"]["minimo_invitados"],
-            125,
+            contrato_editado.data["oferta_snapshot"]["paquete"],
+            {**paquete_historico, "total_estimado": "2520.00"},
         )
-        self.assertEqual(
-            conversion.data["contrato"]["oferta_snapshot"]["paquete"]["nombre"],
-            "Premium 18",
-        )
-        self.assertEqual(
-            contrato_editado.data["oferta_snapshot"]["paquete"]["nombre"],
-            "Premium 18",
-        )
-        self.assertIn(
-            "Catering completo",
-            {
-                item["titulo"]
-                for item in contrato_editado.data["oferta_snapshot"]["paquete"][
-                    "beneficios"
-                ]
-            },
-        )
+        self.tipo_evento.nombre = "Tipo de evento renombrado QA"
+        self.tipo_evento.save()
+        for ruta, snapshot in (
+            (f"/api/cotizaciones/{cotizacion.id}/", detalle.data["oferta_snapshot"]),
+            (f"/api/contratos/{contrato['id']}/", contrato_editado.data["oferta_snapshot"]),
+        ):
+            with self.subTest(ruta=ruta):
+                lectura = self.client.get(ruta)
+                self.assertEqual(lectura.status_code, 200, lectura.data)
+                self.assertEqual(lectura.data["tipo_evento_nombre"], self.tipo_evento.nombre)
+                self.assertEqual(lectura.data["oferta_snapshot"], snapshot)
+        cotizacion.refresh_from_db()
+        self.assertEqual(cotizacion.oferta_snapshot, detalle.data["oferta_snapshot"])
 
     def test_conserva_parametros_de_alquiler_al_cambiar_configuracion(self):
+        self.beneficio_comun.tipo = BeneficioPaquete.Tipo.PRINCIPAL
+        self.beneficio_comun.save()
         self.client.force_authenticate(user=None)
         response = self.client.post(
             "/api/pre-cotizacion/",
@@ -437,11 +488,22 @@ class ServiciosPaquetesDomainTests(APITestCase):
             ),
             format="json",
         )
+        self.assertEqual(response.status_code, 201, response.data)
+        snapshot_historico = response.data["cotizacion"]["oferta_snapshot"]
+        alquiler_historico = snapshot_historico["alquiler"]
+        self.assertEqual(alquiler_historico["tarifa_base"], "1000.00")
+        self.assertEqual(alquiler_historico["invitados_incluidos"], 50)
+        self.assertEqual(alquiler_historico["costo_invitado_adicional"], "10.00")
+        self.assertEqual(alquiler_historico["invitados_adicionales"], 30)
+        self.assertEqual(alquiler_historico["beneficios_principales"][0]["titulo"], "Local iluminado")
         cotizacion = Cotizacion.objects.get(pk=response.data["cotizacion"]["id"])
         self.confirmar(cotizacion)
         self.configuracion.tarifa_base_alquiler = Decimal("2500.00")
+        self.configuracion.invitados_incluidos_alquiler = 60
         self.configuracion.costo_invitado_adicional = Decimal("25.00")
         self.configuracion.save()
+        self.beneficio_comun.titulo = "Beneficio de alquiler vigente"
+        self.beneficio_comun.save()
 
         self.client.force_authenticate(self.user)
         conversion = self.client.post(
@@ -449,20 +511,169 @@ class ServiciosPaquetesDomainTests(APITestCase):
             {},
             format="json",
         )
-        alquiler = conversion.data["contrato"]["oferta_snapshot"]["alquiler"]
+        self.assertEqual(conversion.status_code, 201, conversion.data)
+        contrato = conversion.data["contrato"]
+        self.assertEqual(contrato["oferta_snapshot"]["alquiler"], alquiler_historico)
+        self.assertEqual(contrato["valor_final"], "1300.00")
         contrato_editado = self.client.patch(
-            f"/api/contratos/{conversion.data['contrato']['id']}/",
+            f"/api/contratos/{contrato['id']}/",
             {"numero_invitados": 90, "valor_final": "1400.00"},
             format="json",
         )
-        alquiler_editado = contrato_editado.data["oferta_snapshot"]["alquiler"]
+        self.assertEqual(contrato_editado.status_code, 200, contrato_editado.data)
+        self.assertEqual(contrato_editado.data["valor_final"], "1400.00")
+        self.assertEqual(
+            contrato_editado.data["oferta_snapshot"]["alquiler"],
+            {**alquiler_historico, "invitados_adicionales": 40, "costo_adicional": "400.00"},
+        )
+        cotizacion.refresh_from_db()
+        self.assertEqual(cotizacion.oferta_snapshot, snapshot_historico)
 
-        self.assertEqual(conversion.status_code, 201)
-        self.assertEqual(alquiler["tarifa_base"], "1000.00")
-        self.assertEqual(alquiler["costo_invitado_adicional"], "10.00")
-        self.assertEqual(alquiler["invitados_adicionales"], 30)
-        self.assertEqual(alquiler_editado["tarifa_base"], "1000.00")
-        self.assertEqual(alquiler_editado["invitados_adicionales"], 40)
+    def test_reconstruye_alquiler_sin_parametros_historicos_con_configuracion_vigente(self):
+        snapshot_incompleto = {
+            "version": 1,
+            "origen": "migracion_historica",
+            "tipo_servicio": "alquiler",
+            "numero_invitados": 80,
+            "total_estimado": "1300.00",
+            "alquiler": {"parametros_disponibles": False},
+        }
+        cotizacion = Cotizacion.objects.create(
+            persona=self.persona,
+            tipo_evento=self.tipo_evento,
+            fecha_tentativa=timezone.localdate() + timedelta(days=30),
+            numero_invitados=80,
+            tipo_servicio=Cotizacion.TipoServicioInteres.ALQUILER,
+            estado=Cotizacion.Estado.CONFIRMADA,
+            total_estimado=Decimal("1300.00"),
+            oferta_snapshot=snapshot_incompleto,
+        )
+        self.configuracion.tarifa_base_alquiler = Decimal("1700.00")
+        self.configuracion.invitados_incluidos_alquiler = 60
+        self.configuracion.costo_invitado_adicional = Decimal("20.00")
+        self.configuracion.save()
+        self.beneficio_comun.tipo = BeneficioPaquete.Tipo.PRINCIPAL
+        self.beneficio_comun.titulo = "Beneficio vigente al convertir"
+        self.beneficio_comun.save()
+
+        conversion = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(conversion.status_code, 201, conversion.data)
+        contrato = conversion.data["contrato"]
+        alquiler = contrato["oferta_snapshot"]["alquiler"]
+        self.assertEqual(contrato["valor_final"], "1300.00")
+        self.assertTrue(alquiler["parametros_disponibles"])
+        self.assertEqual(alquiler["tarifa_base"], "1700.00")
+        self.assertEqual(alquiler["invitados_incluidos"], 60)
+        self.assertEqual(alquiler["costo_invitado_adicional"], "20.00")
+        self.assertEqual(alquiler["invitados_adicionales"], 20)
+        self.assertEqual(alquiler["costo_adicional"], "400.00")
+        self.assertEqual(
+            alquiler["beneficios_principales"][0]["titulo"],
+            "Beneficio vigente al convertir",
+        )
+        cotizacion.refresh_from_db()
+        self.assertEqual(cotizacion.oferta_snapshot, snapshot_incompleto)
+
+    def test_reconstruye_servicio_completo_al_elegir_un_paquete_distinto(self):
+        cotizada = self.client.post(
+            "/api/cotizaciones/",
+            {
+                "persona": self.persona.id,
+                "tipo_evento": self.tipo_evento.id,
+                "tipo_servicio": Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+                "paquete": self.paquete.id,
+                "fecha_tentativa": (timezone.localdate() + timedelta(days=30)).isoformat(),
+                "numero_invitados": 80,
+                "total_estimado": "1440.00",
+            },
+            format="json",
+        )
+        self.assertEqual(cotizada.status_code, 201, cotizada.data)
+        cotizacion = Cotizacion.objects.get(pk=cotizada.data["id"])
+        self.confirmar(cotizacion)
+        paquete_final = Paquete.objects.create(
+            nombre="Paquete alternativo QA",
+            precio_por_persona=Decimal("25.00"),
+        )
+        BeneficioPaquete.objects.create(
+            paquete=paquete_final,
+            tipo=BeneficioPaquete.Tipo.PRINCIPAL,
+            titulo="Beneficio del paquete alternativo QA",
+        )
+
+        conversion = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {"paquete": paquete_final.id, "valor_final": "1900.00"},
+            format="json",
+        )
+
+        self.assertEqual(conversion.status_code, 201, conversion.data)
+        contrato = conversion.data["contrato"]
+        paquete = contrato["oferta_snapshot"]["paquete"]
+        self.assertEqual(contrato["valor_final"], "1900.00")
+        self.assertEqual(contrato["paquete"], paquete_final.id)
+        self.assertEqual(paquete["id"], paquete_final.id)
+        self.assertEqual(paquete["nombre"], "Paquete alternativo QA")
+        self.assertEqual(paquete["precio_por_persona"], "25.00")
+        self.assertEqual(paquete["total_estimado"], "2000.00")
+        self.assertEqual(
+            [beneficio["titulo"] for beneficio in paquete["beneficios"]],
+            ["Beneficio del paquete alternativo QA"],
+        )
+        cotizacion.refresh_from_db()
+        self.assertEqual(cotizacion.paquete_id, self.paquete.id)
+        self.assertEqual(cotizacion.oferta_snapshot, cotizada.data["oferta_snapshot"])
+
+    def test_reconstruye_servicio_completo_desde_catalogo_vigente_si_no_habia_paquete_elegido(self):
+        self.client.force_authenticate(user=None)
+        solicitud = self.client.post(
+            "/api/pre-cotizacion/",
+            self.public_payload(
+                telefono="0991112207",
+                tipo_servicio=Cotizacion.TipoServicioInteres.SERVICIO_COMPLETO,
+            ),
+            format="json",
+        )
+        self.assertEqual(solicitud.status_code, 201, solicitud.data)
+        snapshot_historico = solicitud.data["cotizacion"]["oferta_snapshot"]
+        ofrecido = snapshot_historico["catalogo"]["paquetes"][0]
+        self.assertEqual(ofrecido["id"], self.paquete.id)
+        self.assertEqual(ofrecido["precio_por_persona"], "18.00")
+        cotizacion = Cotizacion.objects.get(pk=solicitud.data["cotizacion"]["id"])
+        self.confirmar(cotizacion)
+        self.paquete.nombre = "Paquete actualizado QA"
+        self.paquete.precio_por_persona = Decimal("22.00")
+        self.paquete.save()
+        self.beneficio_principal.titulo = "Beneficio actualizado QA"
+        self.beneficio_principal.save()
+
+        self.client.force_authenticate(self.user)
+        conversion = self.client.post(
+            f"/api/cotizaciones/{cotizacion.id}/convertir-contrato/",
+            {"paquete": self.paquete.id, "valor_final": "1440.00"},
+            format="json",
+        )
+
+        self.assertEqual(conversion.status_code, 201, conversion.data)
+        contrato = conversion.data["contrato"]
+        paquete = contrato["oferta_snapshot"]["paquete"]
+        self.assertEqual(contrato["valor_final"], "1440.00")
+        self.assertEqual(paquete["id"], ofrecido["id"])
+        self.assertEqual(paquete["nombre"], "Paquete actualizado QA")
+        self.assertEqual(paquete["precio_por_persona"], "22.00")
+        self.assertEqual(paquete["total_estimado"], "1760.00")
+        self.assertIn(
+            "Beneficio actualizado QA",
+            [item["titulo"] for item in paquete["beneficios"]],
+        )
+        cotizacion.refresh_from_db()
+        self.assertIsNone(cotizacion.paquete_id)
+        self.assertEqual(cotizacion.oferta_snapshot, snapshot_historico)
 
     def test_alquiler_se_presenta_en_listado_detalle_y_reporte(self):
         contrato = Contrato.objects.create(
